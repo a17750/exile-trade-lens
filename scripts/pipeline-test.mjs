@@ -1,0 +1,92 @@
+import assert from "node:assert/strict";
+import path from "node:path";
+import { readJson, sourcesPath } from "./lib/project.mjs";
+import { diffSnapshots } from "./lib/audit.mjs";
+import { countPlaceholders, createCandidateEngine } from "./lib/translation-engine.mjs";
+import { createOfficialTwOverlay } from "./lib/official-tw.mjs";
+
+const glossary = readJson(path.join(sourcesPath, "glossary.zh-TW.json"));
+const phrases = readJson(path.join(sourcesPath, "phrase-exceptions.zh-TW.json"));
+const suggest = createCandidateEngine(glossary, phrases);
+
+const composed = suggest("Abyssal Flail", "item");
+assert.equal(composed.text, "深淵鏈錘");
+assert.equal(composed.method, "glossary-composition");
+assert.equal(composed.status, "needs-review");
+assert.ok(composed.confidence < 0.9);
+
+const exception = suggest("Abyssal Signet", "item");
+assert.equal(exception.text, "深淵之記");
+assert.equal(exception.method, "phrase-exception");
+assert.equal(exception.confidence, 1);
+assert.equal(suggest("Unknown Unmapped Thing", "item"), null);
+assert.equal(countPlaceholders("+#% to # Things"), 2);
+
+const baseline = {
+  fetchedAt: "before",
+  sections: {
+    stats: {
+      groups: { explicit: "Explicit" },
+      entries: { test: { english: "Old English", groupId: "explicit", options: {} } },
+    },
+  },
+};
+const current = {
+  fetchedAt: "after",
+  sections: {
+    stats: {
+      groups: { explicit: "Explicit" },
+      entries: {
+        test: { english: "New English", groupId: "explicit", options: {} },
+        added: { english: "Added English", groupId: "explicit", options: {} },
+      },
+    },
+  },
+};
+const diff = diffSnapshots(baseline, current);
+assert.equal(diff.changed.length, 1);
+assert.equal(diff.changed[0].previousEnglish, "Old English");
+assert.equal(diff.added.length, 1);
+
+const englishSnapshot = {
+  fetchedAt: "english",
+  source: "en",
+  sections: {
+    items: { groups: { weapon: "Weapons" }, entries: { "Abyssal Flail": { english: "Abyssal Flail", contexts: ["weapon:type"] } } },
+    stats: { groups: { pseudo: "Pseudo" }, entries: { resistance: { english: "# total Elemental Resistances", groupId: "pseudo", options: {} } } },
+    static: { groups: { Currency: "Currency" }, entries: { chaos: { english: "Chaos Orb", groupId: "Currency", options: {} } } },
+    filters: { groups: { map_filters: "Endgame Filters" }, entries: { map_magic_monsters: { english: "Monster Effectiveness", groupId: "map_filters", options: { any: "Any" } } } },
+  },
+};
+const translatedSnapshot = {
+  fetchedAt: "translated",
+  source: "tw",
+  sections: {
+    items: { groups: { weapon: "武器" }, entries: { 深淵鏈錘: { english: "深淵鏈錘", contexts: ["weapon:type"] } } },
+    stats: { groups: { pseudo: "偽屬性" }, entries: { resistance: { english: "# 元素抗性", groupId: "pseudo", options: {} } } },
+    static: { groups: { Currency: "通貨" }, entries: { chaos: { english: "混沌石", groupId: "Currency", options: {} } } },
+    filters: { groups: { map_filters: "終局篩選器" }, entries: { map_magic_monsters: { english: "怪物效用", groupId: "map_filters", options: { any: "任何" } } } },
+  },
+};
+const officialTw = createOfficialTwOverlay({
+  englishSnapshot,
+  translatedSnapshot,
+  englishRaw: { items: { result: [{ id: "weapon", entries: [{ id: "abyssal-flail", type: "Abyssal Flail" }] }] } },
+  translatedRaw: { items: { result: [{ id: "weapon", entries: [{ id: "abyssal-flail", type: "深淵鏈錘" }] }] } },
+});
+assert.equal(officialTw.sections.filters.entries.map_magic_monsters.text, "怪物效用");
+assert.equal(officialTw.sections.stats.entries.resistance.text, "# 元素抗性");
+assert.equal(officialTw.sections.filters.entries.map_magic_monsters.options.any, "任何");
+assert.equal(officialTw.items["Abyssal Flail"], "深淵鏈錘");
+assert.equal(officialTw.report.summary.rejected, 0);
+
+const unsafeItems = createOfficialTwOverlay({
+  englishSnapshot,
+  translatedSnapshot,
+  englishRaw: { items: { result: [{ id: "weapon", entries: [{ type: "Abyssal Flail" }, { type: "Iron Flail" }] }] } },
+  translatedRaw: { items: { result: [{ id: "weapon", entries: [{ type: "深淵鏈錘" }] }] } },
+});
+assert.equal(Object.keys(unsafeItems.items).length, 0);
+assert.equal(unsafeItems.report.itemAlignment.skippedGroups[0].reason, "entries-without-stable-key");
+
+console.log("pipeline-test: ok");

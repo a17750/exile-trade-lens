@@ -1,0 +1,12 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; }
+body { width: 280px; margin: 0; padding: 16px; color: #eee; background: #17191c; }
+h1 { margin: 0 0 14px; color: #d7b477; font-size: 17px; }
+.row, .field { display: flex; align-items: center; justify-content: space-between; margin: 12px 0; gap: 12px; }
+select, button { border: 1px solid #66563c; border-radius: 5px; color: #eee; background: #292d32; }
+select { padding: 5px; }
+button { width: 100%; margin-top: 9px; padding: 8px; cursor: pointer; background: #7b5524; }
+button.secondary { background: #292d32; }
+button:disabled { cursor: wait; opacity: .65; }
+.muted { margin-top: 14px; color: #aaa; font-size: 12px; }
+.health { margin-top: 6px; color: #d7b477; font-size: 12px; }
+.status { min-height: 18px; margin-top: 6px; color: #c8b38a; font-size: 12px; }

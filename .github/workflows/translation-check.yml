@@ -1,0 +1,46 @@
+name: Translation data check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 21 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify locked external sources
+        run: node scripts/sync-external-sources.mjs
+
+      - name: Build dataset from English and official TW sources
+        run: node scripts/build-data.mjs
+
+      - name: Run quality gate
+        run: node scripts/check-quality.mjs
+
+      - name: Run pipeline tests
+        run: |
+          node scripts/pipeline-test.mjs
+          node scripts/smoke-test.mjs
+          node scripts/background-smoke-test.mjs
+
+      - name: Upload audit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: translation-audit-${{ github.run_number }}
+          path: reports/
+          if-no-files-found: warn
+          retention-days: 30

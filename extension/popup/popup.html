@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>流亡译镜</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <h1>流亡译镜</h1>
+    <label class="row"><span>启用汉化</span><input id="enabled" type="checkbox" /></label>
+    <label class="field">
+      <span>显示模式</span>
+      <select id="mode">
+        <option value="bilingual">中英双语</option>
+        <option value="translated">仅繁体中文</option>
+      </select>
+    </label>
+    <div id="version" class="muted">正在读取词库…</div>
+    <div id="health" class="health">漏译自检：读取中…</div>
+    <div id="status" class="status"></div>
+    <button id="health-page" type="button">查看漏译与修正</button>
+    <button id="update" type="button">检查词库更新</button>
+    <button id="options" class="secondary" type="button">更新设置</button>
+    <script src="popup.js"></script>
+  </body>
+</html>

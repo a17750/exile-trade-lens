@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "sources": {
+    "poeGameDataNamesTw": {
+      "repository": "https://github.com/seominugi/poe-game-data",
+      "ref": "e10b7473addbdfdb08a3994c816e7977a1438012",
+      "path": "poe2/names/tw.json",
+      "url": "https://raw.githubusercontent.com/seominugi/poe-game-data/e10b7473addbdfdb08a3994c816e7977a1438012/poe2/names/tw.json",
+      "sha256": "c59d7f774edde55d11bf45f1063fe05a9ec051cf114182858a2d04cf2b416ac0",
+      "purpose": "POE2 英文物品/技能名称到繁体中文的精确名称对照"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "locale": "zh-TW",
+  "phrases": [
+    {
+      "en": "Abyssal Signet",
+      "zhTW": "深淵之記",
+      "domains": ["item"],
+      "status": "reviewed",
+      "notes": "专有物品名，优先于 Abyssal + Signet 的逐词组合"
+    },
+    {
+      "en": "Monster Effectiveness",
+      "zhTW": "怪物效用",
+      "domains": ["filter", "ui"],
+      "status": "reviewed"
+    }
+  ]
+}

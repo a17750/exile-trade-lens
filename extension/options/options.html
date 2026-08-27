@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>流亡译镜设置</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main>
+      <h1>词库更新设置</h1>
+      <p>测试阶段可留空，扩展会使用项目内置词库。发布 GitHub 数据仓库后，在这里填写远程 manifest.json。</p>
+      <label><span>远程更新清单 URL</span><input id="url" type="url" placeholder="https://raw.githubusercontent.com/.../manifest.json" /></label>
+      <label class="check"><input id="auto" type="checkbox" />每 12 小时自动检查</label>
+      <button id="save" type="button">保存</button>
+      <div id="status"></div>
+      <h2>远程清单格式</h2>
+      <pre>{
+  "schemaVersion": 1,
+  "datasetVersion": "0.5.0-20260825",
+  "dataUrl": "https://.../dataset.json",
+  "sha256": "dataset.json 的 SHA-256"
+}</pre>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

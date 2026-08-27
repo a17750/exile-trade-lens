@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "locale": "zh-TW",
+  "terms": [
+    {
+      "en": "Abyssal",
+      "zhTW": "深淵",
+      "domains": ["item"],
+      "status": "proposed",
+      "confidence": 0.9,
+      "notes": "由既有 Abyssal 系列名称推断；首次组合结果仍需审核"
+    },
+    {
+      "en": "Flail",
+      "zhTW": "鏈錘",
+      "domains": ["item"],
+      "status": "reviewed",
+      "confidence": 1
+    },
+    {
+      "en": "Ring",
+      "zhTW": "戒指",
+      "domains": ["item"],
+      "status": "reviewed",
+      "confidence": 1
+    },
+    {
+      "en": "Amulet",
+      "zhTW": "項鍊",
+      "domains": ["item"],
+      "status": "reviewed",
+      "confidence": 1
+    },
+    {
+      "en": "Belt",
+      "zhTW": "腰帶",
+      "domains": ["item"],
+      "status": "reviewed",
+      "confidence": 1
+    },
+    {
+      "en": "Bow",
+      "zhTW": "弓",
+      "domains": ["item"],
+      "status": "reviewed",
+      "confidence": 1
+    },
+    {
+      "en": "Crossbow",
+      "zhTW": "十字弓",
+      "domains": ["item"],
+      "status": "reviewed",
+      "confidence": 1
+    },
+    {
+      "en": "Quarterstaff",
+      "zhTW": "細杖",
+      "domains": ["item"],
+      "status": "reviewed",
+      "confidence": 1
+    },
+    {
+      "en": "Staff",
+      "zhTW": "長杖",
+      "domains": ["item"],
+      "status": "reviewed",
+      "confidence": 1
+    },
+    {
+      "en": "Wand",
+      "zhTW": "法杖",
+      "domains": ["item"],
+      "status": "reviewed",
+      "confidence": 1
+    },
+    {
+      "en": "Shield",
+      "zhTW": "盾",
+      "domains": ["item"],
+      "status": "reviewed",
+      "confidence": 1
+    },
+    {
+      "en": "Armour",
+      "zhTW": "護甲",
+      "domains": ["item", "ui"],
+      "status": "reviewed",
+      "confidence": 1
+    }
+  ]
+}

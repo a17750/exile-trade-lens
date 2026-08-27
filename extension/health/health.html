@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>流亡译镜 · 漏译管理</title>
+    <link rel="stylesheet" href="health.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>漏译自检</h1>
+          <p>记录标准物品、词缀、筛选器、属性和筛选界面的残留英文；不记录账号、卖家、私聊、价格或搜索内容。</p>
+        </div>
+        <div class="header-actions">
+          <button id="export" type="button">导出报告</button>
+          <button id="clear" class="danger" type="button">清空记录</button>
+        </div>
+      </header>
+
+      <section class="summary">
+        <article><strong id="pending-count">0</strong><span>待处理</span></article>
+        <article><strong id="ignored-count">0</strong><span>已忽略</span></article>
+        <article><strong id="override-count">0</strong><span>本地修正</span></article>
+      </section>
+
+      <section class="toolbar">
+        <input id="search" type="search" placeholder="搜索 ID 或英文文本" />
+        <select id="type-filter">
+          <option value="">全部类型</option>
+          <option value="stat">词缀</option>
+          <option value="item">物品</option>
+          <option value="static">静态项目</option>
+          <option value="filter">筛选器</option>
+          <option value="property">物品属性</option>
+          <option value="ui">界面文字</option>
+        </select>
+        <label><input id="show-ignored" type="checkbox" />显示已忽略</label>
+      </section>
+
+      <div id="status" role="status"></div>
+      <button id="reconnect" type="button" hidden>重新连接扩展</button>
+      <section id="records" class="records"></section>
+      <div id="empty" class="empty" hidden>当前没有待处理漏译。</div>
+    </main>
+    <template id="record-template">
+      <article class="record">
+        <div class="record-head">
+          <span class="type"></span>
+          <code class="key"></code>
+          <span class="count"></span>
+        </div>
+        <div class="english"></div>
+        <div class="meta"></div>
+        <textarea class="translation" rows="2" placeholder="输入中文译文；# 占位符数量必须与英文一致"></textarea>
+        <div class="actions">
+          <button class="save" type="button">保存本地修正</button>
+          <button class="ignore secondary" type="button">忽略</button>
+          <button class="delete secondary" type="button">删除记录</button>
+        </div>
+      </article>
+    </template>
+    <script src="health.js"></script>
+  </body>
+</html>

@@ -1,0 +1,33 @@
+:root { color-scheme: dark; font-family: system-ui, -apple-system, sans-serif; }
+body { margin: 0; color: #ece7de; background: #141619; }
+main { max-width: 1080px; margin: 0 auto; padding: 36px 24px 80px; }
+header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+h1 { margin: 0; color: #d9b778; font-size: 28px; }
+header p { margin: 8px 0 0; color: #aaa; }
+button, input, select, textarea { font: inherit; }
+button { padding: 8px 13px; border: 1px solid #705c3c; border-radius: 5px; color: #f7f2ea; background: #7b5524; cursor: pointer; }
+button.secondary { border-color: #50555c; background: #292d32; }
+button.danger { border-color: #73433e; background: #5b2926; }
+button:disabled { cursor: wait; opacity: .55; }
+.header-actions { display: flex; gap: 8px; }
+.summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 28px 0 18px; }
+.summary article { padding: 16px; border: 1px solid #34383e; border-radius: 7px; background: #1d2024; }
+.summary strong { display: block; color: #d9b778; font-size: 25px; }
+.summary span { color: #aaa; font-size: 13px; }
+.toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.toolbar input[type="search"] { flex: 1; }
+input[type="search"], select, textarea { box-sizing: border-box; padding: 9px; border: 1px solid #454a51; border-radius: 5px; color: #eee; background: #24282d; }
+#status { min-height: 22px; color: #cfb886; }
+.records { display: grid; gap: 12px; }
+.record { padding: 16px; border: 1px solid #34383e; border-radius: 7px; background: #1d2024; }
+.record.ignored { opacity: .62; }
+.record-head { display: flex; align-items: center; gap: 9px; }
+.type { padding: 2px 7px; border-radius: 10px; color: #1b1b1b; background: #c7a76c; font-size: 12px; }
+.key { overflow-wrap: anywhere; color: #c7d5e0; }
+.count { margin-left: auto; color: #8f969e; font-size: 12px; }
+.english { margin: 12px 0 6px; white-space: pre-wrap; font-size: 15px; }
+.meta { margin-bottom: 10px; color: #858b92; font-size: 12px; }
+.translation { width: 100%; resize: vertical; }
+.actions { display: flex; gap: 8px; margin-top: 10px; }
+.empty { padding: 42px; text-align: center; color: #8f969e; }
+@media (max-width: 700px) { header, .toolbar { align-items: stretch; flex-direction: column; } .summary { grid-template-columns: 1fr; } }
