@@ -18,6 +18,21 @@
   let missingTimer = null;
   const CONFIG_ELEMENT_ID = "poe2zh-shared-config";
   const TRANSLATABLE_ATTRIBUTES = ["placeholder", "title", "aria-label"];
+  const UI_FALLBACK_TRANSLATIONS = {
+    "Clear Filter Group": "清除篩選群組",
+    Count: "數量",
+    "Activate Live Search": "啟用即時搜尋",
+    "Back to Top": "返回頂部",
+    And: "且",
+    If: "如果",
+    Not: "非",
+    "Select option": "選擇選項",
+    "Searching...": "搜尋中……",
+    "Stat Filters": "屬性篩選",
+    "Stat Groups": "屬性群組",
+    "Weighted Sum": "加權總和",
+    "Custom Search": "自訂搜尋",
+  };
 
   function queueMissing(event) {
     const report = event?.detail ?? event;
@@ -66,6 +81,8 @@
       !/[A-Za-z]/.test(en) ||
       /https?:\/\/|\S+@\S+/.test(en) ||
       knownRenderedTranslations.has(en) ||
+      (/[^\x00-\x7f]/.test(en) && /\([A-Za-z][^)]*\)/.test(en)) ||
+      /\(\s*undefined\s*\)$/i.test(en) ||
       reportedUiMissing.has(en)
     ) {
       return;
@@ -127,6 +144,7 @@
         }
       }
     };
+    add(UI_FALLBACK_TRANSLATIONS);
     add(dataset?.ui);
     add(dataset?.items);
     add(dataset?.properties);

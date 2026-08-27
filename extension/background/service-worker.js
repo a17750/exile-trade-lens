@@ -116,6 +116,22 @@ function normalizeUiText(value) {
   return String(value ?? "").replace(/\s+/g, " ").trim();
 }
 
+const UI_FALLBACK_TRANSLATIONS = {
+  "Clear Filter Group": "清除篩選群組",
+  Count: "數量",
+  "Activate Live Search": "啟用即時搜尋",
+  "Back to Top": "返回頂部",
+  And: "且",
+  If: "如果",
+  Not: "非",
+  "Select option": "選擇選項",
+  "Searching...": "搜尋中……",
+  "Stat Filters": "屬性篩選",
+  "Stat Groups": "屬性群組",
+  "Weighted Sum": "加權總和",
+  "Custom Search": "自訂搜尋",
+};
+
 function knownRenderedUiTexts(dataset) {
   const values = new Set();
   for (const [english, translated] of Object.entries(dataset.exact ?? {})) {
@@ -136,6 +152,7 @@ function lookupTranslation(dataset, type, key, renderedUiTexts = null) {
     return (
       dataset.exact?.[key] ||
       dataset.ui?.[key] ||
+      UI_FALLBACK_TRANSLATIONS[key] ||
       renderedUiTexts?.has(normalizeUiText(key))
     );
   }
