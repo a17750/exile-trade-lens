@@ -5,7 +5,8 @@ const DEFAULT_SETTINGS = {
   enabled: true,
   mode: "bilingual",
   autoUpdate: true,
-  remoteManifestUrl: "",
+  remoteManifestUrl:
+    "https://raw.githubusercontent.com/a17750/exile-trade-lens/main/extension/data/remote-manifest.json",
 };
 
 async function getSettings() {

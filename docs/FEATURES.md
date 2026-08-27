@@ -44,6 +44,7 @@
 ### 4. 远程词库更新
 
 - 支持 GitHub Raw 和 jsDelivr 的 HTTPS 更新清单。
+- 默认清单固定为 `a17750/exile-trade-lens` 的公开 GitHub Raw 地址。
 - 每 12 小时检查一次，也可在 Popup 手工检查。
 - 下载后验证 SHA-256 和数据 schema。
 - 更新失败时继续使用旧词库。
@@ -114,7 +115,7 @@
 ## 尚未实现
 
 - 简体中文和 POE 专用简繁术语表。
-- 自动从 `poe-game-data` 构建新版词库的 GitHub Actions。
+- Chrome 商店或 GitHub Release 的安装包自动发布。
 - 漏译报告匿名上传；当前只能本地查看和导出。
 - 自动生成候选译文；当前需要可信数据源或人工填写。
 - 本地修正的编辑、删除和导入。

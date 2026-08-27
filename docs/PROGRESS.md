@@ -5,7 +5,7 @@
 ## 当前可交付版本
 
 - 扩展版本：`0.3.1`
-- 词库版本：`project-zhTW-1.manual-7.terms-1.names-e10b747.tw-82883049`
+- 词库版本：`project-zhTW-1.manual-7.terms-1.names-e10b747.tw-82883049.data-9386850a`
 - 安装目录：`extension/`
 - 压缩包：`poe2-trade-zh-extension-0.3.1.zip`
 - 当前权限：`storage`、`alarms`
@@ -61,6 +61,7 @@
 - 生成 `extension/data/bundled.json` 和带 SHA-256 的清单。
 - 远程更新只接受声明式 JSON，不下载或执行远程代码。
 - 支持 GitHub Raw 和 jsDelivr 清单，每 12 小时自动检查。
+- 默认远程清单已经指向 `a17750/exile-trade-lens`；每日 Actions 通过质量门禁后自动提交变化词库。
 
 ### 翻译流水线
 
@@ -151,8 +152,8 @@ node --check scripts/build-data.mjs
 4. 对真实搜索结果检查 `/fetch` 翻译与数值占位符替换。
 5. 按 `reports/review-queue.json` 优先审核台服占位符拒绝项和 132 条名称冲突。
 6. 继续接入 `poe-game-data` modifier 数据，提高剩余 1,042 条缺失词缀的自动候选覆盖。
-7. 用户提供 GitHub 仓库地址后创建 Actions，发布远程 `manifest.json`、`dataset.json`。
-8. 将设置页的更新地址改为固定项目地址，再考虑 Chrome 商店发布。
+7. 在 GitHub Actions 页面手动运行一次 `Translation data check`，确认仓库写权限和首次远程发布正常。
+8. 完成真实页面回归后，再考虑 Chrome 商店发布。
 
 ## 关键文件
 

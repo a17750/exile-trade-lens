@@ -222,15 +222,9 @@ for (const [en, translated] of Object.entries(manualOverrides.exact ?? {})) {
   addExact(en, translated);
 }
 
-const dataset = {
-  schemaVersion: 1,
-  datasetVersion:
-    `project-zhTW-${translations.version}` +
-    `.manual-${manualOverrides.version ?? 0}` +
-    `.terms-${glossary.version ?? 0}` +
-    `.names-${sourceLock.sources.poeGameDataNamesTw.ref.slice(0, 7)}` +
-    `.tw-${crypto.createHash("sha256").update(JSON.stringify(twSnapshot.sections)).digest("hex").slice(0, 8)}`,
-  generatedAt: snapshot.fetchedAt,
+const dataPath = path.join(extensionPath, "data", "bundled.json");
+const previousDataset = readJson(dataPath, null);
+const datasetContent = {
   locale: "zh-TW",
   source: "project-owned translation pipeline",
   sources: [
@@ -249,6 +243,27 @@ const dataset = {
   allocates,
   exact,
   ui,
+};
+const contentHash = crypto
+  .createHash("sha256")
+  .update(JSON.stringify(datasetContent))
+  .digest("hex")
+  .slice(0, 8);
+const datasetVersion =
+  `project-zhTW-${translations.version}` +
+  `.manual-${manualOverrides.version ?? 0}` +
+  `.terms-${glossary.version ?? 0}` +
+  `.names-${sourceLock.sources.poeGameDataNamesTw.ref.slice(0, 7)}` +
+  `.tw-${crypto.createHash("sha256").update(JSON.stringify(twSnapshot.sections)).digest("hex").slice(0, 8)}` +
+  `.data-${contentHash}`;
+const dataset = {
+  schemaVersion: 1,
+  datasetVersion,
+  generatedAt:
+    previousDataset?.datasetVersion === datasetVersion
+      ? previousDataset.generatedAt
+      : snapshot.fetchedAt,
+  ...datasetContent,
 };
 
 const diff = diffSnapshots(baseline, snapshot);
@@ -372,7 +387,6 @@ writeJson(path.join(reportsPath, "official-tw-source-report.json"), {
   itemOverrides: officialTwItemOverrides,
 });
 
-const dataPath = path.join(extensionPath, "data", "bundled.json");
 writeJson(dataPath, dataset, { compact: true });
 const compact = fs.readFileSync(dataPath);
 const sha256 = crypto.createHash("sha256").update(compact).digest("hex");
@@ -380,6 +394,15 @@ writeJson(path.join(extensionPath, "data", "bundled-manifest.json"), {
   schemaVersion: 1,
   datasetVersion: dataset.datasetVersion,
   generatedAt: dataset.generatedAt,
+  sha256,
+  bytes: compact.byteLength,
+});
+writeJson(path.join(extensionPath, "data", "remote-manifest.json"), {
+  schemaVersion: 1,
+  datasetVersion: dataset.datasetVersion,
+  generatedAt: dataset.generatedAt,
+  dataUrl:
+    "https://raw.githubusercontent.com/a17750/exile-trade-lens/main/extension/data/bundled.json",
   sha256,
   bytes: compact.byteLength,
 });

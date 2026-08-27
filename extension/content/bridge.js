@@ -3,7 +3,8 @@
     enabled: true,
     mode: "bilingual",
     autoUpdate: true,
-    remoteManifestUrl: "",
+    remoteManifestUrl:
+      "https://raw.githubusercontent.com/a17750/exile-trade-lens/main/extension/data/remote-manifest.json",
   };
   let dataset = null;
   let settings = DEFAULT_SETTINGS;

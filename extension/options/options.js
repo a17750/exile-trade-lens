@@ -1,4 +1,8 @@
-const DEFAULTS = { remoteManifestUrl: "", autoUpdate: true };
+const DEFAULTS = {
+  remoteManifestUrl:
+    "https://raw.githubusercontent.com/a17750/exile-trade-lens/main/extension/data/remote-manifest.json",
+  autoUpdate: true,
+};
 const url = document.querySelector("#url");
 const auto = document.querySelector("#auto");
 const status = document.querySelector("#status");

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
@@ -7,6 +8,10 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dataset = JSON.parse(
   fs.readFileSync(path.join(root, "extension/data/bundled.json"), "utf8"),
+);
+const bundledRaw = fs.readFileSync(path.join(root, "extension/data/bundled.json"));
+const remoteManifest = JSON.parse(
+  fs.readFileSync(path.join(root, "extension/data/remote-manifest.json"), "utf8"),
 );
 const translationSource = JSON.parse(
   fs.readFileSync(path.join(root, "sources/translations.zh-TW.json"), "utf8"),
@@ -23,6 +28,12 @@ const bridgeSource = fs.readFileSync(path.join(root, "extension/content/bridge.j
 assert.match(bridgeSource, /knownRenderedTranslations\.has\(en\)/);
 
 assert.equal(dataset.schemaVersion, 1);
+assert.equal(remoteManifest.datasetVersion, dataset.datasetVersion);
+assert.equal(remoteManifest.sha256, crypto.createHash("sha256").update(bundledRaw).digest("hex"));
+assert.equal(
+  remoteManifest.dataUrl,
+  "https://raw.githubusercontent.com/a17750/exile-trade-lens/main/extension/data/bundled.json",
+);
 assert.equal(dataset.source, "project-owned translation pipeline");
 assert.ok(dataset.sources.includes("sources/translations.zh-TW.json"));
 assert.equal(translationSource.provenance.kind, "one-time-legacy-migration");

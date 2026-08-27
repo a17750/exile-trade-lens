@@ -62,7 +62,13 @@ node scripts/check-quality.mjs
 
 ## 远程词库
 
-在扩展设置页填写托管于 GitHub Raw 或 jsDelivr 的清单地址。清单示例：
+扩展默认使用本仓库的 GitHub Raw 清单，也可在设置页改为其他 GitHub Raw 或 jsDelivr 地址。当前默认清单：
+
+```text
+https://raw.githubusercontent.com/a17750/exile-trade-lens/main/extension/data/remote-manifest.json
+```
+
+清单格式：
 
 ```json
 {
@@ -78,7 +84,7 @@ node scripts/check-quality.mjs
 ## 当前限制
 
 - 当前基础译文已一次性迁移到 `sources/translations.zh-TW.json`，后续只在项目数据源中维护。
-- 尚未接入 GitHub Actions 数据生成仓库，所以默认使用内置词库。
+- GitHub Actions 每日检查官方数据；只有质量门禁和测试通过后才会提交新的远程词库。
 - 官方交易站改变 API 或页面内部结构时，扩展适配代码仍需升级。
 - 简体中文、别名词典、匿名漏译上报和自动候选译文将在下一阶段加入。
 

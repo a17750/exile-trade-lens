@@ -181,23 +181,22 @@ node scripts/update-baseline.mjs
 
 GitHub Actions 以后只执行相同命令，不拥有额外的翻译决策权。
 
-## GitHub 自动化建议
+## GitHub 自动化
 
-仓库建立后配置两个工作流：
+当前仓库为 `a17750/exile-trade-lens`，已经启用每日检查和远程词库发布：
 
 ### 每日检查
 
-- 模板已经保存为 `.github/workflows/translation-check.yml`。
+- 工作流保存在 `.github/workflows/translation-check.yml`。
 - 定时运行构建。
 - 上传 `reports/` 为 Actions artifact。
 - 有官方改义或质量阻断时失败并通知。
 - 只有普通缺失时成功，但在摘要中显示数量。
 
-### 审核后发布
+### 自动发布规则
 
-- 仅在主分支手动触发或审核 PR 合并后运行。
+- 定时运行或主分支手动触发。
 - 同步锁定数据源、构建、质量检查和测试。
-- 发布 `dataset.json` 与 `manifest.json`。
+- 内容不变时不创建提交；内容变化时更新 `extension/data/` 并由 Actions 提交。
+- `remote-manifest.json` 固定指向主分支的 `bundled.json`。
 - 扩展只下载 JSON，并验证 SHA-256，不下载远程代码。
-
-在用户提供 GitHub 仓库地址前，每日检查模板可以保留，但不会创建含虚假 `dataUrl` 的发布工作流。
