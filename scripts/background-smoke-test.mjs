@@ -78,7 +78,7 @@ const report = {
   type: "stat",
   key: "explicit.stat_self_check_test",
   en: "#% Test Damage",
-  context: "smoke-test",
+  context: "fetch:smoke-test",
 };
 await send({ type: "POE2ZH_REPORT_MISSING", reports: [report, report] });
 let health = await send({ type: "POE2ZH_GET_HEALTH" });
@@ -120,6 +120,16 @@ const savedUi = await send({
 assert.equal(savedUi.ok, true);
 const uiDataset = await send({ type: "POE2ZH_GET_DATASET" });
 assert.equal(uiDataset.dataset.exact[uiReport.key], "未翻译的筛选标签");
+
+const catalogReport = {
+  type: "stat",
+  key: "explicit.stat_catalog_only",
+  en: "Allocates Catalog Only",
+  context: "explicit",
+};
+await send({ type: "POE2ZH_REPORT_MISSING", reports: [catalogReport] });
+health = await send({ type: "POE2ZH_GET_HEALTH" });
+assert.equal(health.records.some((entry) => entry.key === catalogReport.key), false);
 
 const bilingualReport = {
   type: "ui",

@@ -201,7 +201,10 @@ async function reconcileMissing() {
   const renderedUiTexts = knownRenderedUiTexts(dataset);
   let resolved = 0;
   for (const [id, record] of Object.entries(missingRecords)) {
-    if (lookupTranslation(dataset, record.type, record.key, renderedUiTexts)) {
+    const catalogOnly =
+      ["stat", "item", "static", "filter"].includes(record.type) &&
+      !String(record.context ?? "").startsWith("fetch:");
+    if (catalogOnly || lookupTranslation(dataset, record.type, record.key, renderedUiTexts)) {
       delete missingRecords[id];
       resolved += 1;
     }

@@ -70,7 +70,6 @@
         for (const entry of group.entries ?? []) {
           const translated = data.stats.entries[entry.id];
           if (!translated) {
-            reportMissing("stat", entry.id, entry.text, group.id);
             continue;
           }
           entry.text = format(translated.text, entry.text);
@@ -85,8 +84,6 @@
           const original = entry.text;
           const name = data.items[entry.name];
           const type = data.items[entry.type];
-          if (entry.name && !name) reportMissing("item", entry.name, entry.name, group.id);
-          if (entry.type && !type) reportMissing("item", entry.type, entry.type, group.id);
           const translated = [name, type].filter(Boolean).join(" ");
           if (translated) entry.text = format(translated, original);
         }
@@ -96,7 +93,6 @@
         group.label = format(data.static.groups[group.id], group.label);
         for (const entry of group.entries ?? []) {
           const translated = data.static.entries[entry.id];
-          if (!translated) reportMissing("static", entry.id, entry.text, group.id);
           entry.text = format(translated, entry.text);
         }
       }
@@ -106,7 +102,6 @@
         for (const entry of group.filters ?? []) {
           const translated = data.filters.entries[entry.id];
           if (!translated) {
-            reportMissing("filter", entry.id, entry.text, group.id);
             continue;
           }
           entry.text = format(translated.text, entry.text);

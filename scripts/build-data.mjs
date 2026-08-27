@@ -347,7 +347,25 @@ for (const rejected of officialTwOverlay.report.rejected) {
 reviewQueue.records.sort(
   (a, b) => a.domain.localeCompare(b.domain) || a.english.localeCompare(b.english),
 );
+const bulkBacklogRecords = reviewQueue.records.filter((record) =>
+  record.reason === "external-source-conflict" ||
+  (record.reason === "missing-translation" && /^Allocates\s+/i.test(record.english ?? "")),
+);
+reviewQueue.records = reviewQueue.records.filter((record) => !bulkBacklogRecords.includes(record));
 reviewQueue.count = reviewQueue.records.length;
+const allocationBacklog = bulkBacklogRecords.filter((record) => /^Allocates\s+/i.test(record.english ?? ""));
+writeJson(path.join(reportsPath, "bulk-backlog.json"), {
+  schemaVersion: 1,
+  generatedAt: snapshot.fetchedAt,
+  datasetVersion: dataset.datasetVersion,
+  summary: {
+    total: bulkBacklogRecords.length,
+    allocationRows: allocationBacklog.length,
+    uniqueAllocations: new Set(allocationBacklog.map((record) => record.english.replace(/^Allocates\s+/i, ""))).size,
+    externalConflicts: bulkBacklogRecords.filter((record) => record.reason === "external-source-conflict").length,
+  },
+  records: bulkBacklogRecords,
+});
 quality.sources = {
   officialEnglish: englishSourceStatus,
   officialTw: {

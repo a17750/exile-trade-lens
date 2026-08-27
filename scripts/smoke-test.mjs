@@ -127,13 +127,25 @@ assert.match(JSON.parse(itemResponse.responseText).result[0].entries[0].text, ne
 
 const missingRequest = { url: "https://www.pathofexile.com/api/trade2/data/stats" };
 hook(missingRequest);
+const emittedBeforeCatalog = emitted.length;
 const missingResponse = {
   responseText: JSON.stringify({
     result: [{ id: "Explicit", label: "Explicit", entries: [{ id: "explicit.stat_missing_test", text: "#% Test Damage" }] }],
   }),
 };
 await missingRequest.response(missingResponse);
+assert.equal(emitted.length, emittedBeforeCatalog);
+
+const fetchRequest = { url: "https://www.pathofexile.com/api/trade2/fetch/test" };
+hook(fetchRequest);
+const fetchResponse = {
+  responseText: JSON.stringify({
+    result: [{ item: { baseType: "Untranslated Fetch Base", properties: [], requirements: [] } }],
+  }),
+};
+await fetchRequest.response(fetchResponse);
 assert.equal(emitted.at(-1).type, "poe2zh:missing");
-assert.equal(emitted.at(-1).detail.key, "explicit.stat_missing_test");
+assert.equal(emitted.at(-1).detail.key, "Untranslated Fetch Base");
+assert.equal(emitted.at(-1).detail.context, "fetch:baseType");
 
 console.log("smoke-test: ok");
