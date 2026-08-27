@@ -142,6 +142,13 @@ function knownRenderedUiTexts(dataset) {
   return values;
 }
 
+function isBilingualUiArtifact(record) {
+  if (record?.type !== "ui") return false;
+  const key = normalizeUiText(record.key);
+  return /[^\x00-\x7f]/.test(key) &&
+    (/\([A-Za-z][^)]*\)/.test(key) || /\(\s*undefined\s*\)$/i.test(key));
+}
+
 function lookupTranslation(dataset, type, key, renderedUiTexts = null) {
   if (type === "stat") return dataset.stats?.entries?.[key]?.text;
   if (type === "item") return dataset.items?.[key];
@@ -221,7 +228,7 @@ async function reconcileMissing() {
     const catalogOnly =
       ["stat", "item", "static", "filter"].includes(record.type) &&
       !String(record.context ?? "").startsWith("fetch:");
-    if (catalogOnly || lookupTranslation(dataset, record.type, record.key, renderedUiTexts)) {
+    if (catalogOnly || isBilingualUiArtifact(record) || lookupTranslation(dataset, record.type, record.key, renderedUiTexts)) {
       delete missingRecords[id];
       resolved += 1;
     }
