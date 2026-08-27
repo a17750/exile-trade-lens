@@ -74,12 +74,19 @@
   function reportUiMissing(raw, element) {
     const en = String(raw ?? "").replace(/\s+/g, " ").trim();
     const context = uiContext(element);
+    const dynamicFragment =
+      context === "dropdown-option" &&
+      ((!/^[A-Za-z0-9]/.test(en) && /[A-Za-z]/.test(en)) ||
+        (/\)$/.test(en) && !/\(/.test(en)) ||
+        /\bundefined\b/i.test(en));
     if (
       !context ||
       en.length < 2 ||
       en.length > 160 ||
       !/[A-Za-z]/.test(en) ||
       /https?:\/\/|\S+@\S+/.test(en) ||
+      element?.closest?.("input, textarea, [contenteditable='true']") ||
+      dynamicFragment ||
       knownRenderedTranslations.has(en) ||
       (/[^\x00-\x7f]/.test(en) && /\([A-Za-z][^)]*\)/.test(en)) ||
       /\(\s*undefined\s*\)$/i.test(en) ||
