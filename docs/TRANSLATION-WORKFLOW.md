@@ -42,6 +42,7 @@
 - `reports/coverage-report.json`：按 items、stats、static、filters 统计覆盖率。
 - `reports/quality-report.json`：阻断发布的问题。
 - `reports/review-queue.json`：待人工处理的记录及候选。
+- `reports/bulk-backlog.json`：可批量处理的模板项和外部来源冲突，不混入人工主队列。
 - `reports/external-source-report.json`：外部名称自动应用及冲突。
 - `reports/official-tw-current.json`：本次台服官方繁中规范化快照。
 - `reports/official-tw-source-report.json`：稳定 ID 应用、拒绝项以及物品安全对齐结果。
@@ -69,6 +70,10 @@ node scripts/background-smoke-test.mjs
 8. 按“人工覆盖 > 台服官方 > 项目基础词库 > 第三方补缺”合并。
 9. 对缺失项尝试完整短语或最长术语组合。
 10. 生成覆盖率、来源、质量报告和审核队列，通过门禁后才允许发布。
+
+`review-queue.json` 只保留需要逐条判断的项目；`Allocates ...` 这类可由模板批量处理的词缀，以及外部词库与项目译文冲突，会移动到 `bulk-backlog.json`。这样队列数量代表实际人工工作量，而不是接口目录的总条目数。
+
+扩展升级或打开健康检查页时，会自动清理旧版本遗留的目录预加载记录（`stat`、`item`、`static`、`filter` 且不是 `fetch:` 上下文）。真正来自交易结果的漏译记录会继续保留。
 
 台服四个数据接口当前可匿名读取，因此构建和 GitHub Actions 不需要保存账号、Cookie 或 `POESESSID`。台服缺失的稳定 ID 不会删除已有译文；只保留回退结果并写入来源报告。
 
