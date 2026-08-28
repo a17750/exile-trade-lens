@@ -10,6 +10,7 @@
   let settings = DEFAULT_SETTINGS;
   let observer = null;
   let exactTranslations = new Map();
+  let exactConflicts = new Set();
   let knownRenderedTranslations = new Set();
   const translatedTextValues = new WeakMap();
   const translatedAttributeValues = new WeakMap();
@@ -140,10 +141,20 @@
 
   function buildExactTranslations() {
     exactTranslations = new Map();
+    exactConflicts = new Set();
     knownRenderedTranslations = new Set();
     const add = (source) => {
       for (const [original, translated] of Object.entries(source ?? {})) {
         if (original && typeof translated === "string" && translated) {
+          if (exactConflicts.has(original)) continue;
+          const previous = exactTranslations.get(original);
+          if (previous && previous !== translated) {
+            // A flat DOM node has no reliable domain information. If two
+            // domains disagree, leaving it unchanged is safer than guessing.
+            exactTranslations.delete(original);
+            exactConflicts.add(original);
+            continue;
+          }
           exactTranslations.set(original, translated);
           knownRenderedTranslations.add(String(translated).replace(/\s+/g, " ").trim());
           knownRenderedTranslations.add(

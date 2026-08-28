@@ -34,7 +34,20 @@ function mergeDatasets(base, extra) {
   for (const section of ["stats", "static", "filters"]) {
     base[section] ??= { groups: {}, entries: {} };
     base[section].groups = { ...base[section].groups, ...extra[section]?.groups };
-    base[section].entries = { ...base[section].entries, ...extra[section]?.entries };
+    if (section === "stats") {
+      // Keep the bundled English template when an older remote dataset does not
+      // carry it. Without this field, hash-to-mod validation would be weakened.
+      const extraEntries = extra[section]?.entries ?? {};
+      base[section].entries = { ...base[section].entries };
+      for (const [id, entry] of Object.entries(extraEntries)) {
+        base[section].entries[id] = {
+          ...(base[section].entries[id] ?? {}),
+          ...(entry ?? {}),
+        };
+      }
+    } else {
+      base[section].entries = { ...base[section].entries, ...extra[section]?.entries };
+    }
   }
   return base;
 }
@@ -112,6 +125,15 @@ function validateDataset(dataset) {
     !dataset.stats?.entries
   ) {
     throw new Error("远程词库格式不兼容");
+  }
+  const statEntries = Object.entries(dataset.stats.entries);
+  if (
+    statEntries.some(
+      ([, entry]) =>
+        typeof entry !== "object" || (entry?.text && !entry?.english),
+    )
+  ) {
+    throw new Error("远程词库缺少 stat 英文模板，已拒绝更新");
   }
 }
 

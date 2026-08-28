@@ -139,20 +139,29 @@
     const buckets = componentIndex(includeBaseItems);
     const memo = new Map();
     function solve(offset) {
-      if (offset === original.length) return { text: "", parts: 0 };
+      if (offset === original.length) return { texts: [""], parts: 0 };
       if (memo.has(offset)) return memo.get(offset);
-      let best = null;
+      let minimumParts = Number.POSITIVE_INFINITY;
+      const texts = new Set();
       for (const [english, translated] of buckets.get(original[offset]) ?? []) {
         if (!original.startsWith(english, offset)) continue;
         const tail = solve(offset + english.length);
         if (!tail) continue;
-        const candidate = { text: translated + tail.text, parts: tail.parts + 1 };
-        if (!best || candidate.parts < best.parts) best = candidate;
+        minimumParts = Math.min(minimumParts, tail.parts + 1);
+        for (const tailText of tail.texts) {
+          texts.add(translated + tailText);
+          if (texts.size > 1) break;
+        }
+        if (texts.size > 1) break;
       }
+      const best = minimumParts < Number.POSITIVE_INFINITY
+        ? { texts: [...texts], parts: minimumParts }
+        : null;
       memo.set(offset, best);
       return best;
     }
-    return solve(0)?.text ?? null;
+    const result = solve(0);
+    return result?.texts?.length === 1 ? result.texts[0] : null;
   }
 
   function reportMissing(type, key, en, context = "") {
@@ -334,7 +343,7 @@
         } else if (
           translatedBaseType &&
           originalBaseType &&
-          originalTypeLine.includes(originalBaseType)
+          originalTypeLine.split(originalBaseType).length === 2
         ) {
           const composed = originalTypeLine.replace(originalBaseType, translatedBaseType);
           item.typeLine = format(composed, originalTypeLine);

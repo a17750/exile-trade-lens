@@ -26,6 +26,7 @@ for (const relativePath of ["scripts/build-data.mjs", "extension/page/ajax-hooke
 }
 const bridgeSource = fs.readFileSync(path.join(root, "extension/content/bridge.js"), "utf8");
 assert.match(bridgeSource, /knownRenderedTranslations\.has\(en\)/);
+assert.match(bridgeSource, /exactConflicts/);
 
 assert.equal(dataset.schemaVersion, 1);
 assert.equal(remoteManifest.datasetVersion, dataset.datasetVersion);
