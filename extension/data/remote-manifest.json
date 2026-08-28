@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "datasetVersion": "project-zhTW-1.manual-7.terms-1.names-e10b747.tw-6b6d03f6.data-9386850a",
-  "generatedAt": "2026-08-27T17:05:38.274Z",
+  "datasetVersion": "project-zhTW-1.manual-7.terms-1.names-e10b747.tw-29421ffc.data-2e8e1129",
+  "generatedAt": "2026-08-28T00:22:08.285Z",
   "dataUrl": "https://raw.githubusercontent.com/a17750/exile-trade-lens/main/extension/data/bundled.json",
-  "sha256": "7acce7c923776b42ef8c8ab8731d5f06e726a04e14ed87781a168d3de78d8360",
+  "sha256": "ae77ad3b7843036ee70e01cc5fe57f3bd5b9761eadf3095ee9de10131080b245",
   "bytes": 1313156
 }
