@@ -174,13 +174,10 @@
         const directTypeLine = config.dataset.items[originalTypeLine];
         if (directTypeLine) {
           item.typeLine = format(directTypeLine, originalTypeLine);
-        } else if (
-          translatedBaseType &&
-          originalBaseType &&
-          originalTypeLine.includes(originalBaseType)
-        ) {
-          const composed = originalTypeLine.replace(originalBaseType, translatedBaseType);
-          item.typeLine = format(composed, originalTypeLine);
+        } else if (translatedBaseType) {
+          // 魔法/稀有名称由服务器动态生成，不属于稳定物品词库。
+          // 中文主标题使用可验证的基础类型，括号保留完整原名作为身份依据。
+          item.typeLine = format(translatedBaseType, originalTypeLine);
         } else if (originalTypeLine === originalBaseType && !translatedBaseType) {
           reportMissing("item", originalTypeLine, originalTypeLine, "fetch:typeLine");
         }
@@ -191,6 +188,8 @@
         if (translatedName) item.name = format(translatedName, item.name);
         else if (item.frameType === 3) {
           reportMissing("item", item.name, item.name, "fetch:name");
+        } else if (translatedBaseType && item.frameType === 2) {
+          item.name = format(translatedBaseType, item.name);
         }
       }
       for (const property of item.properties ?? []) translateProperty(property);
