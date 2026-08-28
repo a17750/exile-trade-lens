@@ -292,13 +292,8 @@
           // Compatibility fallback for an older remote dataset without shipped English templates.
           template = refsForIndex[0].translated;
         }
-        if (!template || !original) return mod;
-        if (
-          refsForIndex.length > 0 &&
-          matchingRefs.length === 0 &&
-          templateCandidates.length === 0
-        ) {
-          const statId = refsForIndex[0].statId;
+        if (!template) {
+          const statId = refsForIndex[0]?.statId ?? `unresolved:${kind}:${index}`;
           reportMissing("stat", statId, original, `fetch:${kind}:association-mismatch`);
           return mod;
         }
