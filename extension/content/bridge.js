@@ -61,9 +61,7 @@
       return null;
     }
     if (element.closest("[role='option'], [role='listbox'], [class*='dropdown'], [class*='option']")) {
-      // 下拉内容会随着输入持续重建，而且正式选项已经由结构化 Trade API 覆盖。
-      // 不从渲染后的 DOM 反向猜测漏译，避免把搜索词和截断片段写入队列。
-      return null;
+      return "dropdown-option";
     }
     if (element.closest("[class*='filter'], .search-advanced-pane, .search-panel")) {
       return "filter-panel";
@@ -76,6 +74,11 @@
   function reportUiMissing(raw, element) {
     const en = String(raw ?? "").replace(/\s+/g, " ").trim();
     const context = uiContext(element);
+    const dynamicFragment =
+      context === "dropdown-option" &&
+      ((!/^[A-Za-z0-9]/.test(en) && /[A-Za-z]/.test(en)) ||
+        (/\)$/.test(en) && !/\(/.test(en)) ||
+        /\bundefined\b/i.test(en));
     if (
       !context ||
       en.length < 2 ||
@@ -83,6 +86,7 @@
       !/[A-Za-z]/.test(en) ||
       /https?:\/\/|\S+@\S+/.test(en) ||
       element?.closest?.("input, textarea, [contenteditable='true']") ||
+      dynamicFragment ||
       knownRenderedTranslations.has(en) ||
       (/[^\x00-\x7f]/.test(en) && /\([A-Za-z][^)]*\)/.test(en)) ||
       /\(\s*undefined\s*\)$/i.test(en) ||

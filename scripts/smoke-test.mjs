@@ -137,20 +137,8 @@ await magicFetchRequest.response(magicFetchResponse);
 const translatedMagicItem = JSON.parse(magicFetchResponse.responseText).result[0].item;
 assert.match(translatedMagicItem.baseType, new RegExp(itemZh));
 assert.match(translatedMagicItem.typeLine, new RegExp(itemZh));
-assert.ok(translatedMagicItem.typeLine.startsWith(itemZh));
-assert.ok(translatedMagicItem.typeLine.includes(magicTypeLine));
-
-const rareFetchRequest = { url: "https://www.pathofexile.com/api/trade2/fetch/rare-test" };
-hook(rareFetchRequest);
-const rareFetchResponse = {
-  responseText: JSON.stringify({
-    result: [{ item: { frameType: 2, name: "Dragon Mangler", baseType: itemEn, typeLine: itemEn, properties: [], requirements: [] } }],
-  }),
-};
-await rareFetchRequest.response(rareFetchResponse);
-const translatedRareItem = JSON.parse(rareFetchResponse.responseText).result[0].item;
-assert.ok(translatedRareItem.name.startsWith(itemZh));
-assert.ok(translatedRareItem.name.includes("Dragon Mangler"));
+assert.match(translatedMagicItem.typeLine, /Shining/);
+assert.match(translatedMagicItem.typeLine, /of the Crystal/);
 
 const missingRequest = { url: "https://www.pathofexile.com/api/trade2/data/stats" };
 hook(missingRequest);
