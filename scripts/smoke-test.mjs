@@ -52,6 +52,11 @@ assert.equal(dataset.baseItems["Slim Mace"], "纖細之錘");
 assert.equal(dataset.wordComponents.Golem, "魔像");
 assert.equal(dataset.wordComponents[" Crack"], " 裂骨錘");
 assert.equal(dataset.stats.entries["explicit.stat_3146310524"].text, "擊中時造成目眩");
+assert.equal(
+  dataset.stats.entries["explicit.stat_2162097452"].english,
+  "# to Level of all Minion Skills",
+);
+assert.equal(dataset.stats.entries["explicit.stat_3984865854"].english, "#% increased Spirit");
 
 const listeners = {};
 const emitted = [];
@@ -144,6 +149,37 @@ assert.match(translatedMagicItem.baseType, new RegExp(itemZh));
 assert.match(translatedMagicItem.typeLine, new RegExp(itemZh));
 assert.match(translatedMagicItem.typeLine, /Shining/);
 assert.match(translatedMagicItem.typeLine, /of the Crystal/);
+
+// Hash order is not a safe association key. The fixture intentionally assigns
+// the two stat IDs to the opposite mod indexes; matching the concrete English
+// line must still produce the correct translation and value.
+const swappedModsRequest = { url: "https://www.pathofexile.com/api/trade2/fetch/swapped-mods" };
+hook(swappedModsRequest);
+const swappedModsResponse = {
+  responseText: JSON.stringify({
+    result: [{
+      item: {
+        frameType: 2,
+        explicitMods: ["36% increased Spirit", "+1 to Level of all Minion Skills"],
+        extended: {
+          hashes: {
+            explicit: [
+              ["explicit.stat_2162097452", [0]],
+              ["explicit.stat_3984865854", [1]],
+            ],
+          },
+        },
+      },
+    }],
+  }),
+};
+await swappedModsRequest.response(swappedModsResponse);
+const translatedSwappedMods = JSON.parse(swappedModsResponse.responseText).result[0].item;
+assert.match(translatedSwappedMods.explicitMods[0], /^增加36%精魂 \(36% increased Spirit\)$/);
+assert.match(
+  translatedSwappedMods.explicitMods[1],
+  /^全部召喚物技能等級\+1 \(\+1 to Level of all Minion Skills\)$/,
+);
 
 const rareFetchRequest = { url: "https://www.pathofexile.com/api/trade2/fetch/rare-test" };
 hook(rareFetchRequest);

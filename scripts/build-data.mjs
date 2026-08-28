@@ -234,6 +234,15 @@ applyStableOverrides(manualOverrides.statsById, "stats", stats);
 applyStableOverrides(manualOverrides.staticById, "static", staticData);
 applyStableOverrides(manualOverrides.filtersById, "filters", filters);
 
+// Ship the current English stat template beside each stable ID. Runtime /fetch
+// responses contain concrete values while the catalog uses placeholders. Keeping
+// both lets the extension validate hash-to-mod associations instead of trusting
+// array position alone.
+for (const [id, entry] of Object.entries(snapshot.sections.stats.entries ?? {})) {
+  if (!stats.entries[id] || typeof stats.entries[id] !== "object") continue;
+  stats.entries[id].english = entry.english;
+}
+
 for (const [en, translated] of Object.entries(manualOverrides.exact ?? {})) {
   addExact(en, translated);
 }

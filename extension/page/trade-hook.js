@@ -28,6 +28,73 @@
   const clean = (text) => String(text ?? "").replace(/\[[^|\]]*\||[\][]/g, "");
   const reported = new Set();
   let componentIndexes = { version: null, words: null, withBaseItems: null };
+  let statIndexes = { version: null, englishById: null, templates: null };
+
+  function statIndex() {
+    const version = config.dataset?.datasetVersion;
+    if (statIndexes.version !== version) {
+      statIndexes = { version, englishById: new Map(), templates: null };
+    }
+    statIndexes.englishById ??= new Map();
+    return statIndexes;
+  }
+
+  function normalizeStatText(text) {
+    return String(text ?? "")
+      .replace(/\[([^|\]]+)\|([^\]]+)\]/g, "$2")
+      .replace(/\[([^\]]+)\]/g, "$1")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function escapeRegex(text) {
+    return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function statTemplateRegex(template) {
+    const parts = normalizeStatText(template).split("#");
+    const number = "[+-]?(?:\\d*\\.\\d+|\\d+)";
+    return new RegExp(
+      `^${parts.map((part) => escapeRegex(part).replace(/\\ /g, "\\\\s+")).join(number)}$`,
+      "i",
+    );
+  }
+
+  function statTemplateIndex() {
+    const index = statIndex();
+    if (index.templates) return index.templates;
+    const statTexts = new Set(
+      Object.values(config.dataset?.stats?.entries ?? {})
+        .map((entry) => (typeof entry === "object" ? entry.text : entry))
+        .filter(Boolean),
+    );
+    index.templates = [];
+    for (const [english, translated] of Object.entries(config.dataset?.exact ?? {})) {
+      if (!english.includes("#") || !statTexts.has(translated)) continue;
+      index.templates.push({ english, translated, pattern: statTemplateRegex(english) });
+    }
+    return index.templates;
+  }
+
+  function statEnglish(statId) {
+    if (!statId) return null;
+    const index = statIndex();
+    return (
+      index.englishById.get(statId) ??
+      config.dataset?.stats?.entries?.[statId]?.english ??
+      null
+    );
+  }
+
+  function matchingStatTemplates(original) {
+    const normalized = normalizeStatText(original);
+    return statTemplateIndex().filter((candidate) => candidate.pattern.test(normalized));
+  }
+
+  function sameStatShape(template, original) {
+    if (!template || !original) return false;
+    return statTemplateRegex(template).test(normalizeStatText(original));
+  }
 
   function baseItemTranslation(english) {
     return config.dataset?.baseItems?.[english] || config.dataset?.items?.[english];
@@ -128,6 +195,7 @@
       for (const group of response.result) {
         group.label = format(data.stats.groups[group.id], group.label);
         for (const entry of group.entries ?? []) {
+          statIndex().englishById.set(entry.id, entry.text);
           const translated = data.stats.entries[entry.id];
           if (!translated) {
             continue;
@@ -203,12 +271,37 @@
           );
           continue;
         }
-        for (const index of indexes) byIndex.set(index, translated);
+        for (const index of indexes) {
+          if (!byIndex.has(index)) byIndex.set(index, []);
+          byIndex.get(index).push({ statId, translated });
+        }
       }
       item[`${kind}Mods`] = mods.map((mod, index) => {
         const original = typeof mod === "object" ? mod.description : mod;
-        const template = byIndex.get(index);
+        if (!original) return mod;
+        const refsForIndex = byIndex.get(index) ?? [];
+        const matchingRefs = refsForIndex.filter(({ statId }) =>
+          sameStatShape(statEnglish(statId), original),
+        );
+        const templateCandidates = matchingStatTemplates(original);
+        let template = matchingRefs.length === 1 ? matchingRefs[0].translated : null;
+        if (!template && templateCandidates.length === 1) {
+          template = templateCandidates[0].translated;
+        }
+        if (!template && refsForIndex.length === 1 && !statEnglish(refsForIndex[0].statId)) {
+          // Compatibility fallback for an older remote dataset without shipped English templates.
+          template = refsForIndex[0].translated;
+        }
         if (!template || !original) return mod;
+        if (
+          refsForIndex.length > 0 &&
+          matchingRefs.length === 0 &&
+          templateCandidates.length === 0
+        ) {
+          const statId = refsForIndex[0].statId;
+          reportMissing("stat", statId, original, `fetch:${kind}:association-mismatch`);
+          return mod;
+        }
         const translated = replaceNumbers(template, original);
         const result = format(translated, original);
         return typeof mod === "object" ? { ...mod, description: result } : result;

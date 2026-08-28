@@ -60,7 +60,7 @@ Golem Crack -> 魔像 + 裂骨錘   （随机名称组件，最终空格和语�
 - `sources/generated/ggpk/` 已生成 `BaseItemTypes` 与 `Words` 的规范化官方英繁映射。
 - `scripts/build-data.mjs` 已把映射写入 `baseItems`、`fixedNames` 和 `wordComponents` 三个域。
 - `/fetch` 运行时已经区分 `name`、`baseType` 和 `typeLine`；随机名称必须被官方组件整段覆盖才翻译。
-- `Mods`、`Stats` 与本地化 stat description 的关联尚未完成。
+- `/fetch` 的 `Mods` 与 `Stats` 已按英文模板和稳定 ID 双重校验；不会再仅按数组位置套用翻译。具体的词组、占位符和回退规则见 [词组与词条翻译对照规范](PHRASE-TRANSLATION.md)。
 - `Words` 的类别、组合顺序和所有语言规则尚未完全解析；当前采用保守的整段匹配。
 - GGPK 不负责交易站固定 UI、筛选器或服务端专有文本，这些仍以 Trade API 和项目 UI 词库为准。
 - `poe-game-data` 暂时保留为兼容补缺及冲突审计来源，不再参与随机名称解析。
