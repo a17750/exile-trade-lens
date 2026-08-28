@@ -161,12 +161,36 @@
     for (const result of response.result) {
       const item = result.item;
       if (!item) continue;
-      for (const field of ["baseType", "name", "typeLine"]) {
-        if (!item[field]) continue;
-        const translated = config.dataset.items[item[field]];
-        if (translated) item[field] = format(translated, item[field]);
-        else if (field !== "name" || item.frameType === 3) {
-          reportMissing("item", item[field], item[field], `fetch:${field}`);
+      const originalBaseType = item.baseType;
+      const originalTypeLine = item.typeLine;
+      const translatedBaseType = config.dataset.items[originalBaseType];
+
+      if (translatedBaseType) item.baseType = format(translatedBaseType, originalBaseType);
+      else if (originalBaseType) {
+        reportMissing("item", originalBaseType, originalBaseType, "fetch:baseType");
+      }
+
+      if (originalTypeLine) {
+        const directTypeLine = config.dataset.items[originalTypeLine];
+        if (directTypeLine) {
+          item.typeLine = format(directTypeLine, originalTypeLine);
+        } else if (
+          translatedBaseType &&
+          originalBaseType &&
+          originalTypeLine.includes(originalBaseType)
+        ) {
+          const composed = originalTypeLine.replace(originalBaseType, translatedBaseType);
+          item.typeLine = format(composed, originalTypeLine);
+        } else if (originalTypeLine === originalBaseType && !translatedBaseType) {
+          reportMissing("item", originalTypeLine, originalTypeLine, "fetch:typeLine");
+        }
+      }
+
+      if (item.name) {
+        const translatedName = config.dataset.items[item.name];
+        if (translatedName) item.name = format(translatedName, item.name);
+        else if (item.frameType === 3) {
+          reportMissing("item", item.name, item.name, "fetch:name");
         }
       }
       for (const property of item.properties ?? []) translateProperty(property);

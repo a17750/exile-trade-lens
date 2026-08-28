@@ -125,6 +125,21 @@ const itemResponse = {
 await itemRequest.response(itemResponse);
 assert.match(JSON.parse(itemResponse.responseText).result[0].entries[0].text, new RegExp(itemZh));
 
+const magicFetchRequest = { url: "https://www.pathofexile.com/api/trade2/fetch/magic-test" };
+hook(magicFetchRequest);
+const magicTypeLine = `Shining ${itemEn} of the Crystal`;
+const magicFetchResponse = {
+  responseText: JSON.stringify({
+    result: [{ item: { frameType: 1, baseType: itemEn, typeLine: magicTypeLine, properties: [], requirements: [] } }],
+  }),
+};
+await magicFetchRequest.response(magicFetchResponse);
+const translatedMagicItem = JSON.parse(magicFetchResponse.responseText).result[0].item;
+assert.match(translatedMagicItem.baseType, new RegExp(itemZh));
+assert.match(translatedMagicItem.typeLine, new RegExp(itemZh));
+assert.match(translatedMagicItem.typeLine, /Shining/);
+assert.match(translatedMagicItem.typeLine, /of the Crystal/);
+
 const missingRequest = { url: "https://www.pathofexile.com/api/trade2/data/stats" };
 hook(missingRequest);
 const emittedBeforeCatalog = emitted.length;
