@@ -39,6 +39,8 @@ assert.ok(dataset.sources.includes("sources/translations.zh-TW.json"));
 assert.equal(translationSource.provenance.kind, "one-time-legacy-migration");
 assert.match(translationSource.provenance.referenceSha256, /^[a-f0-9]{64}$/);
 assert.ok(Object.keys(dataset.items).length > 2_000);
+assert.ok(Object.keys(dataset.baseItems).length > 4_000);
+assert.ok(Object.keys(dataset.wordComponents).length > 3_000);
 assert.ok(Object.keys(dataset.stats.entries).length > 5_000);
 assert.ok(Object.keys(dataset.exact).length > 5_000);
 assert.equal(dataset.exact["Item Category"], "道具分類");
@@ -46,6 +48,9 @@ assert.equal(dataset.ui.Weapons, "武器");
 assert.equal(dataset.ui["Waystone Packsize"], "換界石怪群規模");
 assert.equal(dataset.ui["Waystone IIR"], "換界石物品稀有度");
 assert.equal(dataset.items["Abyssal Flail"], "深淵鏈錘");
+assert.equal(dataset.baseItems["Slim Mace"], "纖細之錘");
+assert.equal(dataset.wordComponents.Golem, "魔像");
+assert.equal(dataset.wordComponents[" Crack"], " 裂骨錘");
 assert.equal(dataset.stats.entries["explicit.stat_3146310524"].text, "擊中時造成目眩");
 
 const listeners = {};
@@ -139,6 +144,27 @@ assert.match(translatedMagicItem.baseType, new RegExp(itemZh));
 assert.match(translatedMagicItem.typeLine, new RegExp(itemZh));
 assert.match(translatedMagicItem.typeLine, /Shining/);
 assert.match(translatedMagicItem.typeLine, /of the Crystal/);
+
+const rareFetchRequest = { url: "https://www.pathofexile.com/api/trade2/fetch/rare-test" };
+hook(rareFetchRequest);
+const rareFetchResponse = {
+  responseText: JSON.stringify({
+    result: [{ item: {
+      frameType: 2,
+      name: "Golem Crack",
+      baseType: "Slim Mace",
+      typeLine: "Slim Mace",
+      properties: [],
+      requirements: [],
+    } }],
+  }),
+};
+await rareFetchRequest.response(rareFetchResponse);
+const translatedRareItem = JSON.parse(rareFetchResponse.responseText).result[0].item;
+assert.match(translatedRareItem.name, /魔像 裂骨錘/);
+assert.match(translatedRareItem.name, /Golem Crack/);
+assert.doesNotMatch(translatedRareItem.name, /纖細之錘/);
+assert.match(translatedRareItem.baseType, /纖細之錘/);
 
 const missingRequest = { url: "https://www.pathofexile.com/api/trade2/data/stats" };
 hook(missingRequest);

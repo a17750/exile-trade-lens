@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-28T16:57:14.0358673Z",
+  "source": "local-read-only-content-ggpk",
+  "gameFile": {
+    "name": "Content.ggpk",
+    "length": 160798782894,
+    "lastWriteTimeUtc": "2026-06-05T00:11:30.7330434Z"
+  },
+  "safety": {
+    "fileAccess": "Read",
+    "fileShare": "Read",
+    "rawTablesWritten": false,
+    "gameDirectoryWritten": false
+  },
+  "tables": [
+    {
+      "path": "data/balance/baseitemtypes.datc64",
+      "rowCount": 5476,
+      "rowSize": 360,
+      "sha256": "a52d3b1131ea1eb44dc685427326361a30fb27e673cd45e10a72c80fcac28099"
+    },
+    {
+      "path": "data/balance/mods.datc64",
+      "rowCount": 16679,
+      "rowSize": 677,
+      "sha256": "15d7dfdf13e05ad5f8e9d57839293d1cfd86d74d03d2876608c9cc57bba4ad6d"
+    },
+    {
+      "path": "data/balance/traditional chinese/baseitemtypes.datc64",
+      "rowCount": 5476,
+      "rowSize": 360,
+      "sha256": "b3a5ee2c5981b30b75b3d36900328924ca48f77eb8ac11cdfc9327e00731737a"
+    },
+    {
+      "path": "data/balance/traditional chinese/mods.datc64",
+      "rowCount": 16679,
+      "rowSize": 677,
+      "sha256": "b43aee09fec24ed7337d9404bd18c3226e3f5d9bbaba07b7756c479457439d96"
+    },
+    {
+      "path": "data/balance/traditional chinese/words.datc64",
+      "rowCount": 3246,
+      "rowSize": 64,
+      "sha256": "fe82a782228a3b2d13544581c8d561dc5f3fcfd3592b52793fea7e9aa10c9096"
+    },
+    {
+      "path": "data/balance/words.datc64",
+      "rowCount": 3246,
+      "rowSize": 64,
+      "sha256": "81078fa6192550e1977b9f281c5b265ecb6e41fb62dd42ecf17c5d1fc89f8655"
+    }
+  ],
+  "coverage": {
+    "baseItems": {
+      "records": 4886,
+      "uniqueEnglish": 4453,
+      "mappedEnglish": 4445,
+      "conflicts": 3,
+      "usablePercent": 99.82
+    },
+    "words": {
+      "records": 3246,
+      "uniqueEnglish": 3171,
+      "mappedEnglish": 3138,
+      "conflicts": 6,
+      "usablePercent": 98.96
+    },
+    "combinedUsablePercent": 99.46
+  }
+}

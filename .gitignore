@@ -14,6 +14,9 @@
 
 # Local tooling and secrets.
 /node_modules/
+/tools/ggpk/.cache/
+/tools/ggpk/bin/
+/tools/ggpk/obj/
 /.env
 /.env.*
 *.log

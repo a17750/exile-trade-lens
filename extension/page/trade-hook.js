@@ -27,6 +27,66 @@
 
   const clean = (text) => String(text ?? "").replace(/\[[^|\]]*\||[\][]/g, "");
   const reported = new Set();
+  let componentIndexes = { version: null, words: null, withBaseItems: null };
+
+  function baseItemTranslation(english) {
+    return config.dataset?.baseItems?.[english] || config.dataset?.items?.[english];
+  }
+
+  function fixedNameTranslation(english) {
+    return config.dataset?.fixedNames?.[english] || config.dataset?.items?.[english];
+  }
+
+  function componentIndex(includeBaseItems) {
+    const version = config.dataset?.datasetVersion;
+    if (componentIndexes.version !== version) {
+      componentIndexes = { version, words: null, withBaseItems: null };
+    }
+    const cacheKey = includeBaseItems ? "withBaseItems" : "words";
+    if (componentIndexes[cacheKey]) return componentIndexes[cacheKey];
+    const source = includeBaseItems
+      ? { ...(config.dataset?.baseItems ?? {}), ...(config.dataset?.wordComponents ?? {}) }
+      : config.dataset?.wordComponents ?? {};
+    const buckets = new Map();
+    for (const [english, translated] of Object.entries(source)) {
+      if (!english || !translated || english === translated) continue;
+      const first = english[0];
+      if (!buckets.has(first)) buckets.set(first, []);
+      buckets.get(first).push([english, translated]);
+    }
+    for (const entries of buckets.values()) {
+      entries.sort((a, b) => b[0].length - a[0].length || a[0].localeCompare(b[0]));
+    }
+    componentIndexes[cacheKey] = buckets;
+    return buckets;
+  }
+
+  function composeOfficialName(original, includeBaseItems = false) {
+    original = String(original ?? "");
+    if (!original) return null;
+    const exact = includeBaseItems
+      ? baseItemTranslation(original) || config.dataset?.fixedNames?.[original]
+      : config.dataset?.fixedNames?.[original];
+    if (exact) return exact;
+
+    const buckets = componentIndex(includeBaseItems);
+    const memo = new Map();
+    function solve(offset) {
+      if (offset === original.length) return { text: "", parts: 0 };
+      if (memo.has(offset)) return memo.get(offset);
+      let best = null;
+      for (const [english, translated] of buckets.get(original[offset]) ?? []) {
+        if (!original.startsWith(english, offset)) continue;
+        const tail = solve(offset + english.length);
+        if (!tail) continue;
+        const candidate = { text: translated + tail.text, parts: tail.parts + 1 };
+        if (!best || candidate.parts < best.parts) best = candidate;
+      }
+      memo.set(offset, best);
+      return best;
+    }
+    return solve(0)?.text ?? null;
+  }
 
   function reportMissing(type, key, en, context = "") {
     key = String(key ?? "").trim();
@@ -82,8 +142,8 @@
       for (const group of response.result) {
         for (const entry of group.entries ?? []) {
           const original = entry.text;
-          const name = data.items[entry.name];
-          const type = data.items[entry.type];
+          const name = fixedNameTranslation(entry.name);
+          const type = baseItemTranslation(entry.type);
           const translated = [name, type].filter(Boolean).join(" ");
           if (translated) entry.text = format(translated, original);
         }
@@ -163,7 +223,7 @@
       if (!item) continue;
       const originalBaseType = item.baseType;
       const originalTypeLine = item.typeLine;
-      const translatedBaseType = config.dataset.items[originalBaseType];
+      const translatedBaseType = baseItemTranslation(originalBaseType);
 
       if (translatedBaseType) item.baseType = format(translatedBaseType, originalBaseType);
       else if (originalBaseType) {
@@ -171,9 +231,18 @@
       }
 
       if (originalTypeLine) {
-        const directTypeLine = config.dataset.items[originalTypeLine];
+        const directTypeLine =
+          config.dataset.baseItems?.[originalTypeLine] ||
+          config.dataset.fixedNames?.[originalTypeLine] ||
+          config.dataset.items?.[originalTypeLine];
+        const composedTypeLine =
+          item.frameType === 1 || item.frameType === 2
+            ? composeOfficialName(originalTypeLine, true)
+            : null;
         if (directTypeLine) {
           item.typeLine = format(directTypeLine, originalTypeLine);
+        } else if (composedTypeLine) {
+          item.typeLine = format(composedTypeLine, originalTypeLine);
         } else if (
           translatedBaseType &&
           originalBaseType &&
@@ -187,7 +256,10 @@
       }
 
       if (item.name) {
-        const translatedName = config.dataset.items[item.name];
+        const translatedName =
+          item.frameType === 1 || item.frameType === 2
+            ? composeOfficialName(item.name)
+            : fixedNameTranslation(item.name);
         if (translatedName) item.name = format(translatedName, item.name);
         else if (item.frameType === 3) {
           reportMissing("item", item.name, item.name, "fetch:name");

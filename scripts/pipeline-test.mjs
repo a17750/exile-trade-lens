@@ -5,6 +5,18 @@ import { diffSnapshots } from "./lib/audit.mjs";
 import { countPlaceholders, createCandidateEngine } from "./lib/translation-engine.mjs";
 import { createOfficialTwOverlay } from "./lib/official-tw.mjs";
 
+const ggpkManifest = readJson(path.join(sourcesPath, "generated", "ggpk", "manifest.json"));
+const ggpkBaseItems = readJson(path.join(sourcesPath, "generated", "ggpk", "base-items.zh-TW.json"));
+const ggpkWords = readJson(path.join(sourcesPath, "generated", "ggpk", "words.zh-TW.json"));
+
+assert.equal(ggpkManifest.safety.fileAccess, "Read");
+assert.equal(ggpkManifest.safety.rawTablesWritten, false);
+assert.equal(ggpkManifest.safety.gameDirectoryWritten, false);
+assert.ok(ggpkManifest.coverage.combinedUsablePercent >= 80);
+assert.equal(ggpkBaseItems.byEnglish["Slim Mace"], "纖細之錘");
+assert.equal(ggpkWords.byEnglish.Golem, "魔像");
+assert.equal(ggpkBaseItems.byEnglish["Calamity Fragment"], undefined);
+
 const glossary = readJson(path.join(sourcesPath, "glossary.zh-TW.json"));
 const phrases = readJson(path.join(sourcesPath, "phrase-exceptions.zh-TW.json"));
 const suggest = createCandidateEngine(glossary, phrases);

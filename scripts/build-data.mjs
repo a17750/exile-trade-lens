@@ -32,6 +32,10 @@ const sourceLock = readJson(path.join(sourcesPath, "source-lock.json"));
 const externalNames = readJson(
   path.join(sourcesPath, "external", "poe-game-data.names.tw.json"),
 );
+const ggpkSourcePath = path.join(sourcesPath, "generated", "ggpk");
+const ggpkManifest = readJson(path.join(ggpkSourcePath, "manifest.json"));
+const ggpkBaseItems = readJson(path.join(ggpkSourcePath, "base-items.zh-TW.json"));
+const ggpkWords = readJson(path.join(ggpkSourcePath, "words.zh-TW.json"));
 const baseline = readJson(path.join(sourcesPath, "upstream-baseline.en.json"), null);
 
 if (translations.schemaVersion !== 1 || translations.locale !== "zh-TW") {
@@ -39,6 +43,15 @@ if (translations.schemaVersion !== 1 || translations.locale !== "zh-TW") {
 }
 if (manualOverrides.schemaVersion !== 1) {
   throw new Error("sources/manual-overrides.json 格式不兼容");
+}
+if (
+  ggpkManifest.schemaVersion !== 1 ||
+  ggpkBaseItems.schemaVersion !== 1 ||
+  ggpkWords.schemaVersion !== 1 ||
+  ggpkBaseItems.domain !== "base-item" ||
+  ggpkWords.domain !== "word-component"
+) {
+  throw new Error("sources/generated/ggpk 格式不兼容，请重新运行 tools/ggpk/run.ps1");
 }
 
 let official = null;
@@ -75,6 +88,9 @@ const properties = clone(translations.properties ?? {});
 const allocates = clone(translations.allocates ?? {});
 const ui = clone(translations.ui ?? {});
 const exact = clone(translations.exact ?? {});
+const baseItems = clone(ggpkBaseItems.byEnglish ?? {});
+const fixedNames = clone(ggpkWords.byEnglish ?? {});
+const wordComponents = clone(ggpkWords.byEnglish ?? {});
 const normalizeExternalName = (value) =>
   String(value ?? "").trim().toLocaleLowerCase("en-US").replace(/\s+/g, " ");
 const externalApplied = [];
@@ -232,10 +248,16 @@ const datasetContent = {
     "sources/manual-overrides.json",
     "sources/glossary.zh-TW.json",
     "sources/phrase-exceptions.zh-TW.json",
+    "sources/generated/ggpk/manifest.json",
+    "sources/generated/ggpk/base-items.zh-TW.json",
+    "sources/generated/ggpk/words.zh-TW.json",
     `${OFFICIAL_TW_BASE_URL}/{items,stats,static,filters}`,
     `poe-game-data@${sourceLock.sources.poeGameDataNamesTw.ref}`,
   ],
   items,
+  baseItems,
+  fixedNames,
+  wordComponents,
   stats,
   static: staticData,
   filters,
@@ -254,6 +276,7 @@ const datasetVersion =
   `.manual-${manualOverrides.version ?? 0}` +
   `.terms-${glossary.version ?? 0}` +
   `.names-${sourceLock.sources.poeGameDataNamesTw.ref.slice(0, 7)}` +
+  `.ggpk-${crypto.createHash("sha256").update(JSON.stringify(ggpkManifest.tables)).digest("hex").slice(0, 8)}` +
   `.tw-${crypto.createHash("sha256").update(JSON.stringify(twSnapshot.sections)).digest("hex").slice(0, 8)}` +
   `.data-${contentHash}`;
 const dataset = {
@@ -293,6 +316,7 @@ const unresolvedDiff = {
   changed: diff.changed.filter((change) => change.reviewStatus !== "reviewed"),
 };
 const coverage = createCoverageReport(snapshot, dataset);
+coverage.ggpk = ggpkManifest.coverage;
 const quality = createQualityReport(snapshot, dataset, unresolvedDiff);
 const reviewQueue = createReviewQueue(snapshot, dataset, unresolvedDiff, suggest);
 for (const conflict of externalConflicts) {
@@ -373,6 +397,12 @@ quality.sources = {
     fetchedAt: twSnapshot.fetchedAt,
     rejected: officialTwOverlay.report.summary.rejected,
   },
+  ggpk: {
+    fresh: true,
+    generatedAt: ggpkManifest.generatedAt,
+    combinedUsablePercent: ggpkManifest.coverage.combinedUsablePercent,
+    tables: ggpkManifest.tables.length,
+  },
 };
 quality.review = {
   externalNameConflicts: externalConflicts.length,
@@ -403,6 +433,18 @@ writeJson(path.join(reportsPath, "official-tw-source-report.json"), {
   englishSource: englishSourceStatus,
   itemApplied: officialTwItemApplied,
   itemOverrides: officialTwItemOverrides,
+});
+writeJson(path.join(reportsPath, "ggpk-source-report.json"), {
+  schemaVersion: 1,
+  generatedAt: ggpkManifest.generatedAt,
+  source: ggpkManifest.source,
+  safety: ggpkManifest.safety,
+  tables: ggpkManifest.tables,
+  coverage: ggpkManifest.coverage,
+  conflicts: {
+    baseItems: ggpkBaseItems.conflicts,
+    words: ggpkWords.conflicts,
+  },
 });
 
 writeJson(dataPath, dataset, { compact: true });

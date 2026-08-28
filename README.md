@@ -17,6 +17,8 @@
 - 自动收集筛选区域、按钮和下拉菜单中残留的英文 UI 文本
 - 修正上游数据仍为英文的终局筛选项，并友好处理管理页上下文失效
 - 构建时自动读取台服官方交易接口，按稳定 ID 优先采用官方繁中译文
+- 只读提取本机客户端英/繁中 `BaseItemTypes` 与 `Words`，生成可审计的官方名称数据
+- 基础类型、固定名称、随机名称组件分域查找；仅在完整名称可由官方组件覆盖时组合翻译
 - 已翻译的双语文本不会再次被 DOM 自检当作漏译上报
 - `sources/manual-overrides.json` 保存第三方数据缺失或语义过期时的人工校正
 
@@ -31,18 +33,28 @@
 
 ## 构建数据
 
+游戏更新后，维护者先在本机只读刷新官方名称数据：
+
+```powershell
+.\tools\ggpk\run.ps1 -GamePath 'D:\games\Path of Exile 2\Content.ggpk'
+```
+
+工具只以 `FileAccess.Read` 打开游戏文件，原始表只留在内存，规范化结果写入
+`sources/generated/ggpk/`。随后运行仓库数据构建：
+
 ```powershell
 node scripts/sync-external-sources.mjs
 node scripts/build-data.mjs
 node scripts/check-quality.mjs
 ```
 
-这会读取项目词库、锁定版本的外部名称、人工修正、国际服英文接口和台服官方繁中接口，生成运行词库以及 `reports/` 下的覆盖率、差异、质量和审核报告：
+这会读取 GGPK 规范化数据、项目词库、锁定版本的外部名称、人工修正、国际服英文接口和台服官方繁中接口，生成运行词库以及 `reports/` 下的覆盖率、差异、质量和审核报告：
 
 - `extension/data/bundled.json`
 - `extension/data/bundled-manifest.json`
 - `reports/official-tw-current.json`
 - `reports/official-tw-source-report.json`
+- `reports/ggpk-source-report.json`
 
 `extension/page/ajax-hooker.js` 是独立维护的本地运行文件，构建器不会生成或修改它。
 
@@ -84,6 +96,9 @@ https://raw.githubusercontent.com/a17750/exile-trade-lens/main/extension/data/re
 ## 当前限制
 
 - 当前基础译文已一次性迁移到 `sources/translations.zh-TW.json`，后续只在项目数据源中维护。
+- GGPK `BaseItemTypes` 与 `Words` 已并入正式构建；`Mods`、`Stats` 和 stat description 的关联仍未完成。
+- 随机名称只有在英文整段能被官方 `Words` 组件无缝覆盖时才翻译；不完整或冲突的名称保留英文。
+- GitHub Actions 不读取本机游戏文件，只消费仓库内已经生成并审核的规范化 GGPK JSON；游戏版本更新后仍需维护者本机运行一次只读提取。
 - GitHub Actions 每日检查官方数据；只有质量门禁和测试通过后才会提交新的远程词库。
 - 官方交易站改变 API 或页面内部结构时，扩展适配代码仍需升级。
 - 简体中文、别名词典、匿名漏译上报和自动候选译文将在下一阶段加入。

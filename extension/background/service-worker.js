@@ -24,6 +24,9 @@ function mergeDatasets(base, extra) {
   base.datasetVersion = extra.datasetVersion || base.datasetVersion;
   base.generatedAt = extra.generatedAt || base.generatedAt;
   base.items = { ...base.items, ...extra.items };
+  base.baseItems = { ...base.baseItems, ...extra.baseItems };
+  base.fixedNames = { ...base.fixedNames, ...extra.fixedNames };
+  base.wordComponents = { ...base.wordComponents, ...extra.wordComponents };
   base.properties = { ...base.properties, ...extra.properties };
   base.allocates = { ...base.allocates, ...extra.allocates };
   base.ui = { ...base.ui, ...extra.ui };
@@ -151,7 +154,9 @@ function isBilingualUiArtifact(record) {
 
 function lookupTranslation(dataset, type, key, renderedUiTexts = null) {
   if (type === "stat") return dataset.stats?.entries?.[key]?.text;
-  if (type === "item") return dataset.items?.[key];
+  if (type === "item") {
+    return dataset.baseItems?.[key] || dataset.fixedNames?.[key] || dataset.items?.[key];
+  }
   if (type === "static") return dataset.static?.entries?.[key];
   if (type === "filter") return dataset.filters?.entries?.[key]?.text;
   if (type === "property") return dataset.properties?.[key];

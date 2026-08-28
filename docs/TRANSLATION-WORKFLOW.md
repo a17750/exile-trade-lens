@@ -1,16 +1,20 @@
 # 翻译获取、候选生成与审核流程
 
-最后更新：2026-08-28
+最后更新：2026-08-29
 
 ## 目标
 
 这套流程把维护者从“逐条找译文”转变为“只审核不确定项”。正式译文必须来自可追踪来源；分词、术语组合、模糊匹配和 AI 只能生成候选，不得直接覆盖正式词库。
 
-## 数据层级
+> 状态说明：Trade API 与 GGPK 官方英繁配对都已并入构建。GGPK 当前负责基础物品、固定名称
+> 和可完整解析的随机名称组件；`Mods`/`Stats` 显示文本关联仍是后续工作。
+
+## 当前已实现的数据层级
 
 ```text
 人工审核覆盖（稳定 ID + expectedEnglish）
   > 台服官方交易接口（相同稳定 ID）
+  > 同版本 GGPK 英繁稳定配对（名称领域）
   > 项目已有正式译文
   > 锁定版本的 poe-game-data 精确英文名称匹配
   > 完整短语例外
@@ -20,6 +24,40 @@
 ```
 
 “层级”决定来源能否使用，“置信度”只用于排列候选。低层级候选即使分数很高，也不能覆盖更高层级的正式译文。
+
+当前构建器已经先按 `trade-stat`、`trade-filter`、`base-item`、`fixed-name`、
+`word-component` 和 `ui` 分域，再在同一领域内应用来源优先级。不存在一个可以跨领域覆盖所有
+英文字符串的全局权重。旧 `items` 字段暂时作为兼容层保留。
+
+## 当前 V2 数据层级
+
+### Trade API 领域
+
+```text
+人工覆盖（稳定 Trade ID + expectedEnglish）
+  > 台服 Trade API 相同稳定 ID
+  > 项目已审核译文
+  > 锁定第三方精确补缺
+  > 候选
+  > 英文
+```
+
+### GGPK 游戏名称领域
+
+```text
+人工例外（GGPK 稳定键 + 源指纹）
+  > 同版本英文/繁中 GGPK 按稳定键配对
+  > 具备安全稳定键的台服 Trade 数据
+  > 项目已审核译文
+  > poe-game-data 精确补缺
+  > 候选
+  > 英文
+```
+
+`BaseItemTypes` 负责基础类型，`Words` 负责固定名称或命名组件。两者不得写入同一个无领域的
+英文键空间。
+`Words` 行号只用于同一游戏版本内的英繁配对；跨版本必须结合游戏指纹、词表类别和内容哈希，
+不能把裸行号当作永久 ID。
 
 ## 文件职责
 
@@ -32,6 +70,15 @@
 - `sources/source-lock.json`：第三方来源的仓库、commit、URL 和 SHA-256。
 - `sources/upstream-baseline.en.json`：上一次已经确认的官方英文结构。
 - `sources/external/poe-game-data.names.tw.json`：锁定版本的外部名称缓存。
+
+### 已接入的 GGPK 数据
+
+- `BaseItemTypes.datc64`：基础物品内部 ID 与本地化名称。
+- `Words.datc64`：固定名称和随机名称组件。
+- `Mods.datc64`：当前只保存结构和来源指纹；仍需联合 `Stats` 与 stat descriptions 才能形成显示文本。
+
+正式提取器和规范化数据只允许位于本仓库的 `tools/ggpk/`、`sources/generated/ggpk/`
+和 `reports/`。原始 GGPK/Dat 文件不得进入 Git 或扩展包。
 
 ### 生成结果
 
@@ -46,10 +93,14 @@
 - `reports/external-source-report.json`：外部名称自动应用及冲突。
 - `reports/official-tw-current.json`：本次台服官方繁中规范化快照。
 - `reports/official-tw-source-report.json`：稳定 ID 应用、拒绝项以及物品安全对齐结果。
+- `reports/ggpk-source-report.json`：只读安全结果、表指纹、覆盖率和冲突。
 
 ## 一次完整构建
 
+### 当前命令
+
 ```powershell
+.\tools\ggpk\run.ps1 -GamePath 'D:\games\Path of Exile 2\Content.ggpk'
 node scripts/sync-external-sources.mjs
 node scripts/build-data.mjs
 node scripts/check-quality.mjs
@@ -60,16 +111,18 @@ node scripts/background-smoke-test.mjs
 
 流程如下：
 
-1. 根据 `source-lock.json` 下载固定 commit 的 `poe-game-data`。
-2. 校验下载内容的 SHA-256；不一致立即失败。
-3. 获取官方 `items`、`stats`、`static`、`filters` 英文接口。
-4. 获取台服官方繁中 `items`、`stats`、`static`、`filters` 接口。
-5. 对 `stats`、`static`、`filters` 按稳定 ID 对齐，并校验 `#` 占位符和选项 ID。
-6. 物品只在两端存在相同稳定 `id` 或唯一图片资源时自动采用；不按数组位置猜测。
-7. 与 `upstream-baseline.en.json` 比较稳定 ID、英文和选项。
-8. 按“人工覆盖 > 台服官方 > 项目基础词库 > 第三方补缺”合并。
-9. 对缺失项尝试完整短语或最长术语组合。
-10. 生成覆盖率、来源、质量报告和审核队列，通过门禁后才允许发布。
+1. 本机只读配对 GGPK 英文/繁中 `BaseItemTypes`、`Words`，并生成表指纹和规范化 JSON。
+2. 根据 `source-lock.json` 下载固定 commit 的 `poe-game-data` 并校验 SHA-256。
+3. 获取官方 `items`、`stats`、`static`、`filters` 英文及台服繁中接口。
+4. 对 `stats`、`static`、`filters` 按稳定 ID 对齐，并校验 `#` 占位符和选项 ID。
+5. 物品只在两端存在相同稳定 `id` 或唯一图片资源时自动采用；不按数组位置猜测。
+6. 与 `upstream-baseline.en.json` 比较稳定 ID、英文和选项。
+7. 把 GGPK 名称映射写入相互隔离的运行域，再合并 Trade、人工和第三方来源。
+8. 对缺失项尝试完整短语或最长术语组合，但候选不自动覆盖正式译文。
+9. 生成覆盖率、来源、质量报告和审核队列，通过门禁后才允许发布。
+
+GitHub 托管 Actions 只执行仓库数据构建阶段（上述第 2–9 步），因为它没有维护者本地已授权安装的 `Content.ggpk`。
+不能把“本机 GGPK 自动提取”和“GitHub 每日构建”误写成同一个环境中的任务。
 
 `review-queue.json` 只保留需要逐条判断的项目；`Allocates ...` 这类可由模板批量处理的词缀，以及外部词库与项目译文冲突，会移动到 `bulk-backlog.json`。这样队列数量代表实际人工工作量，而不是接口目录的总条目数。
 

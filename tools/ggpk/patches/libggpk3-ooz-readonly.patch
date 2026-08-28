@@ -1,0 +1,43 @@
+diff --git a/LibBundle3/Oodle.cs b/LibBundle3/Oodle.cs
+index 80d5be5..e900c2c 100644
+--- a/LibBundle3/Oodle.cs
++++ b/LibBundle3/Oodle.cs
+@@ -19,7 +19,7 @@ public static unsafe class Oodle { // Current Oodle Version: 2.9.12
+ 	[DllImport("oo2core")]
+ 	private static extern nint OodleLZ_Compress(Compressor compressor, byte* buffer, nint bufferSize, byte* output, CompressionLevel level = CompressionLevel.Normal,
+ 		void* pOptions = null, void* dictionaryBase = null, void* longRangeMatcher = null, void* scratchMem = null, nint scratchSize = 0);
+-	[DllImport("oo2core")]
++	[DllImport("AnimeStudio.Ooz", EntryPoint = "Ooz_Decompress")]
+ 	private static extern nint OodleLZ_Decompress(byte* buffer, nint bufferSize, byte* output, nint outputSize, int fuzzSafe = 1, int checkCRC = 0, int verbosity = 0,
+ 		byte* dictionaryBase = null, nint dictionarySize = 0, void* fpCallback = null, void* callbackUserData = null, void* decoderMemory = null, nint decoderMemorySize = 0, int threadPhase = 3);
+ 
+@@ -57,7 +57,10 @@ public static unsafe class Oodle { // Current Oodle Version: 2.9.12
+ 			}
+ 		}
+ 
+-		var l = OodleLZDecoder_MemorySizeNeeded(Compressor.Invalid /*any*/, settings.ChunkSize); // max 446680 on Oodle v2.9.12
++		// The read-only extractor uses the open-source Ooz decoder. Ooz ignores the
++		// decoder scratch-memory arguments, so a small pinned buffer is sufficient.
++		var l = settings.EnableCompressing
++			? OodleLZDecoder_MemorySizeNeeded(Compressor.Invalid /*any*/, settings.ChunkSize) : 64;
+ 		if (settings.EnableCompressing) {
+ 			var l2 = (int)OodleLZ_GetCompressScratchMemBound(settings.Compressor, settings.CompressionLevel, settings.ChunkSize);
+ 			if (l2 < 0) // OODLELZ_SCRATCH_MEM_NO_BOUND(-1)
+@@ -82,7 +85,7 @@ public static unsafe class Oodle { // Current Oodle Version: 2.9.12
+ 	/// <para>Note this is actually larger than the maximum size of a compressed chunk, it includes overrun padding.</para>
+ 	/// </remarks>
+ 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+-	public static int GetCompressedBufferSize() => checked((int)OodleLZ_GetCompressedBufferSizeNeeded(settings.Compressor, settings.ChunkSize));
++	public static int GetCompressedBufferSize() => checked(settings.ChunkSize + 262144);
+ 	/// <summary>
+ 	/// Get the minimum size needed for the output buffer of Compress(), usually slightly larger than <paramref name="uncompressedSize"/>.
+ 	/// </summary>
+@@ -92,7 +95,7 @@ public static unsafe class Oodle { // Current Oodle Version: 2.9.12
+ 	/// <para>Note this is actually larger than the maximum size of a compressed chunk, it includes overrun padding.</para>
+ 	/// </remarks>
+ 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+-	public static int GetCompressedBufferSize(nint uncompressedSize) => checked((int)OodleLZ_GetCompressedBufferSizeNeeded(settings.Compressor, uncompressedSize));
++	public static int GetCompressedBufferSize(nint uncompressedSize) => checked((int)uncompressedSize + 262144);
+ 
+ 	/// <param name="buffer">The uncompressed data to compress</param>
+ 	/// <param name="output">Buffer to save the compressed output, must be at least <see cref="GetCompressedBufferSize(nint)"/> bytes</param>

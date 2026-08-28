@@ -1,112 +1,101 @@
 # 流亡译镜开发进度
 
-最后更新：2026-08-28
+最后更新：2026-08-29
 
 ## 当前可交付版本
 
-- 扩展版本：`0.3.1`
-- 词库版本：`project-zhTW-1.manual-7.terms-1.names-e10b747.tw-82883049.data-9386850a`
+- 扩展版本：`0.5.0`
 - 安装目录：`extension/`
-- 压缩包：`poe2-trade-zh-extension-0.3.1.zip`
-- 当前权限：`storage`、`alarms`
-- 当前主机范围：POE 官网、GitHub Raw、jsDelivr
+- 压缩包：`poe2zh-extension-0.5.0.zip`
+- 词库版本：`project-zhTW-1.manual-7.terms-1.names-e10b747.ggpk-e9052386.tw-e96cf5bd.data-4e3eabed`
+- 权限：`storage`、`alarms`
+- 网站范围：POE 官网、GitHub Raw、jsDelivr
 
-词库规模：
+当前构建已经达到并超过本阶段“80% 可用率”目标：
 
-- 物品名称：3,552 条
-- 交易词缀：7,136 条
-- 动态界面精确对照：7,459 条
-- 手写固定 UI：42 条
+| 领域 | 当前覆盖 |
+|---|---:|
+| 官方市集物品条目 | 99.92% |
+| 官方市集属性条目 | 87.26% |
+| 静态项目 | 100% |
+| 筛选器标题 | 100% |
+| 筛选器选项 | 100% |
+| GGPK 基础物品可用映射 | 99.82% |
+| GGPK 名称组件可用映射 | 98.96% |
 
-当前官方覆盖审计：
+运行数据包含 4,445 条基础物品映射、3,138 条固定名称/名称组件映射、7,136 条交易属性和
+7,459 条动态界面精确对照。质量门禁阻断项为 0；逐条审核队列为 187 条，批量积压 991 条。
 
-- 物品名称：3,552 / 3,574（99.38%）。
-- 交易词缀：7,136 / 8,178（87.26%）。
-- 静态项目：754 / 754（100%）。
-- 筛选器：55 / 55（100%），全部 141 个筛选选项已覆盖；仅含选项而无标题的 `status` 不计为缺失文本。
-- 审核队列：1,197 条，其中包含 132 条外部来源冲突。
+这些数字表示当前官方目录的静态覆盖，不等同于所有网页情境都已人工浏览验证。真实页面仍需在
+每次游戏或交易站改版后回归。
 
-## 已完成
+## 本轮完成：官方客户端名称接入
 
-### Chrome 扩展基础
+### 只读 GGPK 工具
 
-- Manifest V3 扩展结构。
-- 中英双语和仅繁体中文两种模式。
-- Popup 启停、模式选择、词库状态、漏译数量和更新入口。
-- 设置页、漏译管理页及本地人工修正。
-- 已在真实 Chrome 和已登录 POE2 市集页面确认扩展可以注入。
+- 正式工具位于 `tools/ggpk/`，项目唯一维护目录为 `D:\code\exile-trade-lens`。
+- 使用只读文件流打开 `Content.ggpk`，不会写回、修复、压缩或替换游戏文件。
+- 原始 `.datc64` 只在内存中处理，不写入仓库或扩展包。
+- 运行前后比较游戏文件大小与修改时间；本轮两者完全一致。
+- 依赖版本、哈希、补丁和许可证均已锁定并记录。
+- 规范化数据输出到 `sources/generated/ggpk/`，报告输出到
+  `reports/ggpk-source-report.json`。
 
-### 市集翻译
+本轮从同一客户端版本读取并配对：
 
-- 拦截 `/api/trade2/data/stats`、`items`、`static`、`filters`。
-- 拦截 `/api/trade2/fetch`，翻译搜索结果物品、属性和词缀。
-- 翻译物品分类、筛选器、下拉选项、按钮和输入提示。
-- 监听新增节点、属性变化及复用文字节点的内容变化。
-- DOM 精确匹配作为接口翻译之外的兜底。
+- `BaseItemTypes`：基础物品名称。
+- `Words`：固定名称及随机命名组件。
+- `Mods`：本轮只记录表结构和指纹，尚未生成显示文本。
 
-### 接口接管修复
+### 分域运行时
 
-- 不再依赖跨隔离环境传递 `CustomEvent.detail` 大对象。
-- 使用不可执行的共享 JSON 节点向页面环境传递词库。
-- 锁定 Fetch/XHR 拦截器，降低被页面脚本覆盖的概率。
-- 页面根节点记录桥接、拦截器、词库和最近处理接口的诊断状态。
+运行词库已经新增三个相互隔离的域：
 
-### 数据构建
+- `baseItems`：只翻译 `item.baseType` 和明确的基础类型。
+- `fixedNames`：翻译完整匹配的固定名称。
+- `wordComponents`：只用于完整随机名称组合。
 
-- 历史繁中数据已一次性迁移到项目自有的 `sources/translations.zh-TW.json`。
-- `scripts/build-data.mjs` 只读取项目数据源、人工修正和 POE2 官方英文接口。
-- `extension/page/ajax-hooker.js` 已成为独立维护的本地源码，不再由构建器生成。
-- 构建时读取 POE2 官方英文交易接口，按稳定 ID 配对英文和中文。
-- 构建时读取台服官方繁中接口；稳定 ID 词条优先采用官方译文，台服缺失时保留原有回退。
-- 生成 `extension/data/bundled.json` 和带 SHA-256 的清单。
-- 远程更新只接受声明式 JSON，不下载或执行远程代码。
-- 支持 GitHub Raw 和 jsDelivr 清单，每 12 小时自动检查。
-- 默认远程清单已经指向 `a17750/exile-trade-lens`；每日 Actions 通过质量门禁后自动提交变化词库。
+随机名称采用“整段覆盖”规则：动态规划必须从第一个字符一直匹配到最后一个字符，且每个组件都
+来自官方同版本 `Words` 配对，才会产生中文。无法完整匹配时保留英文，不做部分猜译，也不会借用
+基础物品译文。
 
-### 翻译流水线
+已加入回归样本：
 
-- 新增官方英文快照和审核基线，自动检测新增、删除和稳定 ID 改义。
-- `poe-game-data` 已锁定到 commit `e10b7473addb` 并校验 SHA-256。
-- 对官方当前物品名进行规范化英文完全匹配，自动补充 544 条名称。
-- 新增完整短语例外、领域术语和最长术语组合候选。
-- 新增覆盖率、外部冲突、质量门禁和人工审核队列。
-- 新增审核命令，可记录 `expectedEnglish`、译文和审核时间。
-- 第一轮质量审计发现并修正 6 条占位符或硬编码错误。
-- 台服官方源本次安全应用 6,608 个稳定 ID 词条；1 条占位符不一致记录被拒绝并写入来源报告。
-- 物品接口不再按数组位置配对；当前没有具备安全非语言键的新增物品译文，继续由锁定第三方名称表兜底。
+```text
+Slim Mace   -> 纖細之錘
+Golem Crack -> 魔像 裂骨錘
+```
 
-### 数据源结论
+测试同时断言 `Golem Crack` 不能出现 `纖細之錘`，从机制上防止此前的跨领域误翻。
 
-- `poe-game-data/poe2/names/tw.json` 主要覆盖基础物品和技能名称，不能作为完整交易站词库。
-- 交易筛选器必须由官方英文接口与现有中文交易数据按 ID 合并。
-- 第三方缺失或语义过期的内容放在 `sources/manual-overrides.json`。
-- 人工覆盖同时保存稳定 ID 和预期英文；英文语义变化时构建失败，要求人工复核。
-- `Monster Effectiveness` 已校正为“怪物效用”，不再沿用旧的 `Waystone Magic Monsters` 含义。
+### 现有功能保留
 
-### 漏译自检
+- Manifest V3；仅中文/中英双语模式。
+- Trade API 的 `items`、`stats`、`static`、`filters` 和 `/fetch` 翻译。
+- 台服 Trade API 按稳定 ID 对齐。
+- 内置词库、远程 JSON 更新、SHA-256 校验和失败回滚。
+- 漏译检测、去重、角标、管理页、本地修正、忽略和安全导出。
+- 排除输入框、卖家/交易内容、完整随机名称和已双语文本，避免污染漏译数据。
+- `trade.js` 只作历史参考，不参与运行、构建或 GGPK 提取。
 
-- 接口层按物品、词缀、静态项目、筛选器和属性 ID 检测缺失。
-- 页面层扫描筛选面板、下拉选项、按钮、标签和输入提示中的残留英文。
-- 页面候选去重并延迟批量写入，避免频繁操作本地存储。
-- 漏译管理支持搜索、分类、忽略、删除、清空、安全导出和本地补译。
-- 远程词库或本地修正包含译文后自动消解记录。
-- 扩展刷新导致旧管理页上下文失效时，显示重新连接提示。
-- 已知“中文（English）”双语显示会从 DOM 漏译候选中排除，避免 `# 元素抗性 (# total Elemental Resistances)` 一类误报。
+## 数据流程
 
-### 隐私边界
+```text
+本机 Content.ggpk（只读）
+  -> BaseItemTypes / Words 规范化 JSON + 表指纹
+国际服 Trade API + 台服 Trade API + 人工覆盖 + 锁定第三方源
+  -> 分领域合并 + 冲突排除 + 质量门禁
+  -> extension/data/bundled.json
+  -> 扩展运行时按字段查对应领域
+```
 
-不记录或上传：
+本机刷新 GGPK 数据：
 
-- POE 账号、卖家名称和私聊内容。
-- Cookie、`POESESSID` 和 whisper token。
-- 搜索输入、搜索历史、物品价格和浏览历史。
-- 随机稀有物品名称。
+```powershell
+.\tools\ggpk\run.ps1 -GamePath 'D:\games\Path of Exile 2\Content.ggpk'
+```
 
-当前所有漏译与人工修正只保存在浏览器本地。
-
-## 已验证
-
-以下测试在 `0.3.1` 通过：
+完整构建与验证：
 
 ```powershell
 node scripts/sync-external-sources.mjs
@@ -115,68 +104,48 @@ node scripts/check-quality.mjs
 node scripts/pipeline-test.mjs
 node scripts/smoke-test.mjs
 node scripts/background-smoke-test.mjs
-node --check extension/content/bridge.js
 node --check extension/page/trade-hook.js
 node --check extension/background/service-worker.js
-node --check extension/health/health.js
-node --check scripts/build-data.mjs
 ```
 
-人工检查曾确认：
+本轮上述质量门禁、流水线测试、页面接口冒烟测试和后台自检测试全部通过。
 
-- Chrome 控制扩展可以连接用户的 Chrome。
-- POE2 市集顶部固定文本成功双语化。
-- 旧版本存在动态接口词条不生效问题，随后已完成共享配置与 DOM 兜底修复。
-- 截图确认终局筛选器的上游数据存在英文残留，`0.2.4` 和 `0.2.5` 已加入校正。
+## 尚未完成
 
-## 当前未完成的验证
+- 用真实 Chrome 重新加载 `0.5.0`，逐项展开全部筛选组并执行搜索结果回归。
+- 分析 `Words` 的类别和语言组合规则；当前安全策略只支持能够无缝整段覆盖的名称。
+- 将 `Mods`、`Stats` 和 stat descriptions 关联，进一步提高剩余属性翻译准确率。
+- 为 GGPK 规范化快照增加跨版本结构漂移门禁；当前已记录表哈希、行数和行宽。
+- 决定本机游戏更新后的触发方式。GitHub Actions 没有本机 GGPK，因此只能消费已经提交的
+  规范化数据，不能自行提取客户端文件。
+- 完成真实页面回归后再考虑 Chrome 商店发布。
 
-- `0.3.1` 在扩展重新加载后的完整真实页面回归尚未完成。
-- 需要逐项展开 Item Category、Type Filters、Equipment Filters、Requirements、Endgame Filters、Miscellaneous 和 Trade Filters。
-- 需要确认“怪物效用”等新校正已经直接显示，且不会先显示旧英文再闪烁替换。
-- 需要查看漏译管理页是否只收集标准 UI，不产生卖家或结果相关误报。
-- 需要执行一次真实搜索，检查结果物品名、属性、词缀和漏译 ID 收集。
+## 下一步建议
 
-## 已确认的架构调整
-
-- `trade.js` 只能作为历史参考，不是扩展逻辑或正式构建依赖。
-- 构建器和运行文件已经完全解除对它的依赖。
-- 迁移后的基础译文由 `sources/translations.zh-TW.json` 统一维护，并保留一次性迁移说明。
-- 详细方案见 `docs/TRANSLATION-ARCHITECTURE.md`。
-
-## 下次继续的建议顺序
-
-1. 在 `chrome://extensions` 刷新 `0.3.1`，刷新 POE2 市集。
-2. 用 Chrome 控制连接真实页面，检查所有左侧筛选组及动态下拉框。
-3. 打开漏译管理页，审核 `ui` 类型记录是否有误报。
-4. 对真实搜索结果检查 `/fetch` 翻译与数值占位符替换。
-5. 按 `reports/review-queue.json` 优先审核台服占位符拒绝项和 132 条名称冲突。
-6. 继续接入 `poe-game-data` modifier 数据，提高剩余 1,042 条缺失词缀的自动候选覆盖。
-7. 在 GitHub Actions 页面手动运行一次 `Translation data check`，确认仓库写权限和首次远程发布正常。
-8. 完成真实页面回归后，再考虑 Chrome 商店发布。
+1. 在 `chrome://extensions` 刷新扩展，重新加载交易站。
+2. 检查普通、魔法、稀有和暗金结果的 `name`、`baseType`、`typeLine`。
+3. 展开 Item Category、Type Filters、Equipment Filters、Requirements、Endgame Filters、
+   Miscellaneous 和 Trade Filters。
+4. 导出一次新的漏译记录，确认只剩真实 UI/稳定 ID 缺失，没有搜索输入或随机物品名。
+5. 真实页面通过后，再实现补丁检测和本机一键更新流程。
 
 ## 关键文件
 
-- `extension/manifest.json`：扩展声明和权限。
-- `extension/content/bridge.js`：词库桥接、DOM 翻译和界面漏译扫描。
-- `extension/page/trade-hook.js`：交易接口翻译和稳定 ID 漏译检测。
-- `extension/background/service-worker.js`：词库合并、更新、自检存储和本地修正。
-- `extension/health/`：漏译管理页。
-- `extension/data/bundled.json`：当前内置词库。
-- `sources/manual-overrides.json`：人工校正层。
-- `sources/glossary.zh-TW.json`：领域术语及审核状态。
-- `sources/phrase-exceptions.zh-TW.json`：禁止拆分的完整短语。
-- `sources/source-lock.json`：外部来源 commit 和哈希锁定。
-- `reports/review-queue.json`：构建生成的人工审核队列。
-- `scripts/build-data.mjs`：词库生成程序。
-- `scripts/review-translation.mjs`：审核结果写入程序。
-- `scripts/smoke-test.mjs`：接口翻译冒烟测试。
-- `scripts/background-smoke-test.mjs`：漏译存储与人工修正测试。
+- `tools/ggpk/README.md`：只读提取器用法和安全边界。
+- `sources/generated/ggpk/manifest.json`：游戏表指纹、覆盖率和只读结果。
+- `sources/generated/ggpk/base-items.zh-TW.json`：官方基础物品对照。
+- `sources/generated/ggpk/words.zh-TW.json`：官方固定名/名称组件对照。
+- `scripts/build-data.mjs`：Trade 与 GGPK 数据构建。
+- `extension/page/trade-hook.js`：接口翻译和名称分域解析。
+- `extension/background/service-worker.js`：词库合并、更新、自检与本地修正。
+- `reports/coverage-report.json`：当前官方目录覆盖率。
+- `reports/ggpk-source-report.json`：GGPK 来源与冲突报告。
+- `reports/review-queue.json`：需要逐条判断的项目。
 
-## 安装和恢复开发
+## 安装
 
 1. 打开 `chrome://extensions` 并开启开发者模式。
 2. 加载已解压的 `extension` 目录，或刷新已经加载的扩展。
-3. 刷新 POE2 市集页面。
-4. 点击浏览器工具栏中的“流亡译镜”。
-5. 通过“查看漏译与修正”打开管理页，不要直接双击 `health.html`。
+3. 关闭并重新打开 POE2 市集页面。
+4. 点击工具栏中的“流亡译镜”；通过“查看漏译与修正”打开管理页，不要直接双击
+   `health.html`。

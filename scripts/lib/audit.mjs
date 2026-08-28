@@ -1,7 +1,9 @@
 import { countPlaceholders } from "./translation-engine.mjs";
 
 function translatedText(dataset, domain, key) {
-  if (domain === "item") return dataset.items?.[key];
+  if (domain === "item") {
+    return dataset.baseItems?.[key] || dataset.fixedNames?.[key] || dataset.items?.[key];
+  }
   if (domain === "stat") return dataset.stats?.entries?.[key]?.text;
   if (domain === "static") return dataset.static?.entries?.[key];
   if (domain === "filter") return dataset.filters?.entries?.[key]?.text;

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "libGGPK3": {
+    "repository": "https://github.com/aianlinb/LibGGPK3.git",
+    "tag": "v2.7.5",
+    "commit": "50c2d279b3806366f79e831acc1c03bc35bb6442",
+    "license": "AGPL-3.0-only"
+  },
+  "systemExtensions": {
+    "package": "aianlinb.SystemExtensions",
+    "version": "1.8.0",
+    "license": "MIT"
+  },
+  "animeStudioOoz": {
+    "repository": "https://github.com/EIHRTeam/AnimeStudio",
+    "commit": "1fbe5a570976d1f05db514993b4e1697e43cfa5d",
+    "path": "AnimeStudio.Libraries/runtimes/win-x64/native/AnimeStudio.Ooz.dll",
+    "url": "https://raw.githubusercontent.com/EIHRTeam/AnimeStudio/1fbe5a570976d1f05db514993b4e1697e43cfa5d/AnimeStudio.Libraries/runtimes/win-x64/native/AnimeStudio.Ooz.dll",
+    "sha256": "aa007fa0fdd62370876fa368e6262e8c8de425f5c3a2967d0edc9a76e9e7f470",
+    "license": "MIT"
+  }
+}
