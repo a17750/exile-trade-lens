@@ -30,6 +30,7 @@
 - [当前进度与后续交接](docs/PROGRESS.md)
 - [中英对照与目标数据架构](docs/TRANSLATION-ARCHITECTURE.md)
 - [翻译获取、候选生成与审核流程](docs/TRANSLATION-WORKFLOW.md)
+- [大型改动后的回归自检流程](docs/REGRESSION-CHECK.md)
 - [漏译采集守门策略](docs/MISSING-REPORT-POLICY.md)
 - [权限说明](docs/PERMISSIONS.md)
 - [隐私说明草案](docs/PRIVACY-DRAFT.md)
