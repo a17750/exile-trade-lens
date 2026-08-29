@@ -60,3 +60,7 @@
 - P2：再评估普通物品展示模板，不恢复尚未验证的实验批次。
 
 在 P0/P1 完成前，不继续扩展新的名称组合或启发式翻译规则。
+
+## Stat 渲染模块拆分
+
+`extension/page/stat-rendering.js` 独立承担模板形状匹配和已验证 `renderings` 选择；`trade-hook.js` 只负责请求拦截、ID 关联和数值替换。后续新增单复数、标点或官方特殊句式时，只能在 `sources/verified-stat-renderings.zh-TW.json` 登记同一 stable ID 的证据，再由这个模块处理，不把渲染分支散落回拦截器。

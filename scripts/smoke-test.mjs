@@ -31,14 +31,14 @@ const bridgeSource = fs.readFileSync(path.join(root, "extension/content/bridge.j
 assert.match(bridgeSource, /knownRenderedTranslations\.has\(text\)/);
 assert.match(bridgeSource, /exactConflicts/);
 assert.match(bridgeSource, /missingPolicy\.createDomGuard/);
-assert.equal(extensionManifest.version, "0.5.13");
+assert.equal(extensionManifest.version, "0.5.14");
 const mainScript = extensionManifest.content_scripts.find((entry) => entry.world === "MAIN");
 const isolatedScript = extensionManifest.content_scripts.find((entry) => entry.world !== "MAIN");
 assert.ok(mainScript?.js.includes("page/trade-hook.js"), "MAIN 环境必须加载交易拦截器");
 assert.deepEqual(
   mainScript?.js,
-  ["page/ajax-hooker.js", "page/trade-hook.js"],
-  "MAIN 环境只加载请求拦截闭环，不得叠加依赖页面框架私有字段的补丁",
+  ["page/ajax-hooker.js", "page/stat-rendering.js", "page/trade-hook.js"],
+  "MAIN 环境必须先加载独立 stat 渲染模块，再加载交易拦截器",
 );
 assert.ok(isolatedScript?.js.includes("shared/missing-report-policy.js"), "隔离环境必须先加载漏译采集策略");
 assert.ok(isolatedScript?.js.includes("content/bridge.js"), "隔离环境必须加载 bridge");
@@ -116,6 +116,7 @@ let protectedHook = false;
 const context = vm.createContext({
   console,
   setTimeout,
+  window: {},
   localStorage: {
     removed: [],
     values: new Map(
@@ -166,6 +167,11 @@ vm.runInContext(
   fs.readFileSync(path.join(root, "extension/shared/missing-report-policy.js"), "utf8"),
   context,
   { filename: "missing-report-policy.js" },
+);
+vm.runInContext(
+  fs.readFileSync(path.join(root, "extension/page/stat-rendering.js"), "utf8"),
+  context,
+  { filename: "stat-rendering.js" },
 );
 vm.runInContext(
   fs.readFileSync(path.join(root, "extension/page/trade-hook.js"), "utf8"),

@@ -49,7 +49,7 @@
   const clean = (text) => String(text ?? "").replace(/\[[^|\]]*\||[\][]/g, "");
   const reported = new Set();
   let componentIndexes = { version: null, words: null, withBaseItems: null };
-  let statIndexes = { version: null, englishById: null, templates: null };
+  let statIndexes = { version: null, englishById: null, renderer: null };
   let catalogAliases = { version: null, englishByAlias: new Map() };
 
   function catalogAliasIndex() {
@@ -97,47 +97,10 @@
   function statIndex() {
     const version = config.dataset?.datasetVersion;
     if (statIndexes.version !== version) {
-      statIndexes = { version, englishById: new Map(), templates: null };
+      statIndexes = { version, englishById: new Map(), renderer: null };
     }
     statIndexes.englishById ??= new Map();
     return statIndexes;
-  }
-
-  function normalizeStatText(text) {
-    return String(text ?? "")
-      .replace(/\[([^|\]]+)\|([^\]]+)\]/g, "$2")
-      .replace(/\[([^\]]+)\]/g, "$1")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  function escapeRegex(text) {
-    return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
-
-  function statTemplateRegex(template) {
-    const parts = normalizeStatText(template).split("#");
-    const number = "[+-]?(?:\\d*\\.\\d+|\\d+)";
-    return new RegExp(
-      `^${parts.map((part) => escapeRegex(part).replace(/\\ /g, "\\\\s+")).join(number)}$`,
-      "i",
-    );
-  }
-
-  function statTemplateIndex() {
-    const index = statIndex();
-    if (index.templates) return index.templates;
-    const statTexts = new Set(
-      Object.values(config.dataset?.stats?.entries ?? {})
-        .map((entry) => (typeof entry === "object" ? entry.text : entry))
-        .filter(Boolean),
-    );
-    index.templates = [];
-    for (const [english, translated] of Object.entries(config.dataset?.exact ?? {})) {
-      if (!english.includes("#") || !statTexts.has(translated)) continue;
-      index.templates.push({ english, translated, pattern: statTemplateRegex(english) });
-    }
-    return index.templates;
   }
 
   function statEnglish(statId) {
@@ -150,22 +113,24 @@
     );
   }
 
+  function statRenderer() {
+    const index = statIndex();
+    if (!index.renderer) {
+      index.renderer = window.POE2ZHStatRendering?.create(config.dataset, index.englishById);
+    }
+    return index.renderer;
+  }
+
   function matchingStatTemplates(original) {
-    const normalized = normalizeStatText(original);
-    return statTemplateIndex().filter((candidate) => candidate.pattern.test(normalized));
+    return statRenderer()?.matchingTemplates(original) ?? [];
   }
 
   function sameStatShape(template, original) {
-    if (!template || !original) return false;
-    return statTemplateRegex(template).test(normalizeStatText(original));
+    return statRenderer()?.sameShape(template, original) ?? false;
   }
 
   function matchingStatRenderings(statId, original) {
-    const renderings = config.dataset?.stats?.entries?.[statId]?.renderings ?? [];
-    if (!Array.isArray(renderings)) return [];
-    return renderings.filter(
-      (rendering) => rendering?.text && sameStatShape(rendering.english, original),
-    );
+    return statRenderer()?.matchingRenderings(statId, original) ?? [];
   }
 
   function baseItemTranslation(english) {

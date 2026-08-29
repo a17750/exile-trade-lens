@@ -174,6 +174,12 @@ query ID、item ID、原始 description 和相同 hash。構建後只把運行�
 
 即使 `hashes` 兩筆資料的陣列順序反了，也必須得到上面的結果。
 
+### 4.4 單複數與其他官方渲染變體
+
+同一個 stable stat ID 可能有不同的官方渲染文字，例如 `Has 1 Charm Slot` 與 `Has 2 Charm Slots`。這些不是新的詞條，也不能靠英語複數規則猜測；它們必須在 `sources/verified-stat-renderings.zh-TW.json` 以同一 ID 的 `variants` 獨立登記，並保留英服/台服官方 `/fetch` 的成對證據。
+
+運行時先在該 ID 的已驗證 `renderings` 中匹配完整英文形狀，再回退到目錄主模板。變體只影響顯示和數值回填，不會進入全局 `exact` 詞典，也不會被其他 stat ID 借用。沒有證據或形狀不一致時保留英文並上報。
+
 ## 5. 佔位符和數值規則
 
 - `#` 表示一個動態數值；英文和繁中模板數量必須相同。

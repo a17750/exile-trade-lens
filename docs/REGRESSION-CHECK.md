@@ -37,7 +37,7 @@ powershell -ExecutionPolicy Bypass -File .agents/skills/poe2-trade-regression/sc
 | API 目录缓存 | 扩展冷启动时目录必须等词库就绪；目录结构升级时只失效 `items/stats/data/filters` 八个精确缓存键一次，避免展开与选中状态使用不同语言模型 | `search-cold-start-test.mjs`、`smoke-test.mjs` |
 | 中文下拉匹配 | 目录 `name/type` 使用可逆双语别名供官网原生过滤；发出 `/search` 前必须精确还原官方英文，未知格式原样放行 | `smoke-test.mjs` |
 | 筛选项 | 分组、选项和动态下拉值都是字符串；缺失映射不会把 `undefined` 写进 DOM | `smoke-test.mjs`、DOM 采集规则 |
-| 属性/词缀 | 按稳定 stat id 绑定；数值和占位符保留；替代英文渲染只对声明的 id 生效；未知 id 回退原文 | `smoke-test.mjs`、`pipeline-test.mjs` |
+| 属性/词缀 | 按稳定 stat id 绑定；数值和占位符保留；替代英文渲染只对声明的 id 生效；单复数等变体必须有独立官方证据；未知 id 回退原文 | `smoke-test.mjs`、`stat-rendering-test.mjs`、`pipeline-test.mjs` |
 | `/fetch` | 单个坏条目不会取消同批其他条目的翻译；可选字段异常时保留源对象 | `trade-hook.js`、`smoke-test.mjs` |
 | bridge | 页面环境和 service worker 的消息可达；上下文失效时不产生未处理 Promise 错误 | `background-smoke-test.mjs`、`bridge-context-smoke-test.mjs` |
 | 漏译收集 | 排除输入值、自动完成行、双语文本和瞬时片段；只记录稳定且可复现的 UI 文本 | `MISSING-REPORT-POLICY.md`、质量报告 |

@@ -16,6 +16,7 @@ let hook;
 
 const context = vm.createContext({
   console,
+  window: {},
   CustomEvent: class CustomEvent {
     constructor(type, init) {
       this.type = type;
@@ -44,6 +45,11 @@ const context = vm.createContext({
   },
 });
 
+vm.runInContext(
+  fs.readFileSync(path.join(root, "extension/page/stat-rendering.js"), "utf8"),
+  context,
+  { filename: "stat-rendering.js" },
+);
 vm.runInContext(
   fs.readFileSync(path.join(root, "extension/page/trade-hook.js"), "utf8"),
   context,
