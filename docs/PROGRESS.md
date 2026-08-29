@@ -4,10 +4,10 @@
 
 ## 当前可交付版本
 
-- 扩展版本：`0.5.6`
+- 扩展版本：`0.5.7`
 - 安装目录：`extension/`
-- 压缩包：`poe2zh-extension-0.5.6.zip`
-- 词库版本：`project-zhTW-1.labels-2.manual-7.terms-1.names-e10b747.ggpk-2ca5516d.tw-7ed24b13.data-f6bead28`
+- 压缩包：`poe2zh-extension-0.5.7.zip`
+- 词库版本：`project-zhTW-1.labels-2.manual-7.renderings-1.terms-1.names-e10b747.ggpk-2ca5516d.tw-8054a96d.data-0f7263a6`
 - 权限：`storage`、`alarms`
 - 网站范围：POE 官网、GitHub Raw、jsDelivr
 
@@ -32,6 +32,19 @@
 
 这些数字表示当前官方目录的静态覆盖，不等同于所有网页情境都已人工浏览验证。真实页面仍需在
 每次游戏或交易站改版后回归。
+
+## 本轮完成：官方 stat 特殊渲染与结构化技能
+
+- 确认 `Always Poison on Hit with this weapon` 与目录模板
+  `#% chance to Poison on Hit with this weapon` 共用稳定 ID `explicit.stat_3885634897`；这是官方针对
+  100% 数值的特殊显示，不是普通漏译。
+- 新增 `sources/verified-stat-renderings.zh-TW.json`，用英服和台服 `/fetch` 的相同 hash、query ID、
+  item ID 和原始 description 保存可追溯证据。
+- 运行时先在该 stable ID 内匹配特殊渲染，再走原有目录模板；绝不写入全局 `exact`，其他 ID 即使出现
+  相同英文也不会套用。
+- `grantedSkills` 改为结构化翻译：`Grants Skill` 来自 GGPK `ClientStrings`，`Spear Throw` 等技能名
+  来自 GGPK 官方映射。
+- 新增正例和错误-ID 反例测试，确保修复的是整类“同 ID 多渲染”机制而非页面样本特判。
 
 ## 本轮完成：输入污染守门与目录双语修复
 
@@ -134,7 +147,7 @@ node --check extension/background/service-worker.js
 
 ## 尚未完成
 
-- 用真实 Chrome 重新加载 `0.5.6`，逐项展开全部筛选组并执行搜索结果回归。
+- 用真实 Chrome 重新加载 `0.5.7`，逐项展开全部筛选组并执行搜索结果回归。
 - 分析 `Words` 的类别和语言组合规则；当前安全策略只支持能够无缝整段覆盖的稀有名称。
 - 将 `Mods`、`Stats` 和 stat descriptions 关联，进一步提高剩余数值属性翻译准确率；装备前后缀名称配对已经完成。
 - 为 GGPK 规范化快照增加跨版本结构漂移门禁；当前已记录表哈希、行数和行宽。
@@ -159,6 +172,7 @@ node --check extension/background/service-worker.js
 - `sources/generated/ggpk/words.zh-TW.json`：官方固定名/名称组件对照。
 - `sources/generated/ggpk/affixes.zh-TW.json`：官方装备前后缀对照。
 - `sources/generated/ggpk/client-strings.zh-TW.json`：官方客户端字符串对照；构建时按 ID 白名单选用。
+- `sources/verified-stat-renderings.zh-TW.json`：英台官方 `/fetch` 成对验证的 stat 特殊显示形式。
 - `scripts/build-data.mjs`：Trade 与 GGPK 数据构建。
 - `extension/page/trade-hook.js`：接口翻译和名称分域解析。
 - `extension/background/service-worker.js`：词库合并、更新、自检与本地修正。

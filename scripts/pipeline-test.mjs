@@ -12,6 +12,9 @@ const ggpkAffixes = readJson(path.join(sourcesPath, "generated", "ggpk", "affixe
 const ggpkClientStrings = readJson(
   path.join(sourcesPath, "generated", "ggpk", "client-strings.zh-TW.json"),
 );
+const verifiedStatRenderings = readJson(
+  path.join(sourcesPath, "verified-stat-renderings.zh-TW.json"),
+);
 
 assert.equal(ggpkManifest.safety.fileAccess, "Read");
 assert.equal(ggpkManifest.safety.rawTablesWritten, false);
@@ -27,6 +30,14 @@ assert.equal(ggpkAffixes.suffixes["of Osmosis"], "逆滲透之");
 assert.equal(ggpkClientStrings.byId.QualityItem.english, "Superior {0}");
 assert.equal(ggpkClientStrings.byId.QualityItem.zhTW, "精良的 {0}");
 assert.ok(ggpkAffixes.records.every((record) => record.domain === "item"));
+const poisonRendering =
+  verifiedStatRenderings.statsById["explicit.stat_3885634897"].variants[0];
+assert.equal(poisonRendering.english, "Always Poison on Hit with this weapon");
+assert.equal(poisonRendering.text, "用此武器擊中時會造成中毒");
+assert.equal(poisonRendering.evidence.english.hash, poisonRendering.evidence.zhTW.hash);
+assert.equal(poisonRendering.evidence.english.hash, "stat.explicit.stat_3885634897");
+assert.match(poisonRendering.evidence.english.itemId, /^[a-f0-9]{64}$/);
+assert.match(poisonRendering.evidence.zhTW.itemId, /^[a-f0-9]{64}$/);
 for (const conflict of ggpkAffixes.conflicts.prefixes) {
   assert.equal(ggpkAffixes.prefixes[conflict.english], undefined);
 }

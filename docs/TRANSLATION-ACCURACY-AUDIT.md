@@ -32,6 +32,8 @@
 | `Mods.Name` 跨領域合併 | 怪物和裝備可能使用相同英文但不同繁中，例如 `Frosted` | 魔法裝備名稱只採用 `Domain=ITEM`；其他領域隔離，英文多譯鍵排除並報告 conflict |
 | DOM 扁平 `exact` 字典 | 同一英文在不同領域有不同中文時，後寫值覆蓋前寫值 | 發現衝突即從 DOM 索引移除，保留原文 |
 | 舊版遠程 stat 詞庫 | 缺少英文模板時無法驗證 ID 與顯示文字 | 遠程資料缺少模板即拒絕更新；合併時保留內置模板 |
+| stat 目錄模板與 `/fetch` 特殊文案 | 100% 等特殊值可能把 `#% chance...` 渲染成 `Always...`，形狀校驗會正確拒絕但留下英文 | 建立 stable-ID 限域的官方渲染變體；只接受英台 `/fetch` 同 hash 證據，不加入全局 exact |
+| `/fetch.grantedSkills` 結構 | 技能標籤和值不屬於 properties 或 mods，因此此前保持英文 | 按字段翻譯：標籤來自 `ClientStrings`，技能名來自官方 GGPK 映射；未知值保留英文 |
 
 ## 2. 目前允許自動採用的證據
 
@@ -68,9 +70,13 @@
 
 `stats.entries[id]` 現在會同時保存 `english` 模板和 `text` 繁中模板。建置期使用穩定 ID、佔位符檢查和 `expectedEnglish`；不得在此處用候選分數替換正式欄位。
 
+`sources/verified-stat-renderings.zh-TW.json` 專門記錄「目錄模板以外、但已由英台官方 `/fetch` 證明」的顯示變體。構建會檢查 stable ID 存在、目錄英文未漂移、兩端 evidence hash 相同、佔位符一致及變體無衝突。它不會改寫主模板，也不會把變體放進全局精確詞典。
+
 ### 4.3 `extension/page/trade-hook.js`
 
-`/fetch` 的 stat 翻譯採用「ID 英文模板 + 當前英文詞條」雙重確認。`#` 只代表模板佔位符，數值始終從當前英文詞條提取。找不到唯一候選時觸發 `fetch:<kind>:association-mismatch`，不翻譯。
+`/fetch` 的 stat 翻譯先在當前 ID 的官方渲染變體中匹配，再採用「ID 英文模板 + 當前英文詞條」雙重確認。`#` 只代表模板佔位符，數值始終從當前英文詞條提取。變體不能跨 ID 使用；找不到唯一候選時觸發 `fetch:<kind>:association-mismatch`，不翻譯。
+
+`grantedSkills` 是獨立結構化字段。標籤和值分別使用 GGPK 中的官方 `ClientStrings` 與技能名稱對照，未命中時維持英文，不進行單詞推測。
 
 稀有名稱只允許在完整名稱可由 GGPK Words 組件唯一覆蓋時拼接。魔法 `typeLine` 使用 `Mods.Id` 穩定配對得到的 `Domain=ITEM` 前後綴，並按「前綴 + 底材 + 後綴」重建。多解或缺少任一組件時整段保留英文；不得只替換其中的基礎類型。
 

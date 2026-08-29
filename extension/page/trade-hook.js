@@ -99,6 +99,13 @@
     return statTemplateRegex(template).test(normalizeStatText(original));
   }
 
+  function matchingStatRenderings(statId, original) {
+    const renderings = config.dataset?.stats?.entries?.[statId]?.renderings ?? [];
+    return renderings.filter(
+      (rendering) => rendering?.text && sameStatShape(rendering.english, original),
+    );
+  }
+
   function baseItemTranslation(english) {
     return config.dataset?.baseItems?.[english] || config.dataset?.items?.[english];
   }
@@ -345,11 +352,16 @@
         const original = typeof mod === "object" ? mod.description : mod;
         if (!original) return mod;
         const refsForIndex = byIndex.get(index) ?? [];
+        const renderingMatches = refsForIndex.flatMap(({ statId }) =>
+          matchingStatRenderings(statId, original).map((rendering) => ({ statId, rendering })),
+        );
         const matchingRefs = refsForIndex.filter(({ statId }) =>
           sameStatShape(statEnglish(statId), original),
         );
         const templateCandidates = matchingStatTemplates(original);
-        let template = matchingRefs.length === 1 ? matchingRefs[0].translated : null;
+        let template =
+          renderingMatches.length === 1 ? renderingMatches[0].rendering.text : null;
+        if (!template && matchingRefs.length === 1) template = matchingRefs[0].translated;
         if (!template && templateCandidates.length === 1) {
           template = templateCandidates[0].translated;
         }
@@ -366,6 +378,22 @@
         const result = format(translated, original);
         return typeof mod === "object" ? { ...mod, description: result } : result;
       });
+    }
+  }
+
+  function translateGrantedSkills(item) {
+    for (const grantedSkill of item.grantedSkills ?? []) {
+      if (!grantedSkill || typeof grantedSkill !== "object") continue;
+      const originalLabel = clean(grantedSkill.name);
+      const translatedLabel =
+        config.dataset?.structuredFields?.grantedSkillLabels?.[originalLabel];
+      if (translatedLabel) grantedSkill.name = format(translatedLabel, grantedSkill.name);
+      for (const value of grantedSkill.values ?? []) {
+        if (!Array.isArray(value) || typeof value[0] !== "string") continue;
+        const originalSkill = value[0];
+        const translatedSkill = baseItemTranslation(originalSkill);
+        if (translatedSkill) value[0] = format(translatedSkill, originalSkill);
+      }
     }
   }
 
@@ -424,6 +452,7 @@
       }
       for (const property of item.properties ?? []) translateProperty(property);
       for (const requirement of item.requirements ?? []) translateProperty(requirement);
+      translateGrantedSkills(item);
       translateMods(item);
     }
     return response;

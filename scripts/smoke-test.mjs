@@ -31,7 +31,7 @@ const bridgeSource = fs.readFileSync(path.join(root, "extension/content/bridge.j
 assert.match(bridgeSource, /knownRenderedTranslations\.has\(text\)/);
 assert.match(bridgeSource, /exactConflicts/);
 assert.match(bridgeSource, /missingPolicy\.createDomGuard/);
-assert.equal(extensionManifest.version, "0.5.6");
+assert.equal(extensionManifest.version, "0.5.7");
 for (const contentScript of extensionManifest.content_scripts) {
   assert.ok(
     contentScript.js.includes("shared/missing-report-policy.js"),
@@ -91,6 +91,17 @@ assert.equal(
   "# to Level of all Minion Skills",
 );
 assert.equal(dataset.stats.entries["explicit.stat_3984865854"].english, "#% increased Spirit");
+assert.equal(
+  dataset.stats.entries["explicit.stat_3885634897"].english,
+  "#% chance to Poison on Hit with this weapon",
+);
+assert.deepEqual(dataset.stats.entries["explicit.stat_3885634897"].renderings, [{
+  english: "Always Poison on Hit with this weapon",
+  text: "用此武器擊中時會造成中毒",
+  source: "official-trade-fetch-pair",
+}]);
+assert.equal(dataset.exact["Always Poison on Hit with this weapon"], undefined);
+assert.equal(dataset.structuredFields.grantedSkillLabels["Grants Skill"], "賦予技能");
 
 const listeners = {};
 const emitted = [];
@@ -348,6 +359,55 @@ assert.match(translatedSwappedMods.explicitMods[0], /^增加36%精魂 \(36% incr
 assert.match(
   translatedSwappedMods.explicitMods[1],
   /^全部召喚物技能等級\+1 \(\+1 to Level of all Minion Skills\)$/,
+);
+
+const alternateRenderingRequest = {
+  url: "https://www.pathofexile.com/api/trade2/fetch/alternate-rendering",
+};
+hook(alternateRenderingRequest);
+const alternateRenderingResponse = {
+  responseText: JSON.stringify({
+    result: [{
+      item: {
+        frameType: 3,
+        grantedSkills: [{ name: "Grants Skill", values: [["Spear Throw", 25]] }],
+        explicitMods: [{
+          description: "Always [Poison] on [HitDamage|Hit] with this weapon",
+          hash: "stat.explicit.stat_3885634897",
+        }],
+        extended: {
+          hashes: { explicit: [["explicit.stat_3885634897", [0]]] },
+        },
+      },
+    }],
+  }),
+};
+await alternateRenderingRequest.response(alternateRenderingResponse);
+const translatedAlternate = JSON.parse(alternateRenderingResponse.responseText).result[0].item;
+assert.equal(translatedAlternate.grantedSkills[0].name, "賦予技能 (Grants Skill)");
+assert.equal(translatedAlternate.grantedSkills[0].values[0][0], "長矛投擲 (Spear Throw)");
+assert.equal(
+  translatedAlternate.explicitMods[0].description,
+  "用此武器擊中時會造成中毒 (Always [Poison] on [HitDamage|Hit] with this weapon)",
+);
+
+const wrongRenderingIdRequest = {
+  url: "https://www.pathofexile.com/api/trade2/fetch/wrong-rendering-id",
+};
+hook(wrongRenderingIdRequest);
+const wrongRenderingIdResponse = {
+  responseText: JSON.stringify({
+    result: [{ item: {
+      explicitMods: ["Always Poison on Hit with this weapon"],
+      extended: { hashes: { explicit: [["explicit.stat_3146310524", [0]]] } },
+    } }],
+  }),
+};
+await wrongRenderingIdRequest.response(wrongRenderingIdResponse);
+assert.equal(
+  JSON.parse(wrongRenderingIdResponse.responseText).result[0].item.explicitMods[0],
+  "Always Poison on Hit with this weapon",
+  "alternate rendering must never escape its verified stable stat ID",
 );
 
 const rareFetchRequest = { url: "https://www.pathofexile.com/api/trade2/fetch/rare-test" };

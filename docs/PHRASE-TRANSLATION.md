@@ -4,16 +4,18 @@
 
 本文件定義「英文詞組如何找到繁中對照」以及「交易結果如何安全套用對照」。目標不是把所有英文切成單字再逐一翻譯，而是在保留遊戲語義、詞條數值和物品命名規則的前提下，使用可追溯的證據完成翻譯。
 
-## 1. 先分辨五種資料
+## 1. 先分辨八種資料
 
 | 領域 | 例子 | 穩定鍵 | 主要來源 | 運行時處理 |
 |---|---|---|---|---|
 | 交易站 UI、篩選器 | `Clear Filter Group`、`Weapon` | UI/篩選器 ID 或完整英文 | Trade API、專案 UI 詞庫 | 完整文字或穩定 ID |
 | 數值詞條模板 | `#% increased Spirit` | `explicit.stat_3984865854` | 英文/台服 Trade API | ID 與英文模板雙重校驗，再填入實際數值 |
+| 詞條特殊渲染 | `Always Poison on Hit with this Weapon` | `explicit.stat_3885634897` + 完整渲染文字 | 英服/台服 `/fetch` 同一物品字段 | 先按 ID 限域，再精確匹配該 ID 的已驗證變體 |
 | 基礎物品與固定名稱 | `Slim Mace`、暗金名稱 | GGPK 行 ID 或完整英文 | `Content.ggpk`（只讀） | 完整名稱匹配 |
 | 稀有名稱組件 | `Golem`、`Crack` | GGPK Words 行 ID/英文組件 | `Words.datc64` | 僅在稀有名稱域做組件拼接 |
 | 魔法裝備前後綴 | `Frosted`、`of the Fletcher` | `Mods.Id` + `Domain` + `GenerationType` | 英繁 `Mods.datc64` | 僅在魔法 `typeLine` 按前綴/底材/後綴組合 |
 | 普通品質展示模板 | `Superior {0}` | `ClientStrings.Id=QualityItem` | 英繁 `ClientStrings.datc64` | 僅在 `frameType=0` 的 `typeLine` 完整套用 |
+| 結果卡結構化技能 | `Grants Skill`、`Spear Throw` | `/fetch.grantedSkills` 字段 + GGPK 穩定表 | 英台 `/fetch`、`ClientStrings`、`BaseItemTypes` | 標籤和技能名稱分字段翻譯，不當作 stat 或 UI |
 
 `trade.js` 只作歷史參考，不是本專案的運行時資料來源或邏輯依賴。
 
@@ -35,7 +37,34 @@
 
 `english` 是當前官方英文模板，`text` 是對照模板。兩者的 `#` 佔位符數量必須一致。`options` 只用於有選項的篩選器或詞條。
 
-### 2.2 完整英文對照
+### 2.2 同一 stat ID 的官方特殊渲染
+
+官方 `/data/stats` 只提供篩選器模板，但 `/fetch` 可能根據數值或顯示規則改寫句子。例如
+`explicit.stat_3885634897` 的目錄模板是 `#% chance to Poison on Hit with this weapon`，數值為
+100% 的物品卻顯示 `Always Poison on Hit with this weapon`。這兩句形狀不同，不能用一般 `#` 替換處理。
+
+這類資料寫入 `sources/verified-stat-renderings.zh-TW.json`，並保留英服與台服 `/fetch` 的
+query ID、item ID、原始 description 和相同 hash。構建後只把運行所需內容掛在原 stat ID 下：
+
+```json
+{
+  "explicit.stat_3885634897": {
+    "english": "#% chance to Poison on Hit with this weapon",
+    "text": "用此武器擊中時有#%機率造成中毒",
+    "renderings": [
+      {
+        "english": "Always Poison on Hit with this weapon",
+        "text": "用此武器擊中時會造成中毒",
+        "source": "official-trade-fetch-pair"
+      }
+    ]
+  }
+}
+```
+
+`renderings` 不是全局 `exact`。即使另一個 stat ID 返回同一句英文，也不得借用這筆翻譯。
+
+### 2.3 完整英文對照
 
 `exact` 用於 UI、物品和詞條模板的完整英文對照，例如：
 
@@ -48,7 +77,7 @@
 
 它是反查和兜底索引，不取代 stat ID。相同中文可能對應多個 ID 時，必須優先使用 ID 及英文模板校驗。
 
-### 2.3 詞組組件
+### 2.4 詞組組件
 
 `wordComponents` 只收錄可獨立出現在隨機命名規則中的組件，例如：
 
@@ -61,7 +90,7 @@
 
 前導空格、後綴空格和大小寫是組件邊界的一部分，不能在匯入時隨意 `trim`。組件翻譯只允許套用於 GGPK/Trade API 判定的隨機名稱域，不能把 `Slim Mace` 這類基礎類型拆成一般單字翻譯。
 
-### 2.4 魔法裝備前後綴
+### 2.5 魔法裝備前後綴
 
 `affixNames.prefixes` 和 `affixNames.suffixes` 來自同一遊戲版本的英文/繁中 `Mods` 表。建置只接受 `Domain=ITEM`，並按穩定 `Mods.Id` 校驗兩種語言的行；同一英文若對應多個繁中結果，整個英文鍵進入 conflict，不加入運行詞庫。
 
@@ -75,7 +104,7 @@
 }
 ```
 
-### 2.5 普通品質展示模板
+### 2.6 普通品質展示模板
 
 `itemDisplayTemplates.quality` 只保存經過穩定 ID 審核的 `ClientStrings.QualityItem`：
 
@@ -94,8 +123,8 @@
 
 每一筆翻譯都要保留來源和版本，合併順序如下：
 
-1. 台服官方 Trade API：`stats`、`static`、`filters` 按穩定 ID 對齊。
-2. 本機 `Content.ggpk`：基礎物品和命名組件，只讀解析，不修改遊戲檔案。
+1. 英服/台服官方 Trade API：目錄資料按穩定 ID 對齊；特殊渲染必須由兩端 `/fetch` 的同 hash 證明。
+2. 本機 `Content.ggpk`：基礎物品、技能名稱、客戶端標籤和命名組件，只讀解析，不修改遊戲檔案。
 3. 專案人工覆蓋：`sources/manual-overrides.json`，必須寫 `expectedEnglish`。
 4. 專案詞庫與受鎖定版本的第三方名稱表：只作缺口補全和衝突審計。
 5. 組件拼接或未翻譯回退：只在證據不足時使用，並進入漏譯報告。
@@ -127,11 +156,12 @@
 
 交易 API 同時返回具體詞條文字（如 `36% increased Spirit`）和 `extended.hashes`。目前採用以下安全順序：
 
-1. 讀取該 ID 對應的英文模板，確認模板能匹配當前完整英文詞條。
-2. 若 hash 的位置與英文模板不一致，使用完整英文模板反查，而不是相信陣列位置。
-3. 僅有一個候選模板時才填入繁中模板。
-4. 從當前英文詞條提取數值，再填入 `#`；不重用相鄰詞條的數值。
-5. 無法確認時保留英文並上報 `association-mismatch`，禁止猜翻。
+1. 在該 ID 自己的 `renderings` 中精確匹配已驗證的特殊渲染；唯一命中時直接採用對應繁中。
+2. 未命中特殊渲染時，讀取該 ID 對應的英文目錄模板，確認它能匹配當前完整英文詞條。
+3. 若 hash 的位置與英文模板不一致，使用完整英文模板反查，而不是相信陣列位置。
+4. 僅有一個候選模板時才填入繁中模板。
+5. 從當前英文詞條提取數值，再填入 `#`；不重用相鄰詞條的數值。
+6. 無法確認時保留英文並上報 `association-mismatch`，禁止猜翻。
 
 例如：
 
@@ -144,6 +174,8 @@
 ```
 
 即使 `hashes` 兩筆資料的陣列順序反了，也必須得到上面的結果。
+
+`grantedSkills` 不在 mod 陣列中。其 `name` 只查已審核的客戶端標籤，`values[][0]` 只查官方技能/基礎條目對照；不能把 `Grants Skill: Spear Throw` 當成一條普通英文句子猜譯。
 
 ## 5. 佔位符和數值規則
 
@@ -159,6 +191,7 @@
 
 - 英文/繁中佔位符數量一致。
 - stat ID 的英文模板未過期；人工覆蓋的 `expectedEnglish` 仍與官方快照一致。
+- 特殊渲染的 `expectedCatalogEnglish` 未漂移，英台證據 hash 均等於該 stable ID，且變體沒有重複衝突。
 - `/fetch` 測試包含故意打亂 `hashes` 順序的案例。
 - 未翻譯、來源衝突和 association mismatch 分別進入報告，不混成普通詞彙缺失。
 - 結果卡片、輸入框和篩選器使用不同翻譯域，禁止扁平字典跨域覆蓋。
@@ -177,7 +210,7 @@ node scripts/background-smoke-test.mjs
 
 1. 先確認它屬於哪個領域，不要直接把結果文字塞進 `exact`。
 2. 可用官方 ID 時，優先修改對應的 ID 記錄。
-3. 人工修正必須附 `expectedEnglish`、原因和來源；不要直接改生成檔 `bundled.json`。
+3. 一般人工修正必須附 `expectedEnglish`、原因和來源；官方特殊渲染必須附英台 `/fetch` 成對證據；不要直接改生成檔 `bundled.json`。
 4. 若是詞組組件，確認空格、大小寫、可組合位置和適用的 `frameType`。
 5. 執行建置、品質門檻和回歸測試，再提交生成資料和報告。
 

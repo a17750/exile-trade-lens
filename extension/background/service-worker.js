@@ -40,6 +40,12 @@ function mergeDatasets(base, extra) {
     ...base.itemDisplayTemplates,
     ...extra.itemDisplayTemplates,
   };
+  base.structuredFields = {
+    grantedSkillLabels: {
+      ...base.structuredFields?.grantedSkillLabels,
+      ...extra.structuredFields?.grantedSkillLabels,
+    },
+  };
   base.properties = { ...base.properties, ...extra.properties };
   base.allocates = { ...base.allocates, ...extra.allocates };
   base.ui = { ...base.ui, ...extra.ui };
@@ -140,13 +146,24 @@ function validateDataset(dataset) {
     throw new Error("远程词库格式不兼容");
   }
   const statEntries = Object.entries(dataset.stats.entries);
+  const placeholderCount = (value) => (String(value ?? "").match(/#/g) ?? []).length;
   if (
     statEntries.some(
       ([, entry]) =>
-        typeof entry !== "object" || (entry?.text && !entry?.english),
+        typeof entry !== "object" ||
+        (entry?.text && !entry?.english) ||
+        (entry?.renderings != null &&
+          (!Array.isArray(entry.renderings) ||
+            entry.renderings.some(
+              (rendering) =>
+                !rendering?.english ||
+                !rendering?.text ||
+                rendering?.source !== "official-trade-fetch-pair" ||
+                placeholderCount(rendering.english) !== placeholderCount(rendering.text),
+            ))),
     )
   ) {
-    throw new Error("远程词库缺少 stat 英文模板，已拒绝更新");
+    throw new Error("远程词库 stat 模板或官方渲染变体无效，已拒绝更新");
   }
 }
 

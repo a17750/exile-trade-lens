@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "locale": "zh-TW",
+  "description": "Officially verified alternate /fetch renderings keyed by stable trade stat ID. These do not replace the catalog template.",
+  "statsById": {
+    "explicit.stat_3885634897": {
+      "expectedCatalogEnglish": "#% chance to Poison on Hit with this weapon",
+      "variants": [
+        {
+          "english": "Always Poison on Hit with this weapon",
+          "text": "用此武器擊中時會造成中毒",
+          "source": "official-trade-fetch-pair",
+          "reviewedAt": "2026-08-29",
+          "evidence": {
+            "english": {
+              "queryId": "9zLQjlM8HK",
+              "itemId": "54f49ff195a6a5fe005641becba07d73c7014e135cb5e568e998c2dd472b522e",
+              "description": "Always [Poison] on [HitDamage|Hit] with this weapon",
+              "hash": "stat.explicit.stat_3885634897"
+            },
+            "zhTW": {
+              "queryId": "eRlGOJ6cL",
+              "itemId": "747ab761880bac1ee9ac336830fdafe9ee96196f20491a905ee23ee22d8a7d82",
+              "description": "用此武器[HitDamage|擊中]時會造成[Poison|中毒]",
+              "hash": "stat.explicit.stat_3885634897"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -16,7 +16,7 @@ import {
   OFFICIAL_TW_BASE_URL,
 } from "./lib/trade-data.mjs";
 import { createOfficialTwOverlay } from "./lib/official-tw.mjs";
-import { createCandidateEngine } from "./lib/translation-engine.mjs";
+import { countPlaceholders, createCandidateEngine } from "./lib/translation-engine.mjs";
 import {
   createCoverageReport,
   createQualityReport,
@@ -27,6 +27,9 @@ import {
 const translations = readJson(path.join(sourcesPath, "translations.zh-TW.json"));
 const verifiedLabels = readJson(path.join(sourcesPath, "verified-labels.zh-TW.json"));
 const manualOverrides = readJson(path.join(sourcesPath, "manual-overrides.json"));
+const verifiedStatRenderings = readJson(
+  path.join(sourcesPath, "verified-stat-renderings.zh-TW.json"),
+);
 const glossary = readJson(path.join(sourcesPath, "glossary.zh-TW.json"));
 const phraseExceptions = readJson(path.join(sourcesPath, "phrase-exceptions.zh-TW.json"));
 const sourceLock = readJson(path.join(sourcesPath, "source-lock.json"));
@@ -49,6 +52,12 @@ if (verifiedLabels.schemaVersion !== 1 || verifiedLabels.locale !== "zh-TW") {
 }
 if (manualOverrides.schemaVersion !== 1) {
   throw new Error("sources/manual-overrides.json 格式不兼容");
+}
+if (
+  verifiedStatRenderings.schemaVersion !== 1 ||
+  verifiedStatRenderings.locale !== "zh-TW"
+) {
+  throw new Error("sources/verified-stat-renderings.zh-TW.json 格式不兼容");
 }
 if (
   ggpkManifest.schemaVersion !== 1 ||
@@ -123,6 +132,15 @@ const itemDisplayTemplates = {
     sourceId: "QualityItem",
     english: qualityItemClientString.english,
     text: qualityItemClientString.zhTW,
+  },
+};
+const grantsSkillLabel = ggpkClientStrings.byEnglish?.["Grants Skill"];
+if (!grantsSkillLabel || grantsSkillLabel === "Grants Skill") {
+  throw new Error("GGPK ClientStrings 缺少 Grants Skill 的繁中翻译");
+}
+const structuredFields = {
+  grantedSkillLabels: {
+    "Grants Skill": grantsSkillLabel,
   },
 };
 const normalizeExternalName = (value) =>
@@ -277,6 +295,62 @@ for (const [id, entry] of Object.entries(snapshot.sections.stats.entries ?? {}))
   stats.entries[id].english = entry.english;
 }
 
+const normalizeTradeDescription = (value) =>
+  String(value ?? "")
+    .replace(/\[([^|\]]+)\|([^\]]+)\]/g, "$2")
+    .replace(/\[([^\]]+)\]/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+
+for (const [id, record] of Object.entries(verifiedStatRenderings.statsById ?? {})) {
+  const catalogEnglish = snapshot.sections.stats.entries?.[id]?.english;
+  if (!catalogEnglish) {
+    throw new Error(`已验证的词缀渲染找不到稳定 ID：${id}`);
+  }
+  if (record.expectedCatalogEnglish !== catalogEnglish) {
+    throw new Error(
+      `已验证的词缀渲染已过期：stats:${id} 当前英文为 ${JSON.stringify(catalogEnglish)}，` +
+        `记录的是 ${JSON.stringify(record.expectedCatalogEnglish)}`,
+    );
+  }
+  const seenEnglish = new Map();
+  const renderings = [];
+  for (const variant of record.variants ?? []) {
+    const english = String(variant?.english ?? "").trim();
+    const text = String(variant?.text ?? "").trim();
+    if (!english || !text || variant?.source !== "official-trade-fetch-pair") {
+      throw new Error(`已验证的词缀渲染缺少官方双端证据：stats:${id}`);
+    }
+    if (
+      variant.evidence?.english?.hash !== `stat.${id}` ||
+      variant.evidence?.zhTW?.hash !== `stat.${id}`
+    ) {
+      throw new Error(`已验证的词缀渲染 hash 与稳定 ID 不一致：stats:${id}`);
+    }
+    if (
+      normalizeTradeDescription(variant.evidence.english.description) !== english ||
+      normalizeTradeDescription(variant.evidence.zhTW.description) !== text ||
+      !/^[A-Za-z0-9]+$/.test(variant.evidence.english.queryId ?? "") ||
+      !/^[A-Za-z0-9]+$/.test(variant.evidence.zhTW.queryId ?? "") ||
+      !/^[a-f0-9]{64}$/.test(variant.evidence.english.itemId ?? "") ||
+      !/^[a-f0-9]{64}$/.test(variant.evidence.zhTW.itemId ?? "")
+    ) {
+      throw new Error(`已验证的词缀渲染证据与正式文本不一致：stats:${id}:${english}`);
+    }
+    if (countPlaceholders(english) !== countPlaceholders(text)) {
+      throw new Error(`已验证的词缀渲染占位符数量不一致：stats:${id}:${english}`);
+    }
+    const previous = seenEnglish.get(english.toLocaleLowerCase("en-US"));
+    if (previous && previous !== text) {
+      throw new Error(`已验证的词缀渲染存在冲突：stats:${id}:${english}`);
+    }
+    seenEnglish.set(english.toLocaleLowerCase("en-US"), text);
+    renderings.push({ english, text, source: variant.source });
+  }
+  if (!renderings.length) throw new Error(`已验证的词缀渲染为空：stats:${id}`);
+  stats.entries[id] = { ...stats.entries[id], renderings };
+}
+
 for (const [en, translated] of Object.entries(manualOverrides.exact ?? {})) {
   addExact(en, translated);
 }
@@ -290,6 +364,7 @@ const datasetContent = {
     "sources/translations.zh-TW.json",
     "sources/verified-labels.zh-TW.json",
     "sources/manual-overrides.json",
+    "sources/verified-stat-renderings.zh-TW.json",
     "sources/glossary.zh-TW.json",
     "sources/phrase-exceptions.zh-TW.json",
     "sources/generated/ggpk/manifest.json",
@@ -306,6 +381,7 @@ const datasetContent = {
   wordComponents,
   affixNames,
   itemDisplayTemplates,
+  structuredFields,
   stats,
   static: staticData,
   filters,
@@ -323,6 +399,7 @@ const datasetVersion =
   `project-zhTW-${translations.version}` +
   `.labels-${verifiedLabels.version ?? 0}` +
   `.manual-${manualOverrides.version ?? 0}` +
+  `.renderings-${verifiedStatRenderings.version ?? 0}` +
   `.terms-${glossary.version ?? 0}` +
   `.names-${sourceLock.sources.poeGameDataNamesTw.ref.slice(0, 7)}` +
   `.ggpk-${crypto.createHash("sha256").update(JSON.stringify(ggpkManifest.tables)).digest("hex").slice(0, 8)}` +
