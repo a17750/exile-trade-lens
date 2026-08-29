@@ -59,7 +59,14 @@ const context = vm.createContext({
     if (String(url).endsWith("/data/bundled.json")) return new Response(bundledRaw);
     throw new Error(`unexpected fetch: ${url}`);
   },
+  importScripts() {},
 });
+
+vm.runInContext(
+  fs.readFileSync(path.join(root, "extension/shared/missing-report-policy.js"), "utf8"),
+  context,
+  { filename: "missing-report-policy.js" },
+);
 
 vm.runInContext(
   fs.readFileSync(path.join(root, "extension/background/service-worker.js"), "utf8"),
@@ -79,6 +86,7 @@ const report = {
   key: "explicit.stat_self_check_test",
   en: "#% Test Damage",
   context: "fetch:smoke-test",
+  source: "trade-api",
 };
 await send({ type: "POE2ZH_REPORT_MISSING", reports: [report, report] });
 let health = await send({ type: "POE2ZH_GET_HEALTH" });
@@ -111,9 +119,9 @@ assert.deepEqual(dataset.dataset.itemDisplayTemplates.quality, {
 });
 
 const resolvedPropertyReports = [
-  { type: "property", key: "Bow", en: "Bow", context: "item-property" },
-  { type: "property", key: "Cold Damage", en: "Cold Damage", context: "item-property" },
-  { type: "property", key: "Dex", en: "Dex", context: "item-property" },
+  { type: "property", key: "Bow", en: "Bow", context: "item-property", source: "trade-api" },
+  { type: "property", key: "Cold Damage", en: "Cold Damage", context: "item-property", source: "trade-api" },
+  { type: "property", key: "Dex", en: "Dex", context: "item-property", source: "trade-api" },
 ];
 await send({ type: "POE2ZH_REPORT_MISSING", reports: resolvedPropertyReports });
 health = await send({ type: "POE2ZH_GET_HEALTH" });
@@ -130,6 +138,8 @@ const uiReport = {
   key: "Untranslated Filter Label",
   en: "Untranslated Filter Label",
   context: "filter-panel",
+  region: "filter-panel",
+  source: "dom-static-ui",
 };
 await send({ type: "POE2ZH_REPORT_MISSING", reports: [uiReport] });
 health = await send({ type: "POE2ZH_GET_HEALTH" });
@@ -148,6 +158,7 @@ const catalogReport = {
   key: "explicit.stat_catalog_only",
   en: "Allocates Catalog Only",
   context: "explicit",
+  source: "trade-api",
 };
 await send({ type: "POE2ZH_REPORT_MISSING", reports: [catalogReport] });
 health = await send({ type: "POE2ZH_GET_HEALTH" });
@@ -158,6 +169,8 @@ const bilingualReport = {
   key: "# 元素抗性 (# total Elemental Resistances)",
   en: "# 元素抗性 (# total Elemental Resistances)",
   context: "filter-panel",
+  region: "filter-panel",
+  source: "dom-static-ui",
 };
 await send({ type: "POE2ZH_REPORT_MISSING", reports: [bilingualReport] });
 health = await send({ type: "POE2ZH_GET_HEALTH" });
@@ -168,6 +181,7 @@ const unknownNormalDisplayReport = {
   key: "Unverified Bombard Crossbow",
   en: "Unverified Bombard Crossbow",
   context: "fetch:typeLine:normal-display-unresolved",
+  source: "trade-api",
 };
 await send({ type: "POE2ZH_REPORT_MISSING", reports: [unknownNormalDisplayReport] });
 health = await send({ type: "POE2ZH_GET_HEALTH" });
@@ -179,6 +193,39 @@ assert.equal(
   ),
   true,
   "未知普通物品展示模板必须保留在漏译队列",
+);
+
+stores.local.missingRecords["ui:Legacy Typed Dropdown Fragment"] = {
+  id: "ui:Legacy Typed Dropdown Fragment",
+  type: "ui",
+  key: "Legacy Typed Dropdown Fragment",
+  en: "Legacy Typed Dropdown Fragment",
+  context: "dropdown-option",
+  seenCount: 1,
+};
+health = await send({ type: "POE2ZH_GET_HEALTH" });
+assert.equal(
+  health.records.some((entry) => entry.key === "Legacy Typed Dropdown Fragment"),
+  false,
+  "升级后必须清理无法验证来源的旧版下拉输入污染",
+);
+
+const recordsBeforeUntrusted = health.records.length;
+await send({
+  type: "POE2ZH_REPORT_MISSING",
+  reports: [{
+    type: "ui",
+    key: "Untrusted Typed Fragment",
+    en: "Untrusted Typed Fragment",
+    context: "dropdown-option",
+  }],
+});
+health = await send({ type: "POE2ZH_GET_HEALTH" });
+assert.equal(health.records.length, recordsBeforeUntrusted);
+assert.equal(
+  health.records.some((entry) => entry.key === "Untrusted Typed Fragment"),
+  false,
+  "后台必须拒绝没有可信来源元数据的 DOM 报告",
 );
 
 console.log("background-smoke-test: ok");

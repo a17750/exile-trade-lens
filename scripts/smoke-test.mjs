@@ -16,6 +16,9 @@ const remoteManifest = JSON.parse(
 const translationSource = JSON.parse(
   fs.readFileSync(path.join(root, "sources/translations.zh-TW.json"), "utf8"),
 );
+const extensionManifest = JSON.parse(
+  fs.readFileSync(path.join(root, "extension/manifest.json"), "utf8"),
+);
 
 for (const relativePath of ["scripts/build-data.mjs", "extension/page/ajax-hooker.js"]) {
   assert.doesNotMatch(
@@ -25,8 +28,16 @@ for (const relativePath of ["scripts/build-data.mjs", "extension/page/ajax-hooke
   );
 }
 const bridgeSource = fs.readFileSync(path.join(root, "extension/content/bridge.js"), "utf8");
-assert.match(bridgeSource, /knownRenderedTranslations\.has\(en\)/);
+assert.match(bridgeSource, /knownRenderedTranslations\.has\(text\)/);
 assert.match(bridgeSource, /exactConflicts/);
+assert.match(bridgeSource, /missingPolicy\.createDomGuard/);
+assert.equal(extensionManifest.version, "0.5.5");
+for (const contentScript of extensionManifest.content_scripts) {
+  assert.ok(
+    contentScript.js.includes("shared/missing-report-policy.js"),
+    "MAIN 和隔离环境都必须先加载漏译采集策略",
+  );
+}
 
 assert.equal(dataset.schemaVersion, 1);
 assert.equal(remoteManifest.datasetVersion, dataset.datasetVersion);
@@ -117,6 +128,11 @@ const context = vm.createContext({
   },
 });
 vm.runInContext(
+  fs.readFileSync(path.join(root, "extension/shared/missing-report-policy.js"), "utf8"),
+  context,
+  { filename: "missing-report-policy.js" },
+);
+vm.runInContext(
   fs.readFileSync(path.join(root, "extension/page/trade-hook.js"), "utf8"),
   context,
   { filename: "trade-hook.js" },
@@ -157,6 +173,22 @@ const itemResponse = {
 };
 await itemRequest.response(itemResponse);
 assert.match(JSON.parse(itemResponse.responseText).result[0].entries[0].text, new RegExp(itemZh));
+
+const typeOnlyCatalogRequest = { url: "https://www.pathofexile.com/api/trade2/data/items" };
+hook(typeOnlyCatalogRequest);
+const typeOnlyCatalogResponse = {
+  responseText: JSON.stringify({
+    result: [{ id: "weapon", entries: [
+      { type: "Sinister Quarterstaff" },
+      { type: "Vile Greataxe" },
+    ] }],
+  }),
+};
+await typeOnlyCatalogRequest.response(typeOnlyCatalogResponse);
+const typeOnlyEntries = JSON.parse(typeOnlyCatalogResponse.responseText).result[0].entries;
+assert.equal(typeOnlyEntries[0].text, "邪惡細杖 (Sinister Quarterstaff)");
+assert.equal(typeOnlyEntries[1].text, "邪惡巨斧 (Vile Greataxe)");
+assert.doesNotMatch(JSON.stringify(typeOnlyEntries), /undefined/i);
 
 const partialCatalogRequest = { url: "https://www.pathofexile.com/api/trade2/data/items" };
 hook(partialCatalogRequest);

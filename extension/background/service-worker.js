@@ -1,3 +1,5 @@
+importScripts("../shared/missing-report-policy.js");
+
 const ALARM_NAME = "poe2zh-data-update";
 const MAX_MISSING_RECORDS = 2_000;
 const ALLOWED_MISSING_TYPES = new Set(["stat", "item", "static", "filter", "property", "ui"]);
@@ -213,13 +215,23 @@ async function updateBadge(records) {
   });
 }
 
-function sanitizeReport(report) {
+function sanitizeReport(report, { requireTrustedSource = true } = {}) {
   const type = String(report?.type ?? "");
   const key = String(report?.key ?? "").trim().slice(0, 300);
   const en = String(report?.en ?? "").trim().slice(0, 800);
   const context = String(report?.context ?? "").trim().slice(0, 200);
-  if (!ALLOWED_MISSING_TYPES.has(type) || !key || !en) return null;
-  return { type, key, en, context };
+  const region = String(report?.region ?? "").trim().slice(0, 80);
+  const source = String(report?.source ?? "").trim().slice(0, 80);
+  const sanitized = { type, key, en, context, region, source };
+  if (
+    !ALLOWED_MISSING_TYPES.has(type) ||
+    !key ||
+    !en ||
+    (requireTrustedSource && !POE2ZHMissingReportPolicy.classifyReport(sanitized).allow)
+  ) {
+    return null;
+  }
+  return sanitized;
 }
 
 async function recordMissing(reports) {
@@ -263,7 +275,12 @@ async function reconcileMissing() {
     const catalogOnly =
       ["stat", "item", "static", "filter"].includes(record.type) &&
       !String(record.context ?? "").startsWith("fetch:");
-    if (catalogOnly || isBilingualUiArtifact(record) || lookupTranslation(dataset, record.type, record.key, renderedUiTexts)) {
+    if (
+      POE2ZHMissingReportPolicy.shouldDiscardStoredReport(record) ||
+      catalogOnly ||
+      isBilingualUiArtifact(record) ||
+      lookupTranslation(dataset, record.type, record.key, renderedUiTexts)
+    ) {
       delete missingRecords[id];
       resolved += 1;
     }
@@ -287,7 +304,9 @@ function validateManualTranslation(en, translation) {
 }
 
 async function saveOverride(payload) {
-  const report = sanitizeReport(payload);
+  // Saving is an explicit user action and must remain compatible with trusted
+  // records created before source metadata was introduced.
+  const report = sanitizeReport(payload, { requireTrustedSource: false });
   const translation = String(payload?.translation ?? "").trim();
   if (!report) return { ok: false, message: "修正项目格式不正确" };
   const error = validateManualTranslation(report.en, translation);
@@ -416,12 +435,12 @@ async function ensureAlarm() {
 
 chrome.runtime.onInstalled.addListener(() => {
   ensureAlarm();
-  updateBadge();
+  reconcileMissing().catch(console.error);
   checkForUpdates();
 });
 chrome.runtime.onStartup.addListener(() => {
   ensureAlarm();
-  updateBadge();
+  reconcileMissing().catch(console.error);
 });
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === ALARM_NAME) checkForUpdates();
@@ -459,4 +478,4 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 ensureAlarm();
-updateBadge();
+reconcileMissing().catch(console.error);

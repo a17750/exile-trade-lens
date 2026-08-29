@@ -4,10 +4,10 @@
 
 ## 当前可交付版本
 
-- 扩展版本：`0.5.4`
+- 扩展版本：`0.5.5`
 - 安装目录：`extension/`
-- 压缩包：`poe2zh-extension-0.5.4.zip`
-- 词库版本：`project-zhTW-1.labels-2.manual-7.terms-1.names-e10b747.ggpk-2ca5516d.tw-22d97c72.data-cd3674f7`
+- 压缩包：`poe2zh-extension-0.5.5.zip`
+- 词库版本：`project-zhTW-1.labels-2.manual-7.terms-1.names-e10b747.ggpk-2ca5516d.tw-7ed24b13.data-f6bead28`
 - 权限：`storage`、`alarms`
 - 网站范围：POE 官网、GitHub Raw、jsDelivr
 
@@ -32,6 +32,16 @@
 
 这些数字表示当前官方目录的静态覆盖，不等同于所有网页情境都已人工浏览验证。真实页面仍需在
 每次游戏或交易站改版后回归。
+
+## 本轮完成：输入污染守门与目录双语修复
+
+- 新增 `extension/shared/missing-report-policy.js`，统一管理页面 API、DOM 和后台三层漏译来源。
+- 输入型 combobox、autocomplete、ARIA 关联浮层和输入后动态下拉不会进入漏译记录。
+- 不读取或保存输入值；只在内存中保留输入控件引用与事件时间。
+- 静态 DOM 候选必须稳定 1.2 秒，并由后台再次校验来源和区域。
+- 自动清理旧版本无来源的 `ui + dropdown-option` 污染记录。
+- 修复官方物品目录只有 `type`、没有 `text` 时出现 `(undefined)`；双语英文回退使用
+  `text ?? name + type`，全局格式化器也拒绝空英文。
 
 ## 本轮完成：官方客户端名称接入
 
@@ -122,7 +132,7 @@ node --check extension/background/service-worker.js
 
 ## 尚未完成
 
-- 用真实 Chrome 重新加载 `0.5.4`，逐项展开全部筛选组并执行搜索结果回归。
+- 用真实 Chrome 重新加载 `0.5.5`，逐项展开全部筛选组并执行搜索结果回归。
 - 分析 `Words` 的类别和语言组合规则；当前安全策略只支持能够无缝整段覆盖的稀有名称。
 - 将 `Mods`、`Stats` 和 stat descriptions 关联，进一步提高剩余数值属性翻译准确率；装备前后缀名称配对已经完成。
 - 为 GGPK 规范化快照增加跨版本结构漂移门禁；当前已记录表哈希、行数和行宽。

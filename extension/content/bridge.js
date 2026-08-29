@@ -1,4 +1,7 @@
 (() => {
+  const missingPolicy = globalThis.POE2ZHMissingReportPolicy;
+  if (!missingPolicy) throw new Error("流亡譯鏡：漏譯採集策略未載入");
+
   const DEFAULT_SETTINGS = {
     enabled: true,
     mode: "bilingual",
@@ -9,6 +12,7 @@
   let dataset = null;
   let settings = DEFAULT_SETTINGS;
   let observer = null;
+  let domGuard = null;
   let exactTranslations = new Map();
   let exactConflicts = new Set();
   let knownRenderedTranslations = new Set();
@@ -58,6 +62,8 @@
     clearTimeout(missingTimer);
     missingTimer = null;
     pendingMissing.clear();
+    domGuard?.dispose();
+    domGuard = null;
     observer?.disconnect();
     observer = null;
     document.removeEventListener("poe2zh:missing", queueMissing);
@@ -92,6 +98,7 @@
     const report = event?.detail ?? event;
     const allowed = ["stat", "item", "static", "filter", "property", "ui"];
     if (!report || !allowed.includes(report.type)) return;
+    if (!missingPolicy.classifyReport(report).allow) return;
     const key = String(report.key ?? "").trim().slice(0, 300);
     const en = String(report.en ?? "").trim().slice(0, 800);
     if (!key || !en) return;
@@ -100,57 +107,30 @@
       key,
       en,
       context: String(report.context ?? "").slice(0, 200),
+      region: String(report.region ?? "").slice(0, 80),
+      source: String(report.source ?? "").slice(0, 80),
     });
     clearTimeout(missingTimer);
     missingTimer = setTimeout(flushMissing, 750);
   }
 
-  function uiContext(element) {
-    if (!element?.closest) return null;
-    if (
-      element.closest(
-        "footer, .search-results, .resultset, .results, .listing, [class*='itemPopup'], [data-poe2zh-ignore]",
-      )
-    ) {
-      return null;
-    }
-    if (element.closest("[role='option'], [role='listbox'], [class*='dropdown'], [class*='option']")) {
-      return "dropdown-option";
-    }
-    if (element.closest("[class*='filter'], .search-advanced-pane, .search-panel")) {
-      return "filter-panel";
-    }
-    if (element.closest("button")) return "button";
-    if (element.closest("label, [role='combobox'], [class*='select']")) return "form-control";
-    return null;
+  function ensureDomGuard() {
+    if (domGuard) return domGuard;
+    domGuard = missingPolicy.createDomGuard({
+      documentRef: document,
+      isKnownRendered: (text) => knownRenderedTranslations.has(text),
+      isAlreadyReported: (text) => reportedUiMissing.has(text),
+      markReported(text) {
+        reportedUiMissing.add(text);
+        document.documentElement.dataset.poe2zhUiMissing = String(reportedUiMissing.size);
+      },
+      onAccept: queueMissing,
+    });
+    return domGuard;
   }
 
-  function reportUiMissing(raw, element) {
-    const en = String(raw ?? "").replace(/\s+/g, " ").trim();
-    const context = uiContext(element);
-    const dynamicFragment =
-      context === "dropdown-option" &&
-      ((!/^[A-Za-z0-9]/.test(en) && /[A-Za-z]/.test(en)) ||
-        (/\)$/.test(en) && !/\(/.test(en)) ||
-        /\bundefined\b/i.test(en));
-    if (
-      !context ||
-      en.length < 2 ||
-      en.length > 160 ||
-      !/[A-Za-z]/.test(en) ||
-      /https?:\/\/|\S+@\S+/.test(en) ||
-      element?.closest?.("input, textarea, [contenteditable='true']") ||
-      dynamicFragment ||
-      knownRenderedTranslations.has(en) ||
-      (/[^\x00-\x7f]/.test(en) && /\([A-Za-z][^)]*\)/.test(en)) ||
-      /\(\s*undefined\s*\)$/i.test(en) ||
-      reportedUiMissing.has(en)
-    ) {
-      return;
-    }
-    reportedUiMissing.add(en);
-    queueMissing({ type: "ui", key: en, en, context });
-    document.documentElement.dataset.poe2zhUiMissing = String(reportedUiMissing.size);
+  function reportUiMissing(raw, element, readCurrent) {
+    ensureDomGuard().consider(raw, element, readCurrent);
   }
 
   async function flushMissing() {
@@ -254,7 +234,7 @@
     const original = node.nodeValue.trim();
     const translated = exactTranslations.get(original);
     if (!translated) {
-      reportUiMissing(original, node.parentElement);
+      reportUiMissing(original, node.parentElement, () => node.nodeValue);
       return;
     }
     const replacement = formatExact(original, translated);
@@ -279,7 +259,7 @@
         element.setAttribute(attribute, replacement);
         translatedValues.set(attribute, replacement);
       }
-      else reportUiMissing(original, element);
+      else reportUiMissing(original, element, () => element.getAttribute(attribute));
     }
   }
 
@@ -330,6 +310,9 @@
   });
 
   document.addEventListener("poe2zh:missing", queueMissing);
+  // Start listening for editable-control activity before the first DOM miss is seen.
+  // Otherwise the first autocomplete mutation could arrive before the guard exists.
+  ensureDomGuard();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", translateDocument, { once: true });

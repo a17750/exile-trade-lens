@@ -65,6 +65,12 @@ const context = vm.createContext({
 });
 
 vm.runInContext(
+  fs.readFileSync(path.join(root, "extension/shared/missing-report-policy.js"), "utf8"),
+  context,
+  { filename: "missing-report-policy.js" },
+);
+
+vm.runInContext(
   fs.readFileSync(path.join(root, "extension/content/bridge.js"), "utf8"),
   context,
   { filename: "bridge.js" },
@@ -76,10 +82,11 @@ assert.equal(typeof missingListener, "function");
 
 missingListener({
   detail: {
-    type: "ui",
+    type: "item",
     key: "Context Invalidation Test",
     en: "Context Invalidation Test",
-    context: "filter-panel",
+    context: "fetch:test",
+    source: "trade-api",
   },
 });
 

@@ -1,4 +1,7 @@
 (() => {
+  const missingPolicy = globalThis.POE2ZHMissingReportPolicy;
+  if (!missingPolicy) throw new Error("[POE2ZH] missing report policy was not loaded");
+
   let config = { dataset: null, enabled: true, mode: "bilingual" };
   const CONFIG_ELEMENT_ID = "poe2zh-shared-config";
   let markReady;
@@ -212,15 +215,24 @@
     reported.add(id);
     document.dispatchEvent(
       new CustomEvent("poe2zh:missing", {
-        detail: { type, key, en, context, datasetVersion: config.dataset?.datasetVersion },
+        detail: {
+          type,
+          key,
+          en,
+          context,
+          source: missingPolicy.API_SOURCE,
+          datasetVersion: config.dataset?.datasetVersion,
+        },
       }),
     );
   }
 
   function format(translated, original) {
-    if (!translated || translated === original) return original;
+    const source = String(original ?? "").trim();
+    if (!translated) return source;
+    if (!source || translated === source) return translated;
     return config.mode === "bilingual"
-      ? `${translated} (${original})`
+      ? `${translated} (${source})`
       : translated;
   }
 
@@ -257,7 +269,8 @@
     } else if (key === "items") {
       for (const group of response.result) {
         for (const entry of group.entries ?? []) {
-          const original = entry.text;
+          const originalText = String(entry.text ?? "").trim();
+          const original = originalText || [entry.name, entry.type].filter(Boolean).join(" ");
           const name = fixedNameTranslation(entry.name);
           const type = baseItemTranslation(entry.type);
           const direct = fixedNameTranslation(original) || baseItemTranslation(original);

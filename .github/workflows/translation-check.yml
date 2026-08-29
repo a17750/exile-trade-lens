@@ -39,6 +39,7 @@ jobs:
           node scripts/smoke-test.mjs
           node scripts/background-smoke-test.mjs
           node scripts/bridge-context-smoke-test.mjs
+          node scripts/missing-report-policy-test.mjs
 
       - name: Upload audit reports
         if: always()

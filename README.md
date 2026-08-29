@@ -9,6 +9,7 @@
 - 内置词库和远程 JSON 自动更新框架
 - SHA-256 校验、失败保留旧版词库
 - 漏译自动检测、去重和插件角标提示
+- 独立漏译采集守门模块：拒绝输入框、自动完成浮层、渲染片段和无可信来源的报告
 - 漏译管理页、手工修正、忽略和安全导出
 - 远程词库更新后的漏译自动消解
 - 页面环境与扩展环境之间的可靠词库桥接
@@ -28,6 +29,7 @@
 - [当前进度与后续交接](docs/PROGRESS.md)
 - [中英对照与目标数据架构](docs/TRANSLATION-ARCHITECTURE.md)
 - [翻译获取、候选生成与审核流程](docs/TRANSLATION-WORKFLOW.md)
+- [漏译采集守门策略](docs/MISSING-REPORT-POLICY.md)
 - [权限说明](docs/PERMISSIONS.md)
 - [隐私说明草案](docs/PRIVACY-DRAFT.md)
 
@@ -99,6 +101,7 @@ https://raw.githubusercontent.com/a17750/exile-trade-lens/main/extension/data/re
 - GGPK `BaseItemTypes`、`Words`、`Mods` 的 `ITEM` 前后缀名称和经过明确 ID 审核的 `ClientStrings` 展示模板已并入正式构建；其他 Mods 领域以及 stat description 的完整关联仍未完成。
 - 稀有名称只有在英文整段能被官方 `Words` 组件无缝覆盖时才翻译；魔法 `typeLine` 必须由官方前缀、底材、后缀全部覆盖。不完整或冲突的名称保留英文。
 - 普通品质物品只接受官方 `ClientStrings.QualityItem` 的完整模板匹配，例如 `Superior Bombard Crossbow`；其他未知展示修饰词保留英文并进入漏译记录。
+- `/data/items` 条目没有可选 `text` 字段时，会用 `name + type` 重建英文显示，不会再生成 `(undefined)`。
 - GitHub Actions 不读取本机游戏文件，只消费仓库内已经生成并审核的规范化 GGPK JSON；游戏版本更新后仍需维护者本机运行一次只读提取。
 - GitHub Actions 每日检查官方数据；只有质量门禁和测试通过后才会提交新的远程词库。
 - 官方交易站改变 API 或页面内部结构时，扩展适配代码仍需升级。
