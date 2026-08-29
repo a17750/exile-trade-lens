@@ -31,7 +31,7 @@ const bridgeSource = fs.readFileSync(path.join(root, "extension/content/bridge.j
 assert.match(bridgeSource, /knownRenderedTranslations\.has\(text\)/);
 assert.match(bridgeSource, /exactConflicts/);
 assert.match(bridgeSource, /missingPolicy\.createDomGuard/);
-assert.equal(extensionManifest.version, "0.5.5");
+assert.equal(extensionManifest.version, "0.5.6");
 for (const contentScript of extensionManifest.content_scripts) {
   assert.ok(
     contentScript.js.includes("shared/missing-report-policy.js"),

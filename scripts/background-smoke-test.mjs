@@ -8,6 +8,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const bundledRaw = fs.readFileSync(path.join(root, "extension/data/bundled.json"), "utf8");
 const stores = { local: {}, sync: {} };
 let onMessage;
+let onInstalled;
 let badgeText = "";
 
 function makeStorage(area) {
@@ -42,8 +43,9 @@ const chrome = {
     onAlarm: { addListener() {} },
   },
   runtime: {
+    getManifest() { return { version: "0.5.6" }; },
     getURL(file) { return `chrome-extension://test/${file}`; },
-    onInstalled: { addListener() {} },
+    onInstalled: { addListener(listener) { onInstalled = listener; } },
     onStartup: { addListener() {} },
     onMessage: { addListener(listener) { onMessage = listener; } },
   },
@@ -227,5 +229,12 @@ assert.equal(
   false,
   "后台必须拒绝没有可信来源元数据的 DOM 报告",
 );
+
+assert.equal(stores.local.missingRecordsBuildVersion, "0.5.6");
+assert.equal(typeof onInstalled, "function");
+await onInstalled({ reason: "update", previousVersion: "0.5.5" });
+health = await send({ type: "POE2ZH_GET_HEALTH" });
+assert.equal(health.records.length, 0, "扩展代码更新后必须清空上一版本的漏译记录");
+assert.equal(stores.local.missingRecordsLastReset.reason, "onInstalled:update");
 
 console.log("background-smoke-test: ok");

@@ -2,7 +2,10 @@ importScripts("../shared/missing-report-policy.js");
 
 const ALARM_NAME = "poe2zh-data-update";
 const MAX_MISSING_RECORDS = 2_000;
+const EXTENSION_CODE_VERSION = chrome.runtime.getManifest().version;
+const MISSING_RECORDS_BUILD_KEY = "missingRecordsBuildVersion";
 const ALLOWED_MISSING_TYPES = new Set(["stat", "item", "static", "filter", "property", "ui"]);
+let buildStateReady = null;
 const DEFAULT_SETTINGS = {
   enabled: true,
   mode: "bilingual",
@@ -213,6 +216,25 @@ async function updateBadge(records) {
   await chrome.action.setTitle({
     title: count ? `流亡译镜：${count} 条待处理漏译` : "流亡译镜 — PoE2 市集中文助手",
   });
+}
+
+async function ensureFreshReportState({ force = false, reason = "worker-start" } = {}) {
+  const stored = await chrome.storage.local.get(MISSING_RECORDS_BUILD_KEY);
+  if (!force && stored[MISSING_RECORDS_BUILD_KEY] === EXTENSION_CODE_VERSION) {
+    return { cleared: false, version: EXTENSION_CODE_VERSION };
+  }
+  const reset = {
+    version: EXTENSION_CODE_VERSION,
+    reason,
+    resetAt: new Date().toISOString(),
+  };
+  await chrome.storage.local.set({
+    missingRecords: {},
+    [MISSING_RECORDS_BUILD_KEY]: EXTENSION_CODE_VERSION,
+    missingRecordsLastReset: reset,
+  });
+  await updateBadge({});
+  return { cleared: true, ...reset };
 }
 
 function sanitizeReport(report, { requireTrustedSource = true } = {}) {
@@ -433,14 +455,20 @@ async function ensureAlarm() {
   if (!alarm) await chrome.alarms.create(ALARM_NAME, { periodInMinutes: 12 * 60 });
 }
 
-chrome.runtime.onInstalled.addListener(() => {
-  ensureAlarm();
-  reconcileMissing().catch(console.error);
-  checkForUpdates();
+chrome.runtime.onInstalled.addListener((details) => {
+  const force = details?.reason === "install" || details?.reason === "update";
+  buildStateReady = ensureFreshReportState({
+    force,
+    reason: `onInstalled:${details?.reason ?? "unknown"}`,
+  });
+  return buildStateReady
+    .then(() => Promise.all([ensureAlarm(), reconcileMissing(), checkForUpdates()]))
+    .catch(console.error);
 });
 chrome.runtime.onStartup.addListener(() => {
-  ensureAlarm();
-  reconcileMissing().catch(console.error);
+  return Promise.resolve(buildStateReady)
+    .then(() => Promise.all([ensureAlarm(), reconcileMissing()]))
+    .catch(console.error);
 });
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === ALARM_NAME) checkForUpdates();
@@ -448,25 +476,26 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   let operation;
+  const afterBuildState = (callback) => Promise.resolve(buildStateReady).then(callback);
   if (message?.type === "POE2ZH_GET_DATASET") {
-    operation = getDataset().then((dataset) => ({ ok: true, dataset }));
+    operation = afterBuildState(() => getDataset().then((dataset) => ({ ok: true, dataset })));
   } else if (message?.type === "POE2ZH_CHECK_UPDATE") {
-    operation = checkForUpdates(true);
+    operation = afterBuildState(() => checkForUpdates(true));
   } else if (message?.type === "POE2ZH_REPORT_MISSING") {
-    operation = recordMissing(message.reports);
+    operation = afterBuildState(() => recordMissing(message.reports));
   } else if (message?.type === "POE2ZH_GET_HEALTH") {
-    operation = reconcileMissing().then(getHealth);
+    operation = afterBuildState(() => reconcileMissing().then(getHealth));
   } else if (message?.type === "POE2ZH_SAVE_OVERRIDE") {
-    operation = saveOverride(message.payload);
+    operation = afterBuildState(() => saveOverride(message.payload));
   } else if (message?.type === "POE2ZH_IGNORE_MISSING") {
-    operation = setMissingIgnored(message.id, message.ignored);
+    operation = afterBuildState(() => setMissingIgnored(message.id, message.ignored));
   } else if (message?.type === "POE2ZH_DELETE_MISSING") {
-    operation = deleteMissing(message.id);
+    operation = afterBuildState(() => deleteMissing(message.id));
   } else if (message?.type === "POE2ZH_CLEAR_MISSING") {
-    operation = chrome.storage.local.set({ missingRecords: {} }).then(async () => {
+    operation = afterBuildState(() => chrome.storage.local.set({ missingRecords: {} }).then(async () => {
       await updateBadge({});
       return { ok: true };
-    });
+    }));
   } else {
     return false;
   }
@@ -478,4 +507,5 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 ensureAlarm();
-reconcileMissing().catch(console.error);
+buildStateReady = ensureFreshReportState();
+buildStateReady.then(() => reconcileMissing()).catch(console.error);

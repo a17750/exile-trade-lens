@@ -4,9 +4,9 @@
 
 ## 当前可交付版本
 
-- 扩展版本：`0.5.5`
+- 扩展版本：`0.5.6`
 - 安装目录：`extension/`
-- 压缩包：`poe2zh-extension-0.5.5.zip`
+- 压缩包：`poe2zh-extension-0.5.6.zip`
 - 词库版本：`project-zhTW-1.labels-2.manual-7.terms-1.names-e10b747.ggpk-2ca5516d.tw-7ed24b13.data-f6bead28`
 - 权限：`storage`、`alarms`
 - 网站范围：POE 官网、GitHub Raw、jsDelivr
@@ -42,6 +42,8 @@
 - 自动清理旧版本无来源的 `ui + dropdown-option` 污染记录。
 - 修复官方物品目录只有 `type`、没有 `text` 时出现 `(undefined)`；双语英文回退使用
   `text ?? name + type`，全局格式化器也拒绝空英文。
+- 每次扩展安装、升级或开发者模式重新加载都会清空上一代码批次的漏译记录；浏览器普通重启、
+  Service Worker 唤醒和远程词库更新不会清空当前批次。
 
 ## 本轮完成：官方客户端名称接入
 
@@ -132,7 +134,7 @@ node --check extension/background/service-worker.js
 
 ## 尚未完成
 
-- 用真实 Chrome 重新加载 `0.5.5`，逐项展开全部筛选组并执行搜索结果回归。
+- 用真实 Chrome 重新加载 `0.5.6`，逐项展开全部筛选组并执行搜索结果回归。
 - 分析 `Words` 的类别和语言组合规则；当前安全策略只支持能够无缝整段覆盖的稀有名称。
 - 将 `Mods`、`Stats` 和 stat descriptions 关联，进一步提高剩余数值属性翻译准确率；装备前后缀名称配对已经完成。
 - 为 GGPK 规范化快照增加跨版本结构漂移门禁；当前已记录表哈希、行数和行宽。
