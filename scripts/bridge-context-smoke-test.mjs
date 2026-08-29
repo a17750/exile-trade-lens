@@ -13,6 +13,9 @@ const sharedConfig = { textContent: "" };
 const documentElement = { dataset: {} };
 let reportAttempts = 0;
 let infoMessages = 0;
+const unhandledRejections = [];
+const onUnhandledRejection = (reason) => unhandledRejections.push(reason);
+process.on("unhandledRejection", onUnhandledRejection);
 
 const document = {
   readyState: "complete",
@@ -95,5 +98,7 @@ assert.equal(reportAttempts, 1);
 assert.equal(documentElement.dataset.poe2zhBridge, "reload-required");
 assert.equal(listeners.has("poe2zh:missing"), false);
 assert.equal(infoMessages, 1);
+assert.deepEqual(unhandledRejections, [], "上下文失效不得产生未处理 Promise 拒绝");
+process.off("unhandledRejection", onUnhandledRejection);
 
 console.log("bridge-context-smoke-test: ok");

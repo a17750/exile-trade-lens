@@ -77,6 +77,15 @@
     return true;
   }
 
+  function runSafely(task, label) {
+    Promise.resolve()
+      .then(task)
+      .catch((error) => {
+        if (handleContextInvalidation(error)) return;
+        console.error(`流亡譯鏡：${label}失敗`, error);
+      });
+  }
+
   async function sendRuntimeMessage(message) {
     if (!hasRuntimeContext()) {
       stopInvalidatedBridge();
@@ -111,7 +120,7 @@
       source: String(report.source ?? "").slice(0, 80),
     });
     clearTimeout(missingTimer);
-    missingTimer = setTimeout(flushMissing, 750);
+    missingTimer = setTimeout(() => runSafely(flushMissing, "漏譯上報"), 750);
   }
 
   function ensureDomGuard() {
@@ -305,7 +314,7 @@
     } else if (area === "local" && changes.localOverrides) {
       location.reload();
     } else if (area === "local" && changes.remoteDataset) {
-      publish().catch(console.error);
+      runSafely(publish, "詞庫更新");
     }
   });
 
@@ -317,5 +326,5 @@
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", translateDocument, { once: true });
   }
-  publish().catch(console.error);
+  runSafely(publish, "初始化");
 })();
