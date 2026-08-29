@@ -31,11 +31,15 @@ const bridgeSource = fs.readFileSync(path.join(root, "extension/content/bridge.j
 assert.match(bridgeSource, /knownRenderedTranslations\.has\(text\)/);
 assert.match(bridgeSource, /exactConflicts/);
 assert.match(bridgeSource, /missingPolicy\.createDomGuard/);
-assert.equal(extensionManifest.version, "0.5.10");
+assert.equal(extensionManifest.version, "0.5.11");
 const mainScript = extensionManifest.content_scripts.find((entry) => entry.world === "MAIN");
 const isolatedScript = extensionManifest.content_scripts.find((entry) => entry.world !== "MAIN");
 assert.ok(mainScript?.js.includes("page/trade-hook.js"), "MAIN 环境必须加载交易拦截器");
-assert.ok(mainScript?.js.includes("page/dropdown-search.js"), "MAIN 环境必须加载中文下拉搜索增强");
+assert.deepEqual(
+  mainScript?.js,
+  ["page/ajax-hooker.js", "page/trade-hook.js"],
+  "MAIN 环境只加载请求拦截闭环，不得叠加依赖页面框架私有字段的补丁",
+);
 assert.ok(isolatedScript?.js.includes("shared/missing-report-policy.js"), "隔离环境必须先加载漏译采集策略");
 assert.ok(isolatedScript?.js.includes("content/bridge.js"), "隔离环境必须加载 bridge");
 
@@ -184,7 +188,39 @@ const itemResponse = {
   }),
 };
 await itemRequest.response(itemResponse);
-assert.match(JSON.parse(itemResponse.responseText).result[0].entries[0].text, new RegExp(itemZh));
+const searchableItem = JSON.parse(itemResponse.responseText).result[0].entries[0];
+assert.match(searchableItem.text, new RegExp(itemZh));
+assert.equal(
+  searchableItem.type,
+  `${itemZh} (${itemEn})`,
+  "物品目录的 type 必须提供可逆的中文搜索别名",
+);
+
+const searchBody = {
+  query: {
+    name: "未改动的官方名称",
+    type: searchableItem.type,
+    stats: [{ type: "and", filters: [] }],
+  },
+  sort: { price: "asc" },
+};
+const searchRequest = {
+  url: "https://www.pathofexile.com/api/trade2/search/poe2/Runes%20of%20Aldur",
+  data: JSON.stringify(searchBody),
+};
+hook(searchRequest);
+const restoredSearchBody = JSON.parse(searchRequest.data);
+assert.equal(restoredSearchBody.query.type, itemEn, "发往官网的 type 必须还原为精确英文");
+assert.equal(restoredSearchBody.query.name, searchBody.query.name, "非别名字段不得被改写");
+assert.deepEqual(restoredSearchBody.query.stats, searchBody.query.stats, "筛选条件不得被改写");
+assert.deepEqual(restoredSearchBody.sort, searchBody.sort, "排序条件不得被改写");
+
+const malformedSearchRequest = {
+  url: "https://www.pathofexile.com/api/trade2/search/poe2/test",
+  data: "not-json",
+};
+hook(malformedSearchRequest);
+assert.equal(malformedSearchRequest.data, "not-json", "未知请求格式必须原样放行");
 
 const typeOnlyCatalogRequest = { url: "https://www.pathofexile.com/api/trade2/data/items" };
 hook(typeOnlyCatalogRequest);

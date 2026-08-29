@@ -54,7 +54,9 @@ typeLine: Composite Bow of the Fletcher -> 無完整鍵，保留英文
 
 2026-08-29 核對 [`Hsiung-Shao/poe-market-zh` 的 `page/stat-search.js`](https://github.com/Hsiung-Shao/poe-market-zh/blob/main/page/stat-search.js)。它不改寫官方選項的 `name/type/id`，而是在 MAIN world 對官網 Vue multiselect 的 `filteredOptions` watcher 增補顯示標籤命中的原始選項。這避免了中文或自訂 ID 被送進官方搜索 API。
 
-Exile Trade Lens 的 `page/dropdown-search.js` 採用同一安全邊界，但只實現雙語標籤的連續子字串命中；沒有移植其模糊評分、縮寫、多 token 或自訂分組功能。官網 Vue 結構不符時靜默退回原生搜尋。
+Exile Trade Lens 曾試做同類 `page/dropdown-search.js`，但 2026-08-29 真頁驗證發現目前官網生產構建沒有在物品輸入框或祖先節點暴露 `__vue__`。這條依賴框架私有欄位的路線已完整撤除，不作靜默兼容層保留。
+
+目前改為可逆資料邊界：本地目錄的已確認 `name/type` 使用「繁中（官方英文）」別名供官網原生過濾；發出 `/api/trade2/search/` 前僅按精確映射還原 `query.name/query.type`。這與社群 watcher 方案的共同安全邊界仍是“不把中文或自訂 ID 送給官方”，但不再依賴 Vue 內部結構，也不實作模糊評分、縮寫或猜測匹配。
 
 ## 本次實現的差異
 

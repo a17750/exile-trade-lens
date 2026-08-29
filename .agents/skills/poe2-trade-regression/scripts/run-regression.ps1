@@ -26,7 +26,6 @@ try {
   Invoke-Check 'data pipeline' 'node' @('scripts/pipeline-test.mjs')
   Invoke-Check 'item/filter/stat smoke tests' 'node' @('scripts/smoke-test.mjs')
   Invoke-Check 'Chinese item search cold-start test' 'node' @('scripts/search-cold-start-test.mjs')
-  Invoke-Check 'Chinese dropdown search behavior test' 'node' @('scripts/dropdown-search-test.mjs')
   Invoke-Check 'item panel label DOM test' 'node' @('scripts/item-label-dom-smoke-test.mjs')
   Invoke-Check 'background message tests' 'node' @('scripts/background-smoke-test.mjs')
   Invoke-Check 'page/background bridge tests' 'node' @('scripts/bridge-context-smoke-test.mjs')

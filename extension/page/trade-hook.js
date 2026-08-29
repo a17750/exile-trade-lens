@@ -31,6 +31,49 @@
   const reported = new Set();
   let componentIndexes = { version: null, words: null, withBaseItems: null };
   let statIndexes = { version: null, englishById: null, templates: null };
+  let catalogAliases = { version: null, englishByAlias: new Map() };
+
+  function catalogAliasIndex() {
+    const version = config.dataset?.datasetVersion;
+    if (catalogAliases.version !== version) {
+      catalogAliases = { version, englishByAlias: new Map() };
+    }
+    return catalogAliases.englishByAlias;
+  }
+
+  function searchableCatalogAlias(translated, english) {
+    const source = String(english ?? "").trim();
+    const target = String(translated ?? "").trim();
+    if (!source || !target || source === target) return source;
+    const alias = `${target} (${source})`;
+    catalogAliasIndex().set(alias, source);
+    return alias;
+  }
+
+  function restoreOfficialCatalogValue(value) {
+    return typeof value === "string"
+      ? catalogAliasIndex().get(value) ?? value
+      : value;
+  }
+
+  function restoreSearchRequest(request) {
+    if (!request.url.includes("/api/trade2/search/") || typeof request.data !== "string") {
+      return;
+    }
+    try {
+      const body = JSON.parse(request.data);
+      if (!body?.query || typeof body.query !== "object") return;
+      if (Object.hasOwn(body.query, "name")) {
+        body.query.name = restoreOfficialCatalogValue(body.query.name);
+      }
+      if (Object.hasOwn(body.query, "type")) {
+        body.query.type = restoreOfficialCatalogValue(body.query.type);
+      }
+      request.data = JSON.stringify(body);
+    } catch (_) {
+      // Never block an official search when the site changes its request format.
+    }
+  }
 
   function statIndex() {
     const version = config.dataset?.datasetVersion;
@@ -276,16 +319,20 @@
     } else if (key === "items") {
       for (const group of response.result) {
         for (const entry of group.entries ?? []) {
+          const originalName = String(entry.name ?? "").trim();
+          const originalType = String(entry.type ?? "").trim();
           const originalText = String(entry.text ?? "").trim();
-          const original = originalText || [entry.name, entry.type].filter(Boolean).join(" ");
-          const name = fixedNameTranslation(entry.name);
-          const type = baseItemTranslation(entry.type);
+          const original = originalText || [originalName, originalType].filter(Boolean).join(" ");
+          const name = fixedNameTranslation(originalName);
+          const type = baseItemTranslation(originalType);
           const direct = fixedNameTranslation(original) || baseItemTranslation(original);
-          const allPartsTranslated = (!entry.name || name) && (!entry.type || type);
+          const allPartsTranslated = (!originalName || name) && (!originalType || type);
           const translated = direct || (
             allPartsTranslated ? [name, type].filter(Boolean).join(" ") : null
           );
           if (translated) entry.text = format(translated, original);
+          if (name) entry.name = searchableCatalogAlias(name, originalName);
+          if (type) entry.type = searchableCatalogAlias(type, originalType);
         }
       }
     } else if (key === "static") {
@@ -465,6 +512,7 @@
 
   ajaxHooker.hook((request) => {
     if (!request.url.includes("/api/trade2/")) return;
+    restoreSearchRequest(request);
     request.response = async (response) => {
       const key = endpointKey(request.url);
       if (!config.dataset) {

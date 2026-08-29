@@ -27,7 +27,7 @@ powershell -ExecutionPolicy Bypass -File .agents/skills/poe2-trade-regression/sc
 powershell -ExecutionPolicy Bypass -File .agents/skills/poe2-trade-regression/scripts/run-regression.ps1 -SkipBuild
 ```
 
-执行顺序是：运行时语法检查 → 数据构建 → 质量门禁 → 数据管线 → 物品/筛选/属性 smoke test → 中文物品搜索冷启动测试 → 中文下拉搜索行为测试 → background test → page/background bridge test → `git diff --check`。任一命令失败都视为阻断，不得通过手工改生成文件掩盖失败。
+执行顺序是：运行时语法检查 → 数据构建 → 质量门禁 → 数据管线 → 物品/筛选/属性 smoke test（包含中文目录别名与搜索请求英文还原）→ 中文物品搜索冷启动测试 → background test → page/background bridge test → `git diff --check`。任一命令失败都视为阻断，不得通过手工改生成文件掩盖失败。
 
 ## 检查矩阵
 
@@ -35,7 +35,7 @@ powershell -ExecutionPolicy Bypass -File .agents/skills/poe2-trade-regression/sc
 | --- | --- | --- |
 | 物品 | 已知名称、底材、固定名和完整稀有名称仍可翻译；未知名称保留英文；不出现 `(undefined)` 或中英拼接 | `smoke-test.mjs`、`item-label-dom-smoke-test.mjs`、质量报告 |
 | 中文物品搜索 | 扩展冷启动时，物品目录必须等词库就绪后再交给页面，不能先缓存英文目录 | `search-cold-start-test.mjs` |
-| 中文下拉匹配 | 中文查询按双语显示标签补充原始选项对象；不得修改官方 `name/type/id`，英文原生结果不得重排或重复 | `dropdown-search-test.mjs` |
+| 中文下拉匹配 | 目录 `name/type` 使用可逆双语别名供官网原生过滤；发出 `/search` 前必须精确还原官方英文，未知格式原样放行 | `smoke-test.mjs` |
 | 筛选项 | 分组、选项和动态下拉值都是字符串；缺失映射不会把 `undefined` 写进 DOM | `smoke-test.mjs`、DOM 采集规则 |
 | 属性/词缀 | 按稳定 stat id 绑定；数值和占位符保留；替代英文渲染只对声明的 id 生效；未知 id 回退原文 | `smoke-test.mjs`、`pipeline-test.mjs` |
 | `/fetch` | 单个坏条目不会取消同批其他条目的翻译；可选字段异常时保留源对象 | `trade-hook.js`、`smoke-test.mjs` |
