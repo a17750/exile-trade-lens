@@ -32,6 +32,7 @@
   const CONFIG_ELEMENT_ID = "poe2zh-shared-config";
   const TRANSLATABLE_ATTRIBUTES = ["placeholder", "title", "aria-label"];
   const RESULT_TEXT_SELECTORS = ".search-results, .resultset, .results, .listing, [class*='itemPopup']";
+  const RESULT_LABELS = new Set(["Item Level", "Requires"]);
   const UI_FALLBACK_TRANSLATIONS = {
     "Clear Filter Group": "清除篩選群組",
     Count: "數量",
@@ -243,18 +244,21 @@
   function translateTextNode(node) {
     if (!settings.enabled || !exactTranslations.size || !node.nodeValue?.trim()) return;
     // Result cards are translated from /fetch using field-specific domains. Applying
-    // the legacy flat exact map here can attach an unrelated stat translation to a
-    // result mod, so the DOM fallback must never rewrite result text.
-    if (node.parentElement?.closest?.(RESULT_TEXT_SELECTORS)) return;
+    // the legacy flat exact map can attach an unrelated stat translation to a result
+    // mod, so only the small, explicitly verified item-panel label allowlist may pass.
     if (translatedTextValues.get(node) === node.nodeValue) return;
     const original = node.nodeValue.trim();
-    const translated = exactTranslations.get(original);
+    const resultLabel = original.replace(/:$/, "");
+    const inResult = node.parentElement?.closest?.(RESULT_TEXT_SELECTORS);
+    if (inResult && !RESULT_LABELS.has(resultLabel)) return;
+    const lookup = inResult ? resultLabel : original;
+    const translated = exactTranslations.get(lookup);
     if (!translated) {
       reportUiMissing(original, node.parentElement, () => node.nodeValue);
       return;
     }
-    const replacement = formatExact(original, translated);
-    node.nodeValue = node.nodeValue.replace(original, replacement);
+    const replacement = formatExact(lookup, translated);
+    node.nodeValue = node.nodeValue.replace(lookup, replacement);
     translatedTextValues.set(node, node.nodeValue);
   }
 
