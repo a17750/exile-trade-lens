@@ -24,6 +24,12 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Install extension build dependencies
+        run: npm ci
+
+      - name: Build TypeScript extension
+        run: npm run build:extension
+
       - name: Verify locked external sources
         run: node scripts/sync-external-sources.mjs
 
