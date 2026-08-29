@@ -6,6 +6,7 @@ import {
   extensionPath,
   readJson,
   reportsPath,
+  rootPath,
   sourcesPath,
   writeJson,
 } from "./lib/project.mjs";
@@ -25,6 +26,7 @@ import {
 } from "./lib/audit.mjs";
 
 const translations = readJson(path.join(sourcesPath, "translations.zh-TW.json"));
+const uiSource = readJson(path.join(rootPath, "data", "ui.zh-TW.json"));
 const verifiedLabels = readJson(path.join(sourcesPath, "verified-labels.zh-TW.json"));
 const manualOverrides = readJson(path.join(sourcesPath, "manual-overrides.json"));
 const verifiedStatRenderings = readJson(
@@ -46,6 +48,9 @@ const baseline = readJson(path.join(sourcesPath, "upstream-baseline.en.json"), n
 
 if (translations.schemaVersion !== 1 || translations.locale !== "zh-TW") {
   throw new Error("sources/translations.zh-TW.json 格式不兼容");
+}
+if (uiSource.schemaVersion !== 1 || uiSource.locale !== "zh-TW") {
+  throw new Error("data/ui.zh-TW.json 格式不兼容");
 }
 if (verifiedLabels.schemaVersion !== 1 || verifiedLabels.locale !== "zh-TW") {
   throw new Error("sources/verified-labels.zh-TW.json 格式不兼容");
@@ -109,7 +114,7 @@ const properties = {
 };
 const allocates = clone(translations.allocates ?? {});
 const ui = {
-  ...clone(translations.ui ?? {}),
+  ...clone(uiSource.entries ?? {}),
   ...clone(verifiedLabels.ui ?? {}),
 };
 const exact = clone(translations.exact ?? {});
@@ -353,6 +358,7 @@ const datasetContent = {
   source: "project-owned translation pipeline",
   sources: [
     "sources/translations.zh-TW.json",
+    "data/ui.zh-TW.json",
     "sources/verified-labels.zh-TW.json",
     "sources/manual-overrides.json",
     "sources/verified-stat-renderings.zh-TW.json",
