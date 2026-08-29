@@ -31,7 +31,7 @@ const bridgeSource = fs.readFileSync(path.join(root, "extension/content/bridge.j
 assert.match(bridgeSource, /knownRenderedTranslations\.has\(text\)/);
 assert.match(bridgeSource, /exactConflicts/);
 assert.match(bridgeSource, /missingPolicy\.createDomGuard/);
-assert.equal(extensionManifest.version, "0.5.12");
+assert.equal(extensionManifest.version, "0.5.13");
 const mainScript = extensionManifest.content_scripts.find((entry) => entry.world === "MAIN");
 const isolatedScript = extensionManifest.content_scripts.find((entry) => entry.world !== "MAIN");
 assert.ok(mainScript?.js.includes("page/trade-hook.js"), "MAIN 环境必须加载交易拦截器");
@@ -118,10 +118,12 @@ const context = vm.createContext({
   setTimeout,
   localStorage: {
     removed: [],
-    values: new Map([
-      ["lscache-trade2items", "stale-catalog"],
-      ["lscache-trade2items-cacheexpiration", "stale-expiry"],
-    ]),
+    values: new Map(
+      ["items", "stats", "data", "filters"].flatMap((key) => [
+        [`lscache-trade2${key}`, `stale-${key}`],
+        [`lscache-trade2${key}-cacheexpiration`, `stale-${key}-expiry`],
+      ]),
+    ),
     getItem(key) {
       return this.values.get(key) ?? null;
     },
@@ -173,23 +175,40 @@ vm.runInContext(
 
 assert.equal(
   context.localStorage.getItem("poe2zh-trade2-catalog-schema"),
-  "search-alias-v1",
-  "可搜索目录结构变化时必须写入精确版本标记",
+  "translated-api-v1",
+  "翻译目录结构变化时必须写入精确版本标记",
 );
-assert.equal(
-  context.localStorage.getItem("lscache-trade2items"),
-  null,
-  "必须清除官网旧物品目录，确保 /data/items 重新进入翻译拦截器",
-);
-assert.equal(
-  context.localStorage.getItem("lscache-trade2items-cacheexpiration"),
-  null,
-  "物品目录过期键必须与目录一起清除",
-);
+for (const key of ["items", "stats", "data", "filters"]) {
+  assert.equal(
+    context.localStorage.getItem(`lscache-trade2${key}`),
+    null,
+    `必须清除官网旧 ${key} 目录`,
+  );
+  assert.equal(
+    context.localStorage.getItem(`lscache-trade2${key}-cacheexpiration`),
+    null,
+    `必须清除官网旧 ${key} 目录过期键`,
+  );
+}
 assert.deepEqual(
   context.localStorage.removed,
-  ["lscache-trade2items", "lscache-trade2items-cacheexpiration"],
-  "不得清除物品目录以外的官网缓存",
+  ["items", "stats", "data", "filters"].flatMap((key) => [
+    `lscache-trade2${key}`,
+    `lscache-trade2${key}-cacheexpiration`,
+  ]),
+  "只能清除扩展实际翻译的四类官网目录缓存",
+);
+
+const removedAfterFirstLoad = context.localStorage.removed.length;
+vm.runInContext(
+  fs.readFileSync(path.join(root, "extension/page/trade-hook.js"), "utf8"),
+  context,
+  { filename: "trade-hook-second-load.js" },
+);
+assert.equal(
+  context.localStorage.removed.length,
+  removedAfterFirstLoad,
+  "同一目录结构版本再次加载时不得重复清除官网缓存",
 );
 
 sharedConfig.textContent = JSON.stringify({

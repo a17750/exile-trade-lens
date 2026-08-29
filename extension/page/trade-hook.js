@@ -1,15 +1,18 @@
 (() => {
   const API_SOURCE = "trade-api";
-  const CATALOG_CACHE_SCHEMA = "search-alias-v1";
+  const CATALOG_CACHE_SCHEMA = "translated-api-v1";
+  const OFFICIAL_CATALOG_CACHE_KEYS = ["items", "stats", "data", "filters"];
 
-  // The official trade page caches /data/items before Vue is created. Invalidate
-  // only that catalog once when our searchable catalog schema changes; otherwise
-  // an extension reload keeps using the previous English-only name/type fields.
+  // The official page caches every translated /data/* response before Vue is
+  // created. Invalidate only those four catalogs once when our response schema
+  // changes; otherwise a selected option can be rebuilt from stale English data.
   try {
     const markerKey = "poe2zh-trade2-catalog-schema";
     if (localStorage.getItem(markerKey) !== CATALOG_CACHE_SCHEMA) {
-      localStorage.removeItem("lscache-trade2items");
-      localStorage.removeItem("lscache-trade2items-cacheexpiration");
+      for (const key of OFFICIAL_CATALOG_CACHE_KEYS) {
+        localStorage.removeItem(`lscache-trade2${key}`);
+        localStorage.removeItem(`lscache-trade2${key}-cacheexpiration`);
+      }
       localStorage.setItem(markerKey, CATALOG_CACHE_SCHEMA);
     }
   } catch (_) {
