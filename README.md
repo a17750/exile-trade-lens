@@ -22,7 +22,7 @@
 - 只读提取本机客户端英/繁中 `BaseItemTypes`、`Words`、`Mods` 装备前后缀和 `ClientStrings` 展示模板，生成可审计的官方名称数据
 - 基础类型、固定名称、稀有名称组件和魔法装备前后缀分域查找；仅在完整名称可由官方组件覆盖时组合翻译
 - 已翻译的双语文本不会再次被 DOM 自检当作漏译上报
-- `sources/manual-overrides.json` 保存第三方数据缺失或语义过期时的人工校正
+- `data/manual-overrides.json` 保存第三方数据缺失或语义过期时的人工校正
 
 完整说明：
 
@@ -100,7 +100,7 @@ https://raw.githubusercontent.com/a17750/exile-trade-lens/main/extension/data/re
 
 ## 当前限制
 
-- 当前基础译文已一次性迁移到 `sources/translations.zh-TW.json`，后续只在项目数据源中维护。
+- 当前基础译文已一次性迁移到 `data/translations.zh-TW.json`，后续只在项目数据源中维护。
 - GGPK `BaseItemTypes`、`Words`、`Mods` 的 `ITEM` 前后缀名称和经过明确 ID 审核的 `ClientStrings` 展示模板已并入正式构建；其他 Mods 领域以及 stat description 的完整关联仍未完成。
 - 稀有名称只有在英文整段能被官方 `Words` 组件无缝覆盖时才翻译；魔法 `typeLine` 必须由官方前缀、底材、后缀全部覆盖。不完整或冲突的名称保留英文。
 - 普通品质物品只接受官方 `ClientStrings.QualityItem` 的完整模板匹配，例如 `Superior Bombard Crossbow`；其他未知展示修饰词保留英文并进入漏译记录。

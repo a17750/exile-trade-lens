@@ -63,4 +63,4 @@
 
 ## Stat 渲染模块拆分
 
-`extension/page/stat-rendering.js` 独立承担模板形状匹配和已验证 `renderings` 选择；`trade-hook.js` 只负责请求拦截、ID 关联和数值替换。后续新增单复数、标点或官方特殊句式时，只能在 `sources/verified-stat-renderings.zh-TW.json` 登记同一 stable ID 的证据，再由这个模块处理，不把渲染分支散落回拦截器。
+`extension/page/stat-rendering.js` 独立承担模板形状匹配和已验证 `renderings` 选择；`trade-hook.js` 只负责请求拦截、ID 关联和数值替换。后续新增单复数、标点或官方特殊句式时，只能在 `data/verified-stat-renderings.zh-TW.json` 登记同一 stable ID 的证据，再由这个模块处理，不把渲染分支散落回拦截器。

@@ -42,7 +42,7 @@
 `explicit.stat_3885634897` 的目錄模板是 `#% chance to Poison on Hit with this weapon`，數值為
 100% 的物品卻顯示 `Always Poison on Hit with this weapon`。這兩句形狀不同，不能用一般 `#` 替換處理。
 
-這類資料寫入 `sources/verified-stat-renderings.zh-TW.json`，並保留英服與台服 `/fetch` 的
+這類資料寫入 `data/verified-stat-renderings.zh-TW.json`，並保留英服與台服 `/fetch` 的
 query ID、item ID、原始 description 和相同 hash。構建後只把運行所需內容掛在原 stat ID 下：
 
 ```json
@@ -124,7 +124,7 @@ query ID、item ID、原始 description 和相同 hash。構建後只把運行�
 
 1. 英服/台服官方 Trade API：目錄資料按穩定 ID 對齊；特殊渲染必須由兩端 `/fetch` 的同 hash 證明。
 2. 本機 `Content.ggpk`：基礎物品、技能名稱、客戶端標籤和命名組件，只讀解析，不修改遊戲檔案。
-3. 專案人工覆蓋：`sources/manual-overrides.json`，必須寫 `expectedEnglish`。
+3. 專案人工覆蓋：`data/manual-overrides.json`，必須寫 `expectedEnglish`。
 4. 專案詞庫與受鎖定版本的第三方名稱表：只作缺口補全和衝突審計。
 5. 組件拼接或未翻譯回退：只在證據不足時使用，並進入漏譯報告。
 
@@ -176,7 +176,7 @@ query ID、item ID、原始 description 和相同 hash。構建後只把運行�
 
 ### 4.4 單複數與其他官方渲染變體
 
-同一個 stable stat ID 可能有不同的官方渲染文字，例如 `Has 1 Charm Slot` 與 `Has 2 Charm Slots`。這些不是新的詞條，也不能靠英語複數規則猜測；它們必須在 `sources/verified-stat-renderings.zh-TW.json` 以同一 ID 的 `variants` 獨立登記，並保留英服/台服官方 `/fetch` 的成對證據。
+同一個 stable stat ID 可能有不同的官方渲染文字，例如 `Has 1 Charm Slot` 與 `Has 2 Charm Slots`。這些不是新的詞條，也不能靠英語複數規則猜測；它們必須在 `data/verified-stat-renderings.zh-TW.json` 以同一 ID 的 `variants` 獨立登記，並保留英服/台服官方 `/fetch` 的成對證據。
 
 運行時先在該 ID 的已驗證 `renderings` 中匹配完整英文形狀，再回退到目錄主模板。變體只影響顯示和數值回填，不會進入全局 `exact` 詞典，也不會被其他 stat ID 借用。沒有證據或形狀不一致時保留英文並上報。
 

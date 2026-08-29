@@ -13,7 +13,7 @@
 
 | 文件 | 只负责什么 |
 | --- | --- |
-| `sources/verified-stat-renderings.zh-TW.json` | 人工确认的变体、繁中译文及英/台官方证据 |
+| `data/verified-stat-renderings.zh-TW.json` | 人工确认的变体、繁中译文及英/台官方证据 |
 | `extension/page/stat-rendering.js` | 模板形状匹配和按 stat ID 选择变体 |
 | `extension/page/trade-hook.js` | API 拦截、hash 与 stat ID 关联、数值回填 |
 | `scripts/stat-rendering-test.mjs` | 复数、占位符和错误 ID 的回归测试 |

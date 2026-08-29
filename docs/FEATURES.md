@@ -31,7 +31,7 @@
 
 ### 3. 词库构建
 
-- `scripts/build-data.mjs` 读取一次性从历史 `trade.js` 迁移的 `sources/translations.zh-TW.json`，仅作为低优先级兼容基线；官方英文接口和稳定 ID 数据优先于它。
+- `scripts/build-data.mjs` 读取一次性从历史 `trade.js` 迁移的 `data/translations.zh-TW.json`，仅作为低优先级兼容基线；官方英文接口和稳定 ID 数据优先于它。
 - 固定网页 UI 只维护在 `data/ui.zh-TW.json`，由构建脚本写入扩展词库的 `ui` 区域，不参与物品、词缀和属性的稳定 ID 对照。
 - 本地只读 GGPK 提取结果统一维护在 `data/ggpk.json`，并在文件内部按基础物品、名称组件、装备前后缀、客户端字符串和来源清单分域，便于识别官方游戏文件来源。
 - 国际服与台服官方 Trade API 在稳定 ID 对齐并通过质量门禁后写入 `data/trade-api.json`；接口失败时保留并使用最近一次有效快照，不以失败响应覆盖缓存。

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 export const scriptsPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const rootPath = path.resolve(scriptsPath, "..");
-export const sourcesPath = path.join(rootPath, "sources");
+export const dataPath = path.join(rootPath, "data");
 export const reportsPath = path.join(rootPath, "reports");
 export const extensionPath = path.join(rootPath, "extension");
 

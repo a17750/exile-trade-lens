@@ -7,7 +7,7 @@ import {
   readJson,
   reportsPath,
   rootPath,
-  sourcesPath,
+  dataPath,
   writeJson,
   writeJsonAtomic,
 } from "./lib/project.mjs";
@@ -27,18 +27,18 @@ import {
   diffSnapshots,
 } from "./lib/audit.mjs";
 
-const translations = readJson(path.join(sourcesPath, "translations.zh-TW.json"));
+const translations = readJson(path.join(dataPath, "translations.zh-TW.json"));
 const uiSource = readJson(path.join(rootPath, "data", "ui.zh-TW.json"));
-const verifiedLabels = readJson(path.join(sourcesPath, "verified-labels.zh-TW.json"));
-const manualOverrides = readJson(path.join(sourcesPath, "manual-overrides.json"));
+const verifiedLabels = readJson(path.join(dataPath, "verified-labels.zh-TW.json"));
+const manualOverrides = readJson(path.join(dataPath, "manual-overrides.json"));
 const verifiedStatRenderings = readJson(
-  path.join(sourcesPath, "verified-stat-renderings.zh-TW.json"),
+  path.join(dataPath, "verified-stat-renderings.zh-TW.json"),
 );
-const glossary = readJson(path.join(sourcesPath, "glossary.zh-TW.json"));
-const phraseExceptions = readJson(path.join(sourcesPath, "phrase-exceptions.zh-TW.json"));
-const sourceLock = readJson(path.join(sourcesPath, "source-lock.json"));
+const glossary = readJson(path.join(dataPath, "glossary.zh-TW.json"));
+const phraseExceptions = readJson(path.join(dataPath, "phrase-exceptions.zh-TW.json"));
+const sourceLock = readJson(path.join(dataPath, "source-lock.json"));
 const externalNames = readJson(
-  path.join(sourcesPath, "external", "poe-game-data.names.tw.json"),
+  path.join(dataPath, "external", "poe-game-data.names.tw.json"),
 );
 const ggpkSource = readJson(path.join(rootPath, "data", "ggpk.json"));
 const ggpkManifest = ggpkSource.manifest;
@@ -48,25 +48,25 @@ const ggpkAffixes = ggpkSource.affixes;
 const ggpkClientStrings = ggpkSource.clientStrings;
 const tradeApiPath = path.join(rootPath, "data", "trade-api.json");
 const cachedTradeApi = readJson(tradeApiPath, null);
-const baseline = readJson(path.join(sourcesPath, "upstream-baseline.en.json"), null);
+const baseline = readJson(path.join(dataPath, "upstream-baseline.en.json"), null);
 
 if (translations.schemaVersion !== 1 || translations.locale !== "zh-TW") {
-  throw new Error("sources/translations.zh-TW.json 格式不兼容");
+  throw new Error("data/translations.zh-TW.json 格式不兼容");
 }
 if (uiSource.schemaVersion !== 1 || uiSource.locale !== "zh-TW") {
   throw new Error("data/ui.zh-TW.json 格式不兼容");
 }
 if (verifiedLabels.schemaVersion !== 1 || verifiedLabels.locale !== "zh-TW") {
-  throw new Error("sources/verified-labels.zh-TW.json 格式不兼容");
+  throw new Error("data/verified-labels.zh-TW.json 格式不兼容");
 }
 if (manualOverrides.schemaVersion !== 1) {
-  throw new Error("sources/manual-overrides.json 格式不兼容");
+  throw new Error("data/manual-overrides.json 格式不兼容");
 }
 if (
   verifiedStatRenderings.schemaVersion !== 1 ||
   verifiedStatRenderings.locale !== "zh-TW"
 ) {
-  throw new Error("sources/verified-stat-renderings.zh-TW.json 格式不兼容");
+  throw new Error("data/verified-stat-renderings.zh-TW.json 格式不兼容");
 }
 if (
   ggpkManifest.schemaVersion !== 1 ||
@@ -390,19 +390,19 @@ for (const [en, translated] of Object.entries(manualOverrides.exact ?? {})) {
   addExact(en, translated);
 }
 
-const dataPath = path.join(extensionPath, "data", "bundled.json");
-const previousDataset = readJson(dataPath, null);
+const bundledDataPath = path.join(extensionPath, "data", "bundled.json");
+const previousDataset = readJson(bundledDataPath, null);
 const datasetContent = {
   locale: "zh-TW",
   source: "project-owned translation pipeline",
   sources: [
-    "sources/translations.zh-TW.json",
+    "data/translations.zh-TW.json",
     "data/ui.zh-TW.json",
-    "sources/verified-labels.zh-TW.json",
-    "sources/manual-overrides.json",
-    "sources/verified-stat-renderings.zh-TW.json",
-    "sources/glossary.zh-TW.json",
-    "sources/phrase-exceptions.zh-TW.json",
+    "data/verified-labels.zh-TW.json",
+    "data/manual-overrides.json",
+    "data/verified-stat-renderings.zh-TW.json",
+    "data/glossary.zh-TW.json",
+    "data/phrase-exceptions.zh-TW.json",
     "data/ggpk.json",
     "data/trade-api.json",
     `poe-game-data@${sourceLock.sources.poeGameDataNamesTw.ref}`,
@@ -611,8 +611,8 @@ if (pendingTradeApiSnapshot && quality.blocking.count === 0) {
   writeJsonAtomic(tradeApiPath, pendingTradeApiSnapshot);
 }
 
-writeJson(dataPath, dataset, { compact: true });
-const compact = fs.readFileSync(dataPath);
+writeJson(bundledDataPath, dataset, { compact: true });
+const compact = fs.readFileSync(bundledDataPath);
 const sha256 = crypto.createHash("sha256").update(compact).digest("hex");
 writeJson(path.join(extensionPath, "data", "bundled-manifest.json"), {
   schemaVersion: 1,

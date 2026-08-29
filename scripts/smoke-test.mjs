@@ -14,13 +14,13 @@ const remoteManifest = JSON.parse(
   fs.readFileSync(path.join(root, "extension/data/remote-manifest.json"), "utf8"),
 );
 const translationSource = JSON.parse(
-  fs.readFileSync(path.join(root, "sources/translations.zh-TW.json"), "utf8"),
+  fs.readFileSync(path.join(root, "data/translations.zh-TW.json"), "utf8"),
 );
 const uiSource = JSON.parse(
   fs.readFileSync(path.join(root, "data/ui.zh-TW.json"), "utf8"),
 );
 const verifiedLabels = JSON.parse(
-  fs.readFileSync(path.join(root, "sources/verified-labels.zh-TW.json"), "utf8"),
+  fs.readFileSync(path.join(root, "data/verified-labels.zh-TW.json"), "utf8"),
 );
 const extensionManifest = JSON.parse(
   fs.readFileSync(path.join(root, "extension/manifest.json"), "utf8"),
@@ -63,7 +63,7 @@ assert.equal(
   "https://raw.githubusercontent.com/a17750/exile-trade-lens/main/extension/data/bundled.json",
 );
 assert.equal(dataset.source, "project-owned translation pipeline");
-assert.ok(dataset.sources.includes("sources/translations.zh-TW.json"));
+assert.ok(dataset.sources.includes("data/translations.zh-TW.json"));
 assert.ok(dataset.sources.includes("data/trade-api.json"));
 assert.equal(translationSource.provenance.kind, "one-time-legacy-migration");
 assert.match(translationSource.provenance.referenceSha256, /^[a-f0-9]{64}$/);

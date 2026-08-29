@@ -71,14 +71,14 @@
 
 ### 正式数据源
 
-- `sources/translations.zh-TW.json`：一次性迁移后由本项目接管的基础正式词库。
-- `sources/verified-labels.zh-TW.json`：经过确认的稳定游戏属性标签；物品面板的 `Item Level`、`Requires` 等固定字段在此维护，不依赖漏译上报。低风险界面词汇统一维护在 `data/ui.zh-TW.json`。
-- `sources/manual-overrides.json`：人工审核结果；稳定 ID 记录必须带 `expectedEnglish`。
-- `sources/glossary.zh-TW.json`：可组合术语，区分 `reviewed` 与 `proposed`。
-- `sources/phrase-exceptions.zh-TW.json`：不可拆分的完整短语和专有名称。
-- `sources/source-lock.json`：第三方来源的仓库、commit、URL 和 SHA-256。
-- `sources/upstream-baseline.en.json`：上一次已经确认的官方英文结构。
-- `sources/external/poe-game-data.names.tw.json`：锁定版本的外部名称缓存。
+- `data/translations.zh-TW.json`：一次性迁移后由本项目接管的基础正式词库。
+- `data/verified-labels.zh-TW.json`：经过确认的稳定游戏属性标签；物品面板的 `Item Level`、`Requires` 等固定字段在此维护，不依赖漏译上报。低风险界面词汇统一维护在 `data/ui.zh-TW.json`。
+- `data/manual-overrides.json`：人工审核结果；稳定 ID 记录必须带 `expectedEnglish`。
+- `data/glossary.zh-TW.json`：可组合术语，区分 `reviewed` 与 `proposed`。
+- `data/phrase-exceptions.zh-TW.json`：不可拆分的完整短语和专有名称。
+- `data/source-lock.json`：第三方来源的仓库、commit、URL 和 SHA-256。
+- `data/upstream-baseline.en.json`：上一次已经确认的官方英文结构。
+- `data/external/poe-game-data.names.tw.json`：锁定版本的外部名称缓存。
 
 ### 已接入的 GGPK 数据
 

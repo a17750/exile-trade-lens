@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "generatedAt": "2026-08-29T15:47:32.831Z",
+  "generatedAt": "2026-08-29T15:52:16.722Z",
   "source": "official-trade-api-pair",
   "endpoints": {
     "english": "https://www.pathofexile.com/api/trade2/data/{items,stats,static,filters}",
@@ -9,7 +9,7 @@
   },
   "english": {
     "schemaVersion": 1,
-    "fetchedAt": "2026-08-29T15:47:32.831Z",
+    "fetchedAt": "2026-08-29T15:52:16.722Z",
     "source": "https://www.pathofexile.com/api/trade2/data/{items,stats,static,filters}",
     "sections": {
       "items": {
@@ -66627,7 +66627,7 @@
   },
   "zhTW": {
     "schemaVersion": 1,
-    "fetchedAt": "2026-08-29T15:47:32.831Z",
+    "fetchedAt": "2026-08-29T15:52:16.722Z",
     "source": "https://pathofexile.tw/api/trade2/data/{items,stats,static,filters}",
     "sections": {
       "items": {
@@ -147162,7 +147162,7 @@
     "items": {},
     "report": {
       "schemaVersion": 1,
-      "generatedAt": "2026-08-29T15:47:32.831Z",
+      "generatedAt": "2026-08-29T15:52:16.722Z",
       "source": "https://pathofexile.tw/api/trade2/data/{items,stats,static,filters}",
       "summary": {
         "groupsApplied": 30,

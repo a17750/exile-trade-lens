@@ -7,7 +7,7 @@
 以下任一类变更完成后，必须执行完整回归套件：
 
 - `extension/page/`、`extension/background/`、`extension/content/` 的运行时代码；
-- `extension/data/`、`sources/`、`scripts/`、manifest 或数据构建流程；
+- `extension/data/`、`data/`、`scripts/`、manifest 或数据构建流程；
 - 物品名称、底材、固定名、前后缀、筛选分组/选项、属性/词缀、`/fetch` 拦截和 bridge；
 - 扩展版本、打包流程或漏译收集策略。
 

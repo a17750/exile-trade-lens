@@ -229,7 +229,7 @@ data/
   trade-api.json
   ui.zh-TW.json
 
-sources/
+data/
   manual-overrides.json
   glossary.zh-TW.json
   phrase-exceptions.zh-TW.json
@@ -442,4 +442,4 @@ ignored       用户输入、随机完整名称、卖家或交易内容
 4. 临时目录仅可承载可删除的编译缓存或一次性输出，且不得成为任何正式流程依赖。
 5. GGPK 解析已经并入扩展构建，但只消费规范化 JSON；浏览器扩展本身不读取本地游戏文件。
 6. `trade.js` 继续仅作为历史参考，不参与运行、构建或 GGPK 数据生成。
-7. 經漏譯導出確認的領域標籤存放在 `sources/verified-labels.zh-TW.json`；一般 UI 直譯統一存放在 `data/ui.zh-TW.json`。UI 可採較低準確性門檻，但兩者都不接收完整隨機物品名或上下文不明的遊戲資料。
+7. 經漏譯導出確認的領域標籤存放在 `data/verified-labels.zh-TW.json`；一般 UI 直譯統一存放在 `data/ui.zh-TW.json`。UI 可採較低準確性門檻，但兩者都不接收完整隨機物品名或上下文不明的遊戲資料。

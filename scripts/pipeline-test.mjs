@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import path from "node:path";
-import { readJson, rootPath, sourcesPath } from "./lib/project.mjs";
+import { dataPath, readJson, rootPath } from "./lib/project.mjs";
 import { diffSnapshots } from "./lib/audit.mjs";
 import { countPlaceholders, createCandidateEngine } from "./lib/translation-engine.mjs";
 import { createOfficialTwOverlay } from "./lib/official-tw.mjs";
@@ -13,7 +13,7 @@ const ggpkWords = ggpkSource.words;
 const ggpkAffixes = ggpkSource.affixes;
 const ggpkClientStrings = ggpkSource.clientStrings;
 const verifiedStatRenderings = readJson(
-  path.join(sourcesPath, "verified-stat-renderings.zh-TW.json"),
+  path.join(dataPath, "verified-stat-renderings.zh-TW.json"),
 );
 
 assert.equal(ggpkManifest.safety.fileAccess, "Read");
@@ -56,8 +56,8 @@ for (const conflict of ggpkAffixes.conflicts.suffixes) {
 }
 assert.equal(ggpkBaseItems.byEnglish["Calamity Fragment"], undefined);
 
-const glossary = readJson(path.join(sourcesPath, "glossary.zh-TW.json"));
-const phrases = readJson(path.join(sourcesPath, "phrase-exceptions.zh-TW.json"));
+const glossary = readJson(path.join(dataPath, "glossary.zh-TW.json"));
+const phrases = readJson(path.join(dataPath, "phrase-exceptions.zh-TW.json"));
 const suggest = createCandidateEngine(glossary, phrases);
 
 const composed = suggest("Abyssal Flail", "item");

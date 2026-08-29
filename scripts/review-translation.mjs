@@ -1,5 +1,5 @@
 import path from "node:path";
-import { readJson, reportsPath, sourcesPath, writeJson } from "./lib/project.mjs";
+import { dataPath, readJson, reportsPath, writeJson } from "./lib/project.mjs";
 
 const [domain, key, text] = process.argv.slice(2);
 if (!domain || !key || !text) {
@@ -12,7 +12,7 @@ if (!["item", "stat", "static", "filter", "stat-option", "filter-option"].includ
 }
 
 const snapshot = readJson(path.join(reportsPath, "upstream-current.en.json"));
-const overridesPath = path.join(sourcesPath, "manual-overrides.json");
+const overridesPath = path.join(dataPath, "manual-overrides.json");
 const overrides = readJson(overridesPath);
 const baseDomain = domain.replace(/-option$/, "");
 const section = { item: "items", stat: "stats", static: "static", filter: "filters" }[baseDomain];

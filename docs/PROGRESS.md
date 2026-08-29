@@ -38,7 +38,7 @@
 - 确认 `Always Poison on Hit with this weapon` 与目录模板
   `#% chance to Poison on Hit with this weapon` 共用稳定 ID `explicit.stat_3885634897`；这是官方针对
   100% 数值的特殊显示，不是普通漏译。
-- 新增 `sources/verified-stat-renderings.zh-TW.json`，用英服和台服 `/fetch` 的相同 hash、query ID、
+- 新增 `data/verified-stat-renderings.zh-TW.json`，用英服和台服 `/fetch` 的相同 hash、query ID、
   item ID 和原始 description 保存可追溯证据。
 - 运行时先在该 stable ID 内匹配特殊渲染，再走原有目录模板；绝不写入全局 `exact`，其他 ID 即使出现
   相同英文也不会套用。
@@ -169,7 +169,7 @@ node --check extension/background/service-worker.js
 
 - `tools/ggpk/README.md`：只读提取器用法和安全边界。
 - `data/ggpk.json`：集中保存游戏表指纹、覆盖率、只读结果，以及官方基础物品、名称组件、装备前后缀和客户端字符串对照；各领域保持独立区域。
-- `sources/verified-stat-renderings.zh-TW.json`：英台官方 `/fetch` 成对验证的 stat 特殊显示形式。
+- `data/verified-stat-renderings.zh-TW.json`：英台官方 `/fetch` 成对验证的 stat 特殊显示形式。
 - `scripts/build-data.mjs`：Trade 与 GGPK 数据构建。
 - `extension/page/trade-hook.js`：接口翻译和名称分域解析。
 - `extension/background/service-worker.js`：词库合并、更新、自检与本地修正。

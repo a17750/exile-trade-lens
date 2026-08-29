@@ -1,8 +1,8 @@
 import crypto from "node:crypto";
 import path from "node:path";
-import { readJson, sourcesPath, writeJson } from "./lib/project.mjs";
+import { dataPath, readJson, writeJson } from "./lib/project.mjs";
 
-const lock = readJson(path.join(sourcesPath, "source-lock.json"));
+const lock = readJson(path.join(dataPath, "source-lock.json"));
 const source = lock.sources?.poeGameDataNamesTw;
 if (!source?.url || !source.sha256 || !/^[a-f0-9]{40}$/.test(source.ref ?? "")) {
   throw new Error("source-lock.json 中的 poeGameDataNamesTw 未锁定到 Git commit");
@@ -18,7 +18,7 @@ if (actualSha256 !== source.sha256) {
   throw new Error(`poe-game-data SHA-256 不匹配：${actualSha256}`);
 }
 const data = JSON.parse(text);
-writeJson(path.join(sourcesPath, "external", "poe-game-data.names.tw.json"), data, {
+writeJson(path.join(dataPath, "external", "poe-game-data.names.tw.json"), data, {
   compact: true,
 });
 console.log(`external-source: ${Object.keys(data).length} 条，ref ${source.ref.slice(0, 12)}`);

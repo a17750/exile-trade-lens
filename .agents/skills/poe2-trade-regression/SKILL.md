@@ -5,7 +5,7 @@ description: Run PoE2 trade translation regression checks after large changes or
 
 # PoE2 trade regression
 
-Use this skill for an explicit regression request and after any change touching `extension/page/`, `extension/background/`, `extension/content/`, `extension/data/`, `scripts/`, `sources/`, the manifest, or translation build workflow. A documentation-only change does not need the full suite.
+Use this skill for an explicit regression request and after any change touching `extension/page/`, `extension/background/`, `extension/content/`, `extension/data/`, `scripts/`, `data/`, the manifest, or translation build workflow. A documentation-only change does not need the full suite.
 
 ## Procedure
 
