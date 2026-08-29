@@ -64,6 +64,8 @@ assert.equal(dataset.properties.Dex, "敏捷");
 assert.equal(dataset.properties["One Hand Mace"], "單手錘");
 assert.equal(dataset.properties["Two Hand Mace"], "雙手錘");
 assert.equal(dataset.properties.Jewel, "珠寶");
+assert.equal(dataset.properties["Item Level"], "物品等級");
+assert.equal(dataset.properties.Requires, "需求");
 assert.equal(dataset.ui["Log Out"], "登出");
 assert.equal(dataset.ui["Weighted Sum v2"], "加權總和 v2");
 assert.equal(dataset.ui["Dismiss News"], "關閉公告");

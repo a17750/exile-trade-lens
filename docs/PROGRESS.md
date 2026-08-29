@@ -7,7 +7,7 @@
 - 扩展版本：`0.5.8`
 - 安装目录：`extension/`
 - 压缩包：`poe2zh-extension-0.5.8.zip`
-- 词库版本：`project-zhTW-1.labels-2.manual-7.renderings-1.terms-1.names-e10b747.ggpk-2ca5516d.tw-55587e59.data-2b7bf21d`
+- 词库版本：`project-zhTW-1.labels-3.manual-7.renderings-1.terms-1.names-e10b747.ggpk-2ca5516d.tw-55587e59.data-256487bf`
 - 权限：`storage`、`alarms`
 - 网站范围：POE 官网、GitHub Raw、jsDelivr
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "2",
+  "version": "3",
   "locale": "zh-TW",
   "provenance": {
     "kind": "reviewed-missing-export",
@@ -34,6 +34,10 @@
       "One Hand Mace",
       "Two Hand Mace",
       "Jewel"
+    ],
+    "stableItemLabels": [
+      "Item Level",
+      "Requires"
     ],
     "unambiguousUi": [
       "Log Out",
@@ -76,7 +80,9 @@
     "Dex": "敏捷",
     "One Hand Mace": "單手錘",
     "Two Hand Mace": "雙手錘",
-    "Jewel": "珠寶"
+    "Jewel": "珠寶",
+    "Item Level": "物品等級",
+    "Requires": "需求"
   },
   "ui": {
     "Log Out": "登出",
