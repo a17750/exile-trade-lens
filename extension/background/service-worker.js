@@ -40,12 +40,6 @@ function mergeDatasets(base, extra) {
     ...base.itemDisplayTemplates,
     ...extra.itemDisplayTemplates,
   };
-  base.structuredFields = {
-    grantedSkillLabels: {
-      ...base.structuredFields?.grantedSkillLabels,
-      ...extra.structuredFields?.grantedSkillLabels,
-    },
-  };
   base.properties = { ...base.properties, ...extra.properties };
   base.allocates = { ...base.allocates, ...extra.allocates };
   base.ui = { ...base.ui, ...extra.ui };

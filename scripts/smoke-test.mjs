@@ -31,7 +31,7 @@ const bridgeSource = fs.readFileSync(path.join(root, "extension/content/bridge.j
 assert.match(bridgeSource, /knownRenderedTranslations\.has\(text\)/);
 assert.match(bridgeSource, /exactConflicts/);
 assert.match(bridgeSource, /missingPolicy\.createDomGuard/);
-assert.equal(extensionManifest.version, "0.5.7");
+assert.equal(extensionManifest.version, "0.5.8");
 for (const contentScript of extensionManifest.content_scripts) {
   assert.ok(
     contentScript.js.includes("shared/missing-report-policy.js"),
@@ -101,7 +101,6 @@ assert.deepEqual(dataset.stats.entries["explicit.stat_3885634897"].renderings, [
   source: "official-trade-fetch-pair",
 }]);
 assert.equal(dataset.exact["Always Poison on Hit with this weapon"], undefined);
-assert.equal(dataset.structuredFields.grantedSkillLabels["Grants Skill"], "賦予技能");
 
 const listeners = {};
 const emitted = [];
@@ -370,7 +369,6 @@ const alternateRenderingResponse = {
     result: [{
       item: {
         frameType: 3,
-        grantedSkills: [{ name: "Grants Skill", values: [["Spear Throw", 25]] }],
         explicitMods: [{
           description: "Always [Poison] on [HitDamage|Hit] with this weapon",
           hash: "stat.explicit.stat_3885634897",
@@ -384,8 +382,6 @@ const alternateRenderingResponse = {
 };
 await alternateRenderingRequest.response(alternateRenderingResponse);
 const translatedAlternate = JSON.parse(alternateRenderingResponse.responseText).result[0].item;
-assert.equal(translatedAlternate.grantedSkills[0].name, "賦予技能 (Grants Skill)");
-assert.equal(translatedAlternate.grantedSkills[0].values[0][0], "長矛投擲 (Spear Throw)");
 assert.equal(
   translatedAlternate.explicitMods[0].description,
   "用此武器擊中時會造成中毒 (Always [Poison] on [HitDamage|Hit] with this weapon)",
@@ -408,6 +404,48 @@ assert.equal(
   JSON.parse(wrongRenderingIdResponse.responseText).result[0].item.explicitMods[0],
   "Always Poison on Hit with this weapon",
   "alternate rendering must never escape its verified stable stat ID",
+);
+
+const isolatedFailureRequest = {
+  url: "https://www.pathofexile.com/api/trade2/fetch/isolated-failure",
+};
+hook(isolatedFailureRequest);
+const isolatedFailureResponse = {
+  responseText: JSON.stringify({
+    result: [
+      {
+        item: {
+          frameType: 0,
+          baseType: "Slim Mace",
+          typeLine: "Slim Mace",
+          properties: { name: "malformed optional field" },
+          requirements: [],
+        },
+      },
+      {
+        item: {
+          frameType: 0,
+          baseType: "Bombard Crossbow",
+          typeLine: "Superior Bombard Crossbow",
+          properties: [],
+          requirements: [],
+        },
+      },
+    ],
+  }),
+};
+await isolatedFailureRequest.response(isolatedFailureResponse);
+const isolatedResults = JSON.parse(isolatedFailureResponse.responseText).result;
+assert.equal(isolatedResults[0].item.baseType, "纖細之錘 (Slim Mace)");
+assert.equal(isolatedResults[0].item.typeLine, "纖細之錘 (Slim Mace)");
+assert.equal(
+  isolatedResults[1].item.baseType,
+  "轟擊十字弓 (Bombard Crossbow)",
+  "one malformed listing must not cancel translation for the remaining batch",
+);
+assert.equal(
+  isolatedResults[1].item.typeLine,
+  "精良的 轟擊十字弓 (Superior Bombard Crossbow)",
 );
 
 const rareFetchRequest = { url: "https://www.pathofexile.com/api/trade2/fetch/rare-test" };

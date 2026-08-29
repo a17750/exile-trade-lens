@@ -4,7 +4,7 @@
 
 本文件定義「英文詞組如何找到繁中對照」以及「交易結果如何安全套用對照」。目標不是把所有英文切成單字再逐一翻譯，而是在保留遊戲語義、詞條數值和物品命名規則的前提下，使用可追溯的證據完成翻譯。
 
-## 1. 先分辨八種資料
+## 1. 先分辨七種資料
 
 | 領域 | 例子 | 穩定鍵 | 主要來源 | 運行時處理 |
 |---|---|---|---|---|
@@ -15,7 +15,6 @@
 | 稀有名稱組件 | `Golem`、`Crack` | GGPK Words 行 ID/英文組件 | `Words.datc64` | 僅在稀有名稱域做組件拼接 |
 | 魔法裝備前後綴 | `Frosted`、`of the Fletcher` | `Mods.Id` + `Domain` + `GenerationType` | 英繁 `Mods.datc64` | 僅在魔法 `typeLine` 按前綴/底材/後綴組合 |
 | 普通品質展示模板 | `Superior {0}` | `ClientStrings.Id=QualityItem` | 英繁 `ClientStrings.datc64` | 僅在 `frameType=0` 的 `typeLine` 完整套用 |
-| 結果卡結構化技能 | `Grants Skill`、`Spear Throw` | `/fetch.grantedSkills` 字段 + GGPK 穩定表 | 英台 `/fetch`、`ClientStrings`、`BaseItemTypes` | 標籤和技能名稱分字段翻譯，不當作 stat 或 UI |
 
 `trade.js` 只作歷史參考，不是本專案的運行時資料來源或邏輯依賴。
 
@@ -174,8 +173,6 @@ query ID、item ID、原始 description 和相同 hash。構建後只把運行�
 ```
 
 即使 `hashes` 兩筆資料的陣列順序反了，也必須得到上面的結果。
-
-`grantedSkills` 不在 mod 陣列中。其 `name` 只查已審核的客戶端標籤，`values[][0]` 只查官方技能/基礎條目對照；不能把 `Grants Skill: Spear Throw` 當成一條普通英文句子猜譯。
 
 ## 5. 佔位符和數值規則
 

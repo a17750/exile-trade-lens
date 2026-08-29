@@ -134,15 +134,6 @@ const itemDisplayTemplates = {
     text: qualityItemClientString.zhTW,
   },
 };
-const grantsSkillLabel = ggpkClientStrings.byEnglish?.["Grants Skill"];
-if (!grantsSkillLabel || grantsSkillLabel === "Grants Skill") {
-  throw new Error("GGPK ClientStrings 缺少 Grants Skill 的繁中翻译");
-}
-const structuredFields = {
-  grantedSkillLabels: {
-    "Grants Skill": grantsSkillLabel,
-  },
-};
 const normalizeExternalName = (value) =>
   String(value ?? "").trim().toLocaleLowerCase("en-US").replace(/\s+/g, " ");
 const externalApplied = [];
@@ -381,7 +372,6 @@ const datasetContent = {
   wordComponents,
   affixNames,
   itemDisplayTemplates,
-  structuredFields,
   stats,
   static: staticData,
   filters,

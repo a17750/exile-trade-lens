@@ -101,6 +101,7 @@
 
   function matchingStatRenderings(statId, original) {
     const renderings = config.dataset?.stats?.entries?.[statId]?.renderings ?? [];
+    if (!Array.isArray(renderings)) return [];
     return renderings.filter(
       (rendering) => rendering?.text && sameStatShape(rendering.english, original),
     );
@@ -315,6 +316,7 @@
   }
 
   function translateProperty(property) {
+    if (!property || typeof property !== "object") return;
     const plain = clean(property.name);
     const translated = config.dataset.properties[plain];
     if (translated) property.name = format(translated, property.name);
@@ -381,79 +383,78 @@
     }
   }
 
-  function translateGrantedSkills(item) {
-    for (const grantedSkill of item.grantedSkills ?? []) {
-      if (!grantedSkill || typeof grantedSkill !== "object") continue;
-      const originalLabel = clean(grantedSkill.name);
-      const translatedLabel =
-        config.dataset?.structuredFields?.grantedSkillLabels?.[originalLabel];
-      if (translatedLabel) grantedSkill.name = format(translatedLabel, grantedSkill.name);
-      for (const value of grantedSkill.values ?? []) {
-        if (!Array.isArray(value) || typeof value[0] !== "string") continue;
-        const originalSkill = value[0];
-        const translatedSkill = baseItemTranslation(originalSkill);
-        if (translatedSkill) value[0] = format(translatedSkill, originalSkill);
+  function translateFetchItem(item) {
+    const originalBaseType = item.baseType;
+    const originalTypeLine = item.typeLine;
+    const translatedBaseType = baseItemTranslation(originalBaseType);
+
+    if (translatedBaseType) item.baseType = format(translatedBaseType, originalBaseType);
+    else if (originalBaseType) {
+      reportMissing("item", originalBaseType, originalBaseType, "fetch:baseType");
+    }
+
+    if (originalTypeLine) {
+      const directTypeLine =
+        config.dataset.baseItems?.[originalTypeLine] ||
+        config.dataset.fixedNames?.[originalTypeLine] ||
+        config.dataset.items?.[originalTypeLine];
+      const composedTypeLine =
+        item.frameType === 0
+          ? composeNormalTypeLine(originalTypeLine, originalBaseType)
+          : item.frameType === 1
+          ? composeMagicTypeLine(originalTypeLine, originalBaseType)
+          : item.frameType === 2
+            ? composeOfficialName(originalTypeLine, true)
+            : null;
+      if (directTypeLine) {
+        item.typeLine = format(directTypeLine, originalTypeLine);
+      } else if (composedTypeLine) {
+        item.typeLine = format(composedTypeLine, originalTypeLine);
+      } else if (item.frameType === 0) {
+        reportMissing(
+          "item",
+          originalTypeLine,
+          originalTypeLine,
+          "fetch:typeLine:normal-display-unresolved",
+        );
+      } else if (originalTypeLine === originalBaseType && !translatedBaseType) {
+        reportMissing("item", originalTypeLine, originalTypeLine, "fetch:typeLine");
       }
     }
+
+    if (item.name) {
+      const translatedName =
+        item.frameType === 1 || item.frameType === 2
+          ? composeOfficialName(item.name)
+          : fixedNameTranslation(item.name);
+      if (translatedName) item.name = format(translatedName, item.name);
+      else if (item.frameType === 3) {
+        reportMissing("item", item.name, item.name, "fetch:name");
+      }
+    }
+    const properties = Array.isArray(item.properties) ? item.properties : [];
+    const requirements = Array.isArray(item.requirements) ? item.requirements : [];
+    for (const property of properties) translateProperty(property);
+    for (const requirement of requirements) translateProperty(requirement);
+    translateMods(item);
+    return item;
   }
 
   function translateFetchResponse(response) {
     if (!Array.isArray(response.result)) return response;
     for (const result of response.result) {
-      const item = result.item;
-      if (!item) continue;
-      const originalBaseType = item.baseType;
-      const originalTypeLine = item.typeLine;
-      const translatedBaseType = baseItemTranslation(originalBaseType);
-
-      if (translatedBaseType) item.baseType = format(translatedBaseType, originalBaseType);
-      else if (originalBaseType) {
-        reportMissing("item", originalBaseType, originalBaseType, "fetch:baseType");
+      if (!result?.item || typeof result.item !== "object") continue;
+      const originalItem = result.item;
+      try {
+        // A malformed optional field on one listing must not cancel translation
+        // for the entire /fetch batch. Work on a clone so a failed listing is
+        // returned completely unchanged rather than partially translated.
+        const translatedItem = JSON.parse(JSON.stringify(originalItem));
+        result.item = translateFetchItem(translatedItem);
+      } catch (error) {
+        result.item = originalItem;
+        console.warn("[POE2ZH] 单件物品翻译失败，已保留该件英文", error);
       }
-
-      if (originalTypeLine) {
-        const directTypeLine =
-          config.dataset.baseItems?.[originalTypeLine] ||
-          config.dataset.fixedNames?.[originalTypeLine] ||
-          config.dataset.items?.[originalTypeLine];
-        const composedTypeLine =
-          item.frameType === 0
-            ? composeNormalTypeLine(originalTypeLine, originalBaseType)
-            : item.frameType === 1
-            ? composeMagicTypeLine(originalTypeLine, originalBaseType)
-            : item.frameType === 2
-              ? composeOfficialName(originalTypeLine, true)
-              : null;
-        if (directTypeLine) {
-          item.typeLine = format(directTypeLine, originalTypeLine);
-        } else if (composedTypeLine) {
-          item.typeLine = format(composedTypeLine, originalTypeLine);
-        } else if (item.frameType === 0) {
-          reportMissing(
-            "item",
-            originalTypeLine,
-            originalTypeLine,
-            "fetch:typeLine:normal-display-unresolved",
-          );
-        } else if (originalTypeLine === originalBaseType && !translatedBaseType) {
-          reportMissing("item", originalTypeLine, originalTypeLine, "fetch:typeLine");
-        }
-      }
-
-      if (item.name) {
-        const translatedName =
-          item.frameType === 1 || item.frameType === 2
-            ? composeOfficialName(item.name)
-            : fixedNameTranslation(item.name);
-        if (translatedName) item.name = format(translatedName, item.name);
-        else if (item.frameType === 3) {
-          reportMissing("item", item.name, item.name, "fetch:name");
-        }
-      }
-      for (const property of item.properties ?? []) translateProperty(property);
-      for (const requirement of item.requirements ?? []) translateProperty(requirement);
-      translateGrantedSkills(item);
-      translateMods(item);
     }
     return response;
   }

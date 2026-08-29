@@ -4,10 +4,10 @@
 
 ## 当前可交付版本
 
-- 扩展版本：`0.5.7`
+- 扩展版本：`0.5.8`
 - 安装目录：`extension/`
-- 压缩包：`poe2zh-extension-0.5.7.zip`
-- 词库版本：`project-zhTW-1.labels-2.manual-7.renderings-1.terms-1.names-e10b747.ggpk-2ca5516d.tw-8054a96d.data-0f7263a6`
+- 压缩包：`poe2zh-extension-0.5.8.zip`
+- 词库版本：`project-zhTW-1.labels-2.manual-7.renderings-1.terms-1.names-e10b747.ggpk-2ca5516d.tw-50f2f085.data-e3274e72`
 - 权限：`storage`、`alarms`
 - 网站范围：POE 官网、GitHub Raw、jsDelivr
 
@@ -33,7 +33,7 @@
 这些数字表示当前官方目录的静态覆盖，不等同于所有网页情境都已人工浏览验证。真实页面仍需在
 每次游戏或交易站改版后回归。
 
-## 本轮完成：官方 stat 特殊渲染与结构化技能
+## 本轮完成：官方 stat 特殊渲染与 `/fetch` 故障隔离
 
 - 确认 `Always Poison on Hit with this weapon` 与目录模板
   `#% chance to Poison on Hit with this weapon` 共用稳定 ID `explicit.stat_3885634897`；这是官方针对
@@ -42,8 +42,9 @@
   item ID 和原始 description 保存可追溯证据。
 - 运行时先在该 stable ID 内匹配特殊渲染，再走原有目录模板；绝不写入全局 `exact`，其他 ID 即使出现
   相同英文也不会套用。
-- `grantedSkills` 改为结构化翻译：`Grants Skill` 来自 GGPK `ClientStrings`，`Spear Throw` 等技能名
-  来自 GGPK 官方映射。
+- 撤回与本问题无关的 `grantedSkills` 运行时接入，避免一次修复同时扩大多个高准确性领域。
+- `/fetch` 改为逐件克隆后原子翻译：一件物品字段异常时，该件完整保留英文，其他结果仍正常翻译；
+  不再因单件异常放弃整批响应。
 - 新增正例和错误-ID 反例测试，确保修复的是整类“同 ID 多渲染”机制而非页面样本特判。
 
 ## 本轮完成：输入污染守门与目录双语修复
@@ -147,7 +148,7 @@ node --check extension/background/service-worker.js
 
 ## 尚未完成
 
-- 用真实 Chrome 重新加载 `0.5.7`，逐项展开全部筛选组并执行搜索结果回归。
+- 用真实 Chrome 重新加载 `0.5.8`，逐项展开全部筛选组并执行搜索结果回归。
 - 分析 `Words` 的类别和语言组合规则；当前安全策略只支持能够无缝整段覆盖的稀有名称。
 - 将 `Mods`、`Stats` 和 stat descriptions 关联，进一步提高剩余数值属性翻译准确率；装备前后缀名称配对已经完成。
 - 为 GGPK 规范化快照增加跨版本结构漂移门禁；当前已记录表哈希、行数和行宽。

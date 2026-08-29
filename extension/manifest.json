@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "流亡译镜 — PoE2 市集中文助手",
   "description": "为 Path of Exile 2 官方交易站提供繁体中文、双语显示、漏译自检和可更新词库。",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "minimum_chrome_version": "111",
   "permissions": ["storage", "alarms"],
   "host_permissions": [
