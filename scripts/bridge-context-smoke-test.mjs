@@ -5,6 +5,7 @@ import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const bridgeSource = fs.readFileSync(path.join(root, "extension/content/bridge.js"), "utf8");
 const dataset = JSON.parse(
   fs.readFileSync(path.join(root, "extension/data/bundled.json"), "utf8"),
 );
@@ -74,7 +75,7 @@ vm.runInContext(
 );
 
 vm.runInContext(
-  fs.readFileSync(path.join(root, "extension/content/bridge.js"), "utf8"),
+  bridgeSource,
   context,
   { filename: "bridge.js" },
 );
@@ -100,5 +101,46 @@ assert.equal(listeners.has("poe2zh:missing"), false);
 assert.equal(infoMessages, 1);
 assert.deepEqual(unhandledRejections, [], "上下文失效不得产生未处理 Promise 拒绝");
 process.off("unhandledRejection", onUnhandledRejection);
+
+const fallbackDocument = {
+  readyState: "complete",
+  body: null,
+  head: { append() {} },
+  documentElement: {
+    dataset: {},
+    setAttribute(name, value) { this.dataset[name] = value; },
+  },
+  getElementById() { return null; },
+  addEventListener() {},
+  removeEventListener() {},
+  dispatchEvent() {},
+};
+const fallbackChrome = {
+  runtime: {
+    id: "test-extension",
+    async sendMessage(message) {
+      if (message.type === "POE2ZH_GET_DATASET") return { ok: true, dataset };
+      return null;
+    },
+  },
+  storage: {
+    sync: { async get(defaults) { return defaults; } },
+    onChanged: { addListener() {} },
+  },
+};
+const fallbackContext = vm.createContext({
+  chrome: fallbackChrome,
+  console: { warn() {}, error() {}, info() {} },
+  document: fallbackDocument,
+  Event: class Event { constructor(type) { this.type = type; } },
+  setTimeout,
+});
+vm.runInContext(bridgeSource, fallbackContext, { filename: "bridge.js" });
+await new Promise((resolve) => setTimeout(resolve, 0));
+assert.equal(
+  fallbackDocument.documentElement.dataset["data-poe2zh-policy"],
+  "missing",
+  "策略脚本缺失时 bridge 必须降级而不是抛出初始化异常",
+);
 
 console.log("bridge-context-smoke-test: ok");

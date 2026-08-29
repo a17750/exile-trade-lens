@@ -1,6 +1,13 @@
 (() => {
-  const missingPolicy = globalThis.POE2ZHMissingReportPolicy;
-  if (!missingPolicy) throw new Error("流亡譯鏡：漏譯採集策略未載入");
+  const policyLoaded = Boolean(globalThis.POE2ZHMissingReportPolicy);
+  const missingPolicy = globalThis.POE2ZHMissingReportPolicy ?? {
+    classifyReport: () => ({ allow: false, reason: "policy-not-loaded" }),
+    createDomGuard: () => ({ consider() {}, dispose() {} }),
+  };
+  if (!policyLoaded) {
+    document.documentElement?.setAttribute?.("data-poe2zh-policy", "missing");
+    console.warn("流亡譯鏡：漏譯採集策略未載入，已停用漏譯採集但保留翻譯功能");
+  }
 
   const DEFAULT_SETTINGS = {
     enabled: true,
