@@ -75,7 +75,7 @@
 - 随机稀有物品名称。
 - 用户在搜索框中输入的内容、搜索结果价格和页面链接。
 
-漏译采集统一经过 `extension/shared/missing-report-policy.ts`（编译产物为 `.js`）。输入框本身、可编辑 combobox、
+漏译采集统一经过 `extension/shared/missing-report-policy.js`。输入框本身、可编辑 combobox、
 `aria-controls`/`aria-owns` 关联的自动完成列表，以及输入事件后生成的动态下拉内容不会进入记录。
 策略只短暂保存输入控件引用和事件时间，不读取或持久化输入值。静态 DOM 文本还必须保持稳定
 1.2 秒，并在后台再次通过来源白名单。
