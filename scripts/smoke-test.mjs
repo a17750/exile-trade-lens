@@ -31,7 +31,7 @@ const bridgeSource = fs.readFileSync(path.join(root, "extension/content/bridge.j
 assert.match(bridgeSource, /knownRenderedTranslations\.has\(text\)/);
 assert.match(bridgeSource, /exactConflicts/);
 assert.match(bridgeSource, /missingPolicy\.createDomGuard/);
-assert.equal(extensionManifest.version, "0.5.11");
+assert.equal(extensionManifest.version, "0.5.12");
 const mainScript = extensionManifest.content_scripts.find((entry) => entry.world === "MAIN");
 const isolatedScript = extensionManifest.content_scripts.find((entry) => entry.world !== "MAIN");
 assert.ok(mainScript?.js.includes("page/trade-hook.js"), "MAIN 环境必须加载交易拦截器");
@@ -116,6 +116,23 @@ let protectedHook = false;
 const context = vm.createContext({
   console,
   setTimeout,
+  localStorage: {
+    removed: [],
+    values: new Map([
+      ["lscache-trade2items", "stale-catalog"],
+      ["lscache-trade2items-cacheexpiration", "stale-expiry"],
+    ]),
+    getItem(key) {
+      return this.values.get(key) ?? null;
+    },
+    setItem(key, value) {
+      this.values.set(key, value);
+    },
+    removeItem(key) {
+      this.removed.push(key);
+      this.values.delete(key);
+    },
+  },
   CustomEvent: class CustomEvent {
     constructor(type, init) {
       this.type = type;
@@ -152,6 +169,27 @@ vm.runInContext(
   fs.readFileSync(path.join(root, "extension/page/trade-hook.js"), "utf8"),
   context,
   { filename: "trade-hook.js" },
+);
+
+assert.equal(
+  context.localStorage.getItem("poe2zh-trade2-catalog-schema"),
+  "search-alias-v1",
+  "可搜索目录结构变化时必须写入精确版本标记",
+);
+assert.equal(
+  context.localStorage.getItem("lscache-trade2items"),
+  null,
+  "必须清除官网旧物品目录，确保 /data/items 重新进入翻译拦截器",
+);
+assert.equal(
+  context.localStorage.getItem("lscache-trade2items-cacheexpiration"),
+  null,
+  "物品目录过期键必须与目录一起清除",
+);
+assert.deepEqual(
+  context.localStorage.removed,
+  ["lscache-trade2items", "lscache-trade2items-cacheexpiration"],
+  "不得清除物品目录以外的官网缓存",
 );
 
 sharedConfig.textContent = JSON.stringify({

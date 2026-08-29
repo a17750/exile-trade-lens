@@ -1,5 +1,21 @@
 (() => {
   const API_SOURCE = "trade-api";
+  const CATALOG_CACHE_SCHEMA = "search-alias-v1";
+
+  // The official trade page caches /data/items before Vue is created. Invalidate
+  // only that catalog once when our searchable catalog schema changes; otherwise
+  // an extension reload keeps using the previous English-only name/type fields.
+  try {
+    const markerKey = "poe2zh-trade2-catalog-schema";
+    if (localStorage.getItem(markerKey) !== CATALOG_CACHE_SCHEMA) {
+      localStorage.removeItem("lscache-trade2items");
+      localStorage.removeItem("lscache-trade2items-cacheexpiration");
+      localStorage.setItem(markerKey, CATALOG_CACHE_SCHEMA);
+    }
+  } catch (_) {
+    // Storage can be unavailable in hardened contexts; interception still works
+    // as soon as the official cache naturally expires.
+  }
 
   let config = { dataset: null, enabled: true, mode: "bilingual" };
   const CONFIG_ELEMENT_ID = "poe2zh-shared-config";

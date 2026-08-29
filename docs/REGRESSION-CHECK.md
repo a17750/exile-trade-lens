@@ -34,7 +34,7 @@ powershell -ExecutionPolicy Bypass -File .agents/skills/poe2-trade-regression/sc
 | 范围 | 必须确认的行为 | 主要检查 |
 | --- | --- | --- |
 | 物品 | 已知名称、底材、固定名和完整稀有名称仍可翻译；未知名称保留英文；不出现 `(undefined)` 或中英拼接 | `smoke-test.mjs`、`item-label-dom-smoke-test.mjs`、质量报告 |
-| 中文物品搜索 | 扩展冷启动时，物品目录必须等词库就绪后再交给页面，不能先缓存英文目录 | `search-cold-start-test.mjs` |
+| 中文物品搜索 | 扩展冷启动时目录必须等词库就绪；目录结构升级时只失效官网物品目录缓存一次，不能继续使用旧索引 | `search-cold-start-test.mjs`、`smoke-test.mjs` |
 | 中文下拉匹配 | 目录 `name/type` 使用可逆双语别名供官网原生过滤；发出 `/search` 前必须精确还原官方英文，未知格式原样放行 | `smoke-test.mjs` |
 | 筛选项 | 分组、选项和动态下拉值都是字符串；缺失映射不会把 `undefined` 写进 DOM | `smoke-test.mjs`、DOM 采集规则 |
 | 属性/词缀 | 按稳定 stat id 绑定；数值和占位符保留；替代英文渲染只对声明的 id 生效；未知 id 回退原文 | `smoke-test.mjs`、`pipeline-test.mjs` |
