@@ -155,10 +155,7 @@ const properties = {
   ...clone(verifiedLabels.properties ?? {}),
 };
 const allocates = clone(translations.allocates ?? {});
-const ui = {
-  ...clone(uiSource.entries ?? {}),
-  ...clone(verifiedLabels.ui ?? {}),
-};
+const ui = clone(uiSource.entries ?? {});
 const exact = clone(translations.exact ?? {});
 const baseItems = clone(ggpkBaseItems.byEnglish ?? {});
 const fixedNames = clone(ggpkWords.byEnglish ?? {});

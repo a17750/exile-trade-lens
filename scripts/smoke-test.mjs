@@ -16,6 +16,12 @@ const remoteManifest = JSON.parse(
 const translationSource = JSON.parse(
   fs.readFileSync(path.join(root, "sources/translations.zh-TW.json"), "utf8"),
 );
+const uiSource = JSON.parse(
+  fs.readFileSync(path.join(root, "data/ui.zh-TW.json"), "utf8"),
+);
+const verifiedLabels = JSON.parse(
+  fs.readFileSync(path.join(root, "sources/verified-labels.zh-TW.json"), "utf8"),
+);
 const extensionManifest = JSON.parse(
   fs.readFileSync(path.join(root, "extension/manifest.json"), "utf8"),
 );
@@ -31,7 +37,8 @@ const bridgeSource = fs.readFileSync(path.join(root, "extension/content/bridge.j
 assert.match(bridgeSource, /knownRenderedTranslations\.has\(text\)/);
 assert.match(bridgeSource, /exactConflicts/);
 assert.match(bridgeSource, /missingPolicy\.createDomGuard/);
-assert.equal(extensionManifest.version, "0.5.14");
+assert.doesNotMatch(bridgeSource, /UI_FALLBACK_TRANSLATIONS/);
+assert.equal(extensionManifest.version, "0.5.15");
 const mainScript = extensionManifest.content_scripts.find((entry) => entry.world === "MAIN");
 const isolatedScript = extensionManifest.content_scripts.find((entry) => entry.world !== "MAIN");
 assert.ok(mainScript?.js.includes("page/trade-hook.js"), "MAIN 环境必须加载交易拦截器");
@@ -42,6 +49,11 @@ assert.deepEqual(
 );
 assert.ok(isolatedScript?.js.includes("shared/missing-report-policy.js"), "隔离环境必须先加载漏译采集策略");
 assert.ok(isolatedScript?.js.includes("content/bridge.js"), "隔离环境必须加载 bridge");
+assert.deepEqual(
+  isolatedScript?.js,
+  ["shared/missing-report-policy.js", "shared/result-label-policy.js", "content/bridge.js"],
+  "隔离环境必须先加载漏译与结果标签策略，再加载 bridge",
+);
 
 assert.equal(dataset.schemaVersion, 1);
 assert.equal(remoteManifest.datasetVersion, dataset.datasetVersion);
@@ -55,6 +67,9 @@ assert.ok(dataset.sources.includes("sources/translations.zh-TW.json"));
 assert.ok(dataset.sources.includes("data/trade-api.json"));
 assert.equal(translationSource.provenance.kind, "one-time-legacy-migration");
 assert.match(translationSource.provenance.referenceSha256, /^[a-f0-9]{64}$/);
+assert.equal(translationSource.ui, undefined, "历史兼容词库不得继续保存 UI 翻译");
+assert.equal(verifiedLabels.ui, undefined, "人工标签文件不得继续保存 UI 翻译");
+assert.deepEqual(dataset.ui, uiSource.entries, "运行 UI 词库必须完全来自 data/ui.zh-TW.json");
 assert.ok(Object.keys(dataset.items).length > 2_000);
 assert.ok(Object.keys(dataset.baseItems).length > 4_000);
 assert.ok(Object.keys(dataset.wordComponents).length > 3_000);
@@ -225,6 +240,29 @@ sharedConfig.textContent = JSON.stringify({
 });
 listeners["poe2zh:configure"]();
 assert.equal(protectedHook, true);
+
+const coldAlias = `${dataset.baseItems["Sinister Quarterstaff"]} (Sinister Quarterstaff)`;
+const coldSearchRequest = {
+  url: "https://www.pathofexile.com/api/trade2/search/poe2/Runes%20of%20Aldur",
+  data: JSON.stringify({ query: { type: coldAlias } }),
+};
+hook(coldSearchRequest);
+assert.equal(
+  JSON.parse(coldSearchRequest.data).query.type,
+  "Sinister Quarterstaff",
+  "即使官网物品目录来自缓存，也必须用正式词库还原中文搜索别名",
+);
+const forgedAlias = "非正式翻译 (Sinister Quarterstaff)";
+const forgedSearchRequest = {
+  url: coldSearchRequest.url,
+  data: JSON.stringify({ query: { type: forgedAlias } }),
+};
+hook(forgedSearchRequest);
+assert.equal(
+  JSON.parse(forgedSearchRequest.data).query.type,
+  forgedAlias,
+  "不在正式词库中的括号文本不得被猜测还原",
+);
 
 const [statId, statTranslation] = Object.entries(dataset.stats.entries).find(
   ([, value]) => value.text,

@@ -4,6 +4,15 @@
     classifyReport: () => ({ allow: false, reason: "policy-not-loaded" }),
     createDomGuard: () => ({ consider() {}, dispose() {} }),
   };
+  const resultLabelPolicy = globalThis.POE2ZHResultLabelPolicy ?? {
+    match(raw) {
+      const text = String(raw ?? "").trim();
+      const key = text.replace(/:$/, "");
+      return ["Item Level", "Requires"].includes(key)
+        ? { key, kind: "exact" }
+        : null;
+    },
+  };
   if (!policyLoaded) {
     document.documentElement?.setAttribute?.("data-poe2zh-policy", "missing");
     console.warn("流亡譯鏡：漏譯採集策略未載入，已停用漏譯採集但保留翻譯功能");
@@ -32,23 +41,6 @@
   const CONFIG_ELEMENT_ID = "poe2zh-shared-config";
   const TRANSLATABLE_ATTRIBUTES = ["placeholder", "title", "aria-label"];
   const RESULT_TEXT_SELECTORS = ".search-results, .resultset, .results, .listing, [class*='itemPopup']";
-  const RESULT_LABELS = new Set(["Item Level", "Requires"]);
-  const UI_FALLBACK_TRANSLATIONS = {
-    "Clear Filter Group": "清除篩選群組",
-    Count: "數量",
-    "Activate Live Search": "啟用即時搜尋",
-    "Back to Top": "返回頂部",
-    And: "且",
-    If: "如果",
-    Not: "非",
-    "Select option": "選擇選項",
-    "Searching...": "搜尋中……",
-    "Stat Filters": "屬性篩選",
-    "Stat Groups": "屬性群組",
-    "Weighted Sum": "加權總和",
-    "Custom Search": "自訂搜尋",
-  };
-
   function hasRuntimeContext() {
     try {
       return Boolean(chrome.runtime?.id);
@@ -223,7 +215,6 @@
         }
       }
     };
-    add(UI_FALLBACK_TRANSLATIONS);
     add(dataset?.ui);
     add(dataset?.items);
     add(dataset?.properties);
@@ -248,11 +239,13 @@
     // mod, so only the small, explicitly verified item-panel label allowlist may pass.
     if (translatedTextValues.get(node) === node.nodeValue) return;
     const original = node.nodeValue.trim();
-    const resultLabel = original.replace(/:$/, "");
     const inResult = node.parentElement?.closest?.(RESULT_TEXT_SELECTORS);
-    if (inResult && !RESULT_LABELS.has(resultLabel)) return;
-    const lookup = inResult ? resultLabel : original;
-    const translated = exactTranslations.get(lookup);
+    const resultMatch = inResult ? resultLabelPolicy.match(original) : null;
+    if (inResult && !resultMatch) return;
+    const lookup = resultMatch?.key ?? original;
+    const translated = resultMatch?.kind === "summary"
+      ? dataset?.ui?.[lookup]
+      : exactTranslations.get(lookup);
     if (!translated) {
       reportUiMissing(original, node.parentElement, () => node.nodeValue);
       return;

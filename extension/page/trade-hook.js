@@ -50,28 +50,62 @@
   const reported = new Set();
   let componentIndexes = { version: null, words: null, withBaseItems: null };
   let statIndexes = { version: null, englishById: null, renderer: null };
-  let catalogAliases = { version: null, englishByAlias: new Map() };
+  let catalogAliases = {
+    version: null,
+    englishByAlias: new Map(),
+    ambiguousAliases: new Set(),
+  };
+
+  function registerCatalogAlias(index, translated, english) {
+    const source = String(english ?? "").trim();
+    const target = String(translated ?? "").trim();
+    if (!source || !target || source === target) return source;
+    const alias = `${target} (${source})`;
+    if (index.ambiguousAliases.has(alias)) return alias;
+    const previous = index.englishByAlias.get(alias);
+    if (previous && previous !== source) {
+      index.englishByAlias.delete(alias);
+      index.ambiguousAliases.add(alias);
+      return alias;
+    }
+    index.englishByAlias.set(alias, source);
+    return alias;
+  }
 
   function catalogAliasIndex() {
     const version = config.dataset?.datasetVersion;
     if (catalogAliases.version !== version) {
-      catalogAliases = { version, englishByAlias: new Map() };
+      catalogAliases = {
+        version,
+        englishByAlias: new Map(),
+        ambiguousAliases: new Set(),
+      };
+      // The official page may satisfy /data/items from its own cache, so a
+      // request-restoration index cannot depend on observing that response in
+      // the current page lifetime. Build it from the validated bundled data.
+      for (const source of [
+        config.dataset?.baseItems,
+        config.dataset?.fixedNames,
+        config.dataset?.items,
+      ]) {
+        for (const [english, translated] of Object.entries(source ?? {})) {
+          registerCatalogAlias(catalogAliases, translated, english);
+        }
+      }
     }
-    return catalogAliases.englishByAlias;
+    return catalogAliases;
   }
 
   function searchableCatalogAlias(translated, english) {
     const source = String(english ?? "").trim();
     const target = String(translated ?? "").trim();
     if (!source || !target || source === target) return source;
-    const alias = `${target} (${source})`;
-    catalogAliasIndex().set(alias, source);
-    return alias;
+    return registerCatalogAlias(catalogAliasIndex(), target, source);
   }
 
   function restoreOfficialCatalogValue(value) {
     return typeof value === "string"
-      ? catalogAliasIndex().get(value) ?? value
+      ? catalogAliasIndex().englishByAlias.get(value) ?? value
       : value;
   }
 

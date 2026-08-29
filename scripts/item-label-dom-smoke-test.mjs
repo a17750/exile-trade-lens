@@ -10,6 +10,12 @@ const bridgeSource = fs.readFileSync(path.join(root, "extension/content/bridge.j
 const listeners = new Map();
 const itemLabel = { nodeType: 3, nodeValue: "Item Level", parentElement: null };
 const requiresLabel = { nodeType: 3, nodeValue: "Requires:", parentElement: null };
+const evasionSummary = { nodeType: 3, nodeValue: "Evasion: 69", parentElement: null };
+const armourSummary = { nodeType: 3, nodeValue: "Armour: 1,234", parentElement: null };
+const energyShieldSummary = { nodeType: 3, nodeValue: "Energy Shield: 33", parentElement: null };
+const wardSummary = { nodeType: 3, nodeValue: "Ward: 120", parentElement: null };
+const basePercentileSummary = { nodeType: 3, nodeValue: "Base Percentile: 87%", parentElement: null };
+const unknownResultText = { nodeType: 3, nodeValue: "Unverified Stat: 12", parentElement: null };
 const popup = {
   nodeType: 1,
   closest(selector) { return selector.includes("itemPopup") ? this : null; },
@@ -17,6 +23,12 @@ const popup = {
 };
 itemLabel.parentElement = popup;
 requiresLabel.parentElement = popup;
+evasionSummary.parentElement = popup;
+armourSummary.parentElement = popup;
+energyShieldSummary.parentElement = popup;
+wardSummary.parentElement = popup;
+basePercentileSummary.parentElement = popup;
+unknownResultText.parentElement = popup;
 const body = {
   nodeType: 1,
   closest() { return null; },
@@ -34,7 +46,16 @@ const document = {
   removeEventListener(name, callback) { if (listeners.get(name) === callback) listeners.delete(name); },
   dispatchEvent() {},
   createTreeWalker() {
-    const nodes = [itemLabel, requiresLabel];
+    const nodes = [
+      itemLabel,
+      requiresLabel,
+      evasionSummary,
+      armourSummary,
+      energyShieldSummary,
+      wardSummary,
+      basePercentileSummary,
+      unknownResultText,
+    ];
     let index = 0;
     return { nextNode() { return nodes[index++] ?? null; } };
   },
@@ -69,9 +90,20 @@ vm.runInContext(
   context,
   { filename: "missing-report-policy.js" },
 );
+vm.runInContext(
+  fs.readFileSync(path.join(root, "extension/shared/result-label-policy.js"), "utf8"),
+  context,
+  { filename: "result-label-policy.js" },
+);
 vm.runInContext(bridgeSource, context, { filename: "bridge.js" });
 await new Promise((resolve) => setTimeout(resolve, 0));
 
 assert.equal(itemLabel.nodeValue, "物品等級 (Item Level)");
 assert.equal(requiresLabel.nodeValue, "需求 (Requires):");
+assert.equal(evasionSummary.nodeValue, "閃避 (Evasion): 69");
+assert.equal(armourSummary.nodeValue, "護甲 (Armour): 1,234");
+assert.equal(energyShieldSummary.nodeValue, "能量護盾 (Energy Shield): 33");
+assert.equal(wardSummary.nodeValue, "保護 (Ward): 120");
+assert.equal(basePercentileSummary.nodeValue, "基礎百分位 (Base Percentile): 87%");
+assert.equal(unknownResultText.nodeValue, "Unverified Stat: 12");
 console.log("item-label-dom-smoke-test: ok");
