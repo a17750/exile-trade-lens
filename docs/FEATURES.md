@@ -51,6 +51,12 @@
 
 ### 5. 漏译自检
 
+数据来源边界：
+
+- 目录数据来自官方国际服 `https://www.pathofexile.com/api/trade2/data/{stats,items,static,filters}`，构建时同时读取官方台服对应接口 `https://pathofexile.tw/api/trade2/data/{stats,items,static,filters}`。
+- 搜索结果中的物品、词缀和属性来自官方交易站返回的 `/api/trade2/fetch/{resultIds}` 详情接口；它不是独立词库，也不能脱离当前物品和稳定 ID 进行猜译。
+- 筛选面板、按钮、下拉选项和输入提示属于交易网页自身的 DOM/UI 文本，通常不来自上述 API，由项目的 UI 白名单和精确词库处理。
+
 检测范围：
 
 - `/api/trade2/data/stats` 中的标准词缀 ID。
@@ -69,7 +75,7 @@
 - 随机稀有物品名称。
 - 用户在搜索框中输入的内容、搜索结果价格和页面链接。
 
-漏译采集统一经过 `extension/shared/missing-report-policy.js`。输入框本身、可编辑 combobox、
+漏译采集统一经过 `extension/shared/missing-report-policy.ts`（编译产物为 `.js`）。输入框本身、可编辑 combobox、
 `aria-controls`/`aria-owns` 关联的自动完成列表，以及输入事件后生成的动态下拉内容不会进入记录。
 策略只短暂保存输入控件引用和事件时间，不读取或持久化输入值。静态 DOM 文本还必须保持稳定
 1.2 秒，并在后台再次通过来源白名单。
