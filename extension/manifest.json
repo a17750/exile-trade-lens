@@ -25,7 +25,7 @@
         "https://www.pathofexile.com/trade2*",
         "https://pathofexile.com/trade2*"
       ],
-      "js": ["page/ajax-hooker.js", "shared/missing-report-policy.js", "page/trade-hook.js"],
+      "js": ["page/ajax-hooker.js", "page/trade-hook.js"],
       "run_at": "document_start",
       "world": "MAIN"
     },

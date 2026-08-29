@@ -32,12 +32,11 @@ assert.match(bridgeSource, /knownRenderedTranslations\.has\(text\)/);
 assert.match(bridgeSource, /exactConflicts/);
 assert.match(bridgeSource, /missingPolicy\.createDomGuard/);
 assert.equal(extensionManifest.version, "0.5.8");
-for (const contentScript of extensionManifest.content_scripts) {
-  assert.ok(
-    contentScript.js.includes("shared/missing-report-policy.js"),
-    "MAIN 和隔离环境都必须先加载漏译采集策略",
-  );
-}
+const mainScript = extensionManifest.content_scripts.find((entry) => entry.world === "MAIN");
+const isolatedScript = extensionManifest.content_scripts.find((entry) => entry.world !== "MAIN");
+assert.ok(mainScript?.js.includes("page/trade-hook.js"), "MAIN 环境必须加载交易拦截器");
+assert.ok(isolatedScript?.js.includes("shared/missing-report-policy.js"), "隔离环境必须先加载漏译采集策略");
+assert.ok(isolatedScript?.js.includes("content/bridge.js"), "隔离环境必须加载 bridge");
 
 assert.equal(dataset.schemaVersion, 1);
 assert.equal(remoteManifest.datasetVersion, dataset.datasetVersion);

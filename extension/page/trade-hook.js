@@ -1,10 +1,5 @@
 (() => {
-  const policyLoaded = Boolean(globalThis.POE2ZHMissingReportPolicy);
-  const missingPolicy = globalThis.POE2ZHMissingReportPolicy ?? { API_SOURCE: "trade-api" };
-  if (!policyLoaded) {
-    document.documentElement?.setAttribute?.("data-poe2zh-policy", "missing");
-    console.warn("[POE2ZH] missing report policy was not loaded; missing collection disabled");
-  }
+  const API_SOURCE = "trade-api";
 
   let config = { dataset: null, enabled: true, mode: "bilingual" };
   const CONFIG_ELEMENT_ID = "poe2zh-shared-config";
@@ -232,7 +227,7 @@
           key,
           en,
           context,
-          source: missingPolicy.API_SOURCE,
+          source: API_SOURCE,
           datasetVersion: config.dataset?.datasetVersion,
         },
       }),
