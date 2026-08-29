@@ -1,38 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": 7,
+  "version": 8,
   "items": {},
   "statsById": {
-    "explicit.stat_3146310524": {
-      "expectedEnglish": "Dazes on Hit",
-      "text": "擊中時造成目眩",
-      "reviewedAt": "2026-08-27T16:07:37.627Z",
-      "reason": "人工审核 review-translation.mjs"
-    },
-    "fractured.stat_3146310524": {
-      "expectedEnglish": "Dazes on Hit",
-      "text": "擊中時造成目眩",
-      "reviewedAt": "2026-08-27T16:07:37.755Z",
-      "reason": "人工审核 review-translation.mjs"
-    },
-    "desecrated.stat_3146310524": {
-      "expectedEnglish": "Dazes on Hit",
-      "text": "擊中時造成目眩",
-      "reviewedAt": "2026-08-27T16:07:37.849Z",
-      "reason": "人工审核 review-translation.mjs"
-    },
-    "explicit.stat_3240183538": {
-      "expectedEnglish": "Map contains # additional Strongboxes",
-      "text": "區域含有 # 個額外保險箱",
-      "reviewedAt": "2026-08-27T16:07:37.945Z",
-      "reason": "人工审核 review-translation.mjs"
-    },
-    "explicit.stat_2134207902": {
-      "expectedEnglish": "+100% of Armour also applies to Lightning Damage",
-      "text": "100% 的護甲也套用於閃電傷害",
-      "reviewedAt": "2026-08-27T16:07:38.040Z",
-      "reason": "人工审核 review-translation.mjs"
-    },
     "explicit.stat_1867725690": {
       "expectedEnglish": "Hits with this Weapon have #% chance to Trigger Molten Shower per 25 Strength",
       "text": "每 25 點力量，此武器造成的擊中有 #% 機率觸發熔火噴濺",
@@ -41,14 +11,6 @@
     }
   },
   "staticById": {},
-  "exact": {
-    "Monster Effectiveness": "怪物效用"
-  },
-  "filtersById": {
-    "map_magic_monsters": {
-      "expectedEnglish": "Monster Effectiveness",
-      "text": "怪物效用",
-      "reason": "上游繁中快照仍使用旧英文标签 Waystone Magic Monsters"
-    }
-  }
+  "exact": {},
+  "filtersById": {}
 }

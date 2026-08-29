@@ -19,7 +19,7 @@ import {
   OFFICIAL_TW_BASE_URL,
 } from "./lib/trade-data.mjs";
 import { createOfficialTwOverlay } from "./lib/official-tw.mjs";
-import { countPlaceholders, createCandidateEngine } from "./lib/translation-engine.mjs";
+import { countPlaceholders } from "./lib/translation-engine.mjs";
 import {
   createCoverageReport,
   createQualityReport,
@@ -27,18 +27,11 @@ import {
   diffSnapshots,
 } from "./lib/audit.mjs";
 
-const translations = readJson(path.join(dataPath, "translations.zh-TW.json"));
 const uiSource = readJson(path.join(rootPath, "data", "ui.zh-TW.json"));
 const verifiedLabels = readJson(path.join(dataPath, "verified-labels.zh-TW.json"));
 const manualOverrides = readJson(path.join(dataPath, "manual-overrides.json"));
 const verifiedStatRenderings = readJson(
   path.join(dataPath, "verified-stat-renderings.zh-TW.json"),
-);
-const glossary = readJson(path.join(dataPath, "glossary.zh-TW.json"));
-const phraseExceptions = readJson(path.join(dataPath, "phrase-exceptions.zh-TW.json"));
-const sourceLock = readJson(path.join(dataPath, "source-lock.json"));
-const externalNames = readJson(
-  path.join(dataPath, "external", "poe-game-data.names.tw.json"),
 );
 const ggpkSource = readJson(path.join(rootPath, "data", "ggpk.json"));
 const ggpkManifest = ggpkSource.manifest;
@@ -46,13 +39,12 @@ const ggpkBaseItems = ggpkSource.baseItems;
 const ggpkWords = ggpkSource.words;
 const ggpkAffixes = ggpkSource.affixes;
 const ggpkClientStrings = ggpkSource.clientStrings;
+const ggpkPassiveSkills = ggpkSource.passiveSkills;
+const ggpkStatDescriptions = ggpkSource.statDescriptions;
 const tradeApiPath = path.join(rootPath, "data", "trade-api.json");
 const cachedTradeApi = readJson(tradeApiPath, null);
 const baseline = readJson(path.join(dataPath, "upstream-baseline.en.json"), null);
 
-if (translations.schemaVersion !== 1 || translations.locale !== "zh-TW") {
-  throw new Error("data/translations.zh-TW.json 格式不兼容");
-}
 if (uiSource.schemaVersion !== 1 || uiSource.locale !== "zh-TW") {
   throw new Error("data/ui.zh-TW.json 格式不兼容");
 }
@@ -74,10 +66,14 @@ if (
   ggpkWords.schemaVersion !== 1 ||
   ggpkAffixes.schemaVersion !== 1 ||
   ggpkClientStrings.schemaVersion !== 1 ||
+  ggpkPassiveSkills?.schemaVersion !== 1 ||
+  ggpkStatDescriptions?.schemaVersion !== 1 ||
   ggpkBaseItems.domain !== "base-item" ||
   ggpkWords.domain !== "word-component" ||
   ggpkAffixes.domain !== "affix-name" ||
   ggpkClientStrings.domain !== "client-string"
+  || ggpkPassiveSkills.domain !== "passive-skill"
+  || ggpkStatDescriptions.domain !== "stat-description"
 ) {
   throw new Error("data/ggpk.json 格式不兼容，请重新运行 tools/ggpk/run.ps1");
 }
@@ -144,19 +140,15 @@ try {
   twSourceStatus = { fresh: false, error: message };
   console.warn(`official Trade API pair unavailable; using data/trade-api.json: ${message}`);
 }
-const suggest = createCandidateEngine(glossary, phraseExceptions);
 
-const items = clone(translations.items ?? {});
-const stats = clone(translations.stats ?? { groups: {}, entries: {} });
-const staticData = clone(translations.static ?? { groups: {}, entries: {} });
-const filters = clone(translations.filters ?? { groups: {}, entries: {} });
-const properties = {
-  ...clone(translations.properties ?? {}),
-  ...clone(verifiedLabels.properties ?? {}),
-};
-const allocates = clone(translations.allocates ?? {});
+const items = {};
+const stats = { groups: {}, entries: {} };
+const staticData = { groups: {}, entries: {} };
+const filters = { groups: {}, entries: {} };
+const properties = clone(verifiedLabels.properties ?? {});
+const allocates = {};
 const ui = clone(uiSource.entries ?? {});
-const exact = clone(translations.exact ?? {});
+const exact = {};
 const baseItems = clone(ggpkBaseItems.byEnglish ?? {});
 const fixedNames = clone(ggpkWords.byEnglish ?? {});
 const wordComponents = clone(ggpkWords.byEnglish ?? {});
@@ -178,21 +170,6 @@ const itemDisplayTemplates = {
     text: qualityItemClientString.zhTW,
   },
 };
-const normalizeExternalName = (value) =>
-  String(value ?? "").trim().toLocaleLowerCase("en-US").replace(/\s+/g, " ");
-const externalApplied = [];
-const externalConflicts = [];
-for (const english of Object.keys(snapshot.sections.items.entries)) {
-  const external = externalNames[normalizeExternalName(english)];
-  if (!external || external === english) continue;
-  if (!items[english]) {
-    items[english] = external;
-    externalApplied.push({ english, zhTW: external });
-  } else if (items[english] !== external && !manualOverrides.items?.[english]) {
-    externalConflicts.push({ english, project: items[english], external });
-  }
-}
-
 const officialTwItemApplied = [];
 const officialTwItemOverrides = [];
 for (const [english, translated] of Object.entries(officialTwOverlay.items)) {
@@ -337,6 +314,33 @@ const normalizeTradeDescription = (value) =>
     .replace(/\s+/g, " ")
     .trim();
 
+// Passive node names are joined only as complete, official GGPK pairs. This
+// deliberately avoids word-level composition: an allocation is valid only
+// when the whole node name exists in the localized PassiveSkills table.
+for (const [english, translated] of Object.entries(ggpkPassiveSkills.byEnglish ?? {})) {
+  if (!english || !translated || english === translated) continue;
+  allocates[english] = translated;
+  addExact(`Allocates ${english}`, `配置 ${translated}`);
+}
+
+// GGPK CSD descriptions are a conservative fallback for catalog stats that
+// the official TW Trade API has not localized. The stable-ID overlay ran first.
+let ggpkStatDescriptionsApplied = 0;
+for (const [english, translated] of Object.entries(ggpkStatDescriptions.byEnglish ?? {})) {
+  const normalizedEnglish = normalizeTradeDescription(english);
+  const normalizedTranslated = normalizeTradeDescription(translated);
+  if (!normalizedEnglish || !normalizedTranslated || normalizedEnglish === normalizedTranslated) continue;
+  for (const [id, sourceEntry] of Object.entries(snapshot.sections.stats.entries ?? {})) {
+    if (normalizeTradeDescription(sourceEntry?.english) !== normalizedEnglish) continue;
+    const targetEntry = stats.entries[id] ?? {};
+    if (!targetEntry.text) {
+      stats.entries[id] = { ...targetEntry, text: normalizedTranslated, source: "ggpk-stat-description" };
+      ggpkStatDescriptionsApplied += 1;
+    }
+    addExact(normalizedEnglish, normalizedTranslated);
+  }
+}
+
 for (const [id, record] of Object.entries(verifiedStatRenderings.statsById ?? {})) {
   const catalogEnglish = snapshot.sections.stats.entries?.[id]?.english;
   if (!catalogEnglish) {
@@ -396,16 +400,12 @@ const datasetContent = {
   locale: "zh-TW",
   source: "project-owned translation pipeline",
   sources: [
-    "data/translations.zh-TW.json",
     "data/ui.zh-TW.json",
     "data/verified-labels.zh-TW.json",
     "data/manual-overrides.json",
     "data/verified-stat-renderings.zh-TW.json",
-    "data/glossary.zh-TW.json",
-    "data/phrase-exceptions.zh-TW.json",
     "data/ggpk.json",
     "data/trade-api.json",
-    `poe-game-data@${sourceLock.sources.poeGameDataNamesTw.ref}`,
   ],
   items,
   baseItems,
@@ -427,12 +427,9 @@ const contentHash = crypto
   .digest("hex")
   .slice(0, 8);
 const datasetVersion =
-  `project-zhTW-${translations.version}` +
-  `.labels-${verifiedLabels.version ?? 0}` +
+  `project-zhTW.labels-${verifiedLabels.version ?? 0}` +
   `.manual-${manualOverrides.version ?? 0}` +
   `.renderings-${verifiedStatRenderings.version ?? 0}` +
-  `.terms-${glossary.version ?? 0}` +
-  `.names-${sourceLock.sources.poeGameDataNamesTw.ref.slice(0, 7)}` +
   `.ggpk-${crypto.createHash("sha256").update(JSON.stringify(ggpkManifest.tables)).digest("hex").slice(0, 8)}` +
   `.tw-${crypto.createHash("sha256").update(JSON.stringify(twSnapshot.sections)).digest("hex").slice(0, 8)}` +
   `.data-${contentHash}`;
@@ -475,31 +472,7 @@ const unresolvedDiff = {
 const coverage = createCoverageReport(snapshot, dataset);
 coverage.ggpk = ggpkManifest.coverage;
 const quality = createQualityReport(snapshot, dataset, unresolvedDiff);
-const reviewQueue = createReviewQueue(snapshot, dataset, unresolvedDiff, suggest);
-for (const conflict of externalConflicts) {
-  reviewQueue.records.push({
-    id: `item:${conflict.english}:source-conflict`,
-    domain: "item",
-    key: conflict.english,
-    english: conflict.english,
-    currentTranslation: conflict.project,
-    reason: "external-source-conflict",
-    suggestions: [
-      {
-        text: conflict.external,
-        confidence: 0.99,
-        method: "poe-game-data-locked-exact",
-        status: "needs-review",
-        evidence: [
-          {
-            source: `poe-game-data@${sourceLock.sources.poeGameDataNamesTw.ref}`,
-            match: "normalized-exact-english",
-          },
-        ],
-      },
-    ],
-  });
-}
+const reviewQueue = createReviewQueue(snapshot, dataset, unresolvedDiff);
 for (const rejected of officialTwOverlay.report.rejected) {
   const domain = rejected.section === "stats" ? "stat" : rejected.section === "static" ? "static" : "filter";
   const key = rejected.optionId ? `${rejected.id}:${rejected.optionId}` : rejected.id;
@@ -528,9 +501,9 @@ for (const rejected of officialTwOverlay.report.rejected) {
 reviewQueue.records.sort(
   (a, b) => a.domain.localeCompare(b.domain) || a.english.localeCompare(b.english),
 );
-const bulkBacklogRecords = reviewQueue.records.filter((record) =>
-  record.reason === "external-source-conflict" ||
-  (record.reason === "missing-translation" && /^Allocates\s+/i.test(record.english ?? "")),
+const bulkBacklogRecords = reviewQueue.records.filter(
+  (record) =>
+    record.reason === "missing-translation" && /^Allocates\s+/i.test(record.english ?? ""),
 );
 reviewQueue.records = reviewQueue.records.filter((record) => !bulkBacklogRecords.includes(record));
 reviewQueue.count = reviewQueue.records.length;
@@ -543,7 +516,6 @@ writeJson(path.join(reportsPath, "bulk-backlog.json"), {
     total: bulkBacklogRecords.length,
     allocationRows: allocationBacklog.length,
     uniqueAllocations: new Set(allocationBacklog.map((record) => record.english.replace(/^Allocates\s+/i, ""))).size,
-    externalConflicts: bulkBacklogRecords.filter((record) => record.reason === "external-source-conflict").length,
   },
   records: bulkBacklogRecords,
 });
@@ -562,7 +534,6 @@ quality.sources = {
   },
 };
 quality.review = {
-  externalNameConflicts: externalConflicts.length,
   officialTwItemOverrides: officialTwItemOverrides.length,
   officialTwItemConflicts: officialTwOverlay.report.summary.itemConflicts,
   officialTwRejected: officialTwOverlay.report.summary.rejected,
@@ -573,17 +544,6 @@ writeJson(path.join(reportsPath, "upstream-diff.json"), diff);
 writeJson(path.join(reportsPath, "coverage-report.json"), coverage);
 writeJson(path.join(reportsPath, "quality-report.json"), quality);
 writeJson(path.join(reportsPath, "review-queue.json"), reviewQueue);
-writeJson(path.join(reportsPath, "external-source-report.json"), {
-  schemaVersion: 1,
-  generatedAt: snapshot.fetchedAt,
-  source: sourceLock.sources.poeGameDataNamesTw,
-  applied: externalApplied,
-  conflicts: externalConflicts,
-  summary: {
-    applied: externalApplied.length,
-    conflicts: externalConflicts.length,
-  },
-});
 writeJson(path.join(reportsPath, "official-tw-current.json"), twSnapshot);
 writeJson(path.join(reportsPath, "official-tw-source-report.json"), {
   ...officialTwOverlay.report,
@@ -604,7 +564,10 @@ writeJson(path.join(reportsPath, "ggpk-source-report.json"), {
     affixPrefixes: ggpkAffixes.conflicts.prefixes,
     affixSuffixes: ggpkAffixes.conflicts.suffixes,
     clientStrings: ggpkClientStrings.conflicts,
+    passiveSkills: ggpkPassiveSkills.conflicts,
+    statDescriptions: ggpkStatDescriptions.conflicts,
   },
+  applied: { ggpkStatDescriptions: ggpkStatDescriptionsApplied },
 });
 
 if (pendingTradeApiSnapshot && quality.blocking.count === 0) {
@@ -642,8 +605,6 @@ console.log(`items: ${Object.keys(items).length}`);
 console.log(`exact: ${Object.keys(exact).length}`);
 console.log(`coverage missing: ${missing}`);
 console.log(`review queue: ${reviewQueue.count}`);
-console.log(`external names applied: ${externalApplied.length}`);
-console.log(`external name conflicts: ${externalConflicts.length}`);
 console.log(`official tw stable entries: ${officialTwOverlay.report.summary.entriesApplied}`);
 console.log(`official tw items applied: ${officialTwItemApplied.length}`);
 console.log(`official tw item groups skipped: ${officialTwOverlay.report.itemAlignment.skippedGroups.length}`);

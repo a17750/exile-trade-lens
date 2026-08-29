@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using ExileTradeLens.Ggpk;
 using LibBundledGGPK3;
 
@@ -14,6 +15,10 @@ const string ModsEn = "data/balance/mods.datc64";
 const string ModsTw = "data/balance/traditional chinese/mods.datc64";
 const string ClientStringsEn = "data/balance/clientstrings.datc64";
 const string ClientStringsTw = "data/balance/traditional chinese/clientstrings.datc64";
+const string PassiveSkillsEn = "data/balance/passiveskills.datc64";
+const string PassiveSkillsTw = "data/balance/traditional chinese/passiveskills.datc64";
+const string StatDescriptions = "data/statdescriptions/stat_descriptions.csd";
+const string PassiveStatDescriptions = "data/statdescriptions/passive_skill_stat_descriptions.csd";
 const int ModsExpectedRowSize = 677;
 const int ModsIdOffset = 0;
 const int ModsDomainOffset = 94;
@@ -42,7 +47,8 @@ Console.WriteLine($"Size: {before.Length:N0} bytes; modified: {before.LastWriteT
 
 var requestedPaths = new[] {
     BaseItemsEn, BaseItemsTw, WordsEn, WordsTw, ModsEn, ModsTw,
-    ClientStringsEn, ClientStringsTw,
+    ClientStringsEn, ClientStringsTw, PassiveSkillsEn, PassiveSkillsTw,
+    StatDescriptions, PassiveStatDescriptions,
 };
 var rawTables = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
 
@@ -75,15 +81,17 @@ if (before != after) {
 }
 Console.WriteLine("Read-only check passed: Content.ggpk size and modified time are unchanged.");
 
-var tables = rawTables.ToDictionary(
-    pair => pair.Key,
-    pair => new Datc64Table(pair.Key, pair.Value),
+var datTablePaths = requestedPaths.Where(path => !path.EndsWith(".csd", StringComparison.OrdinalIgnoreCase));
+var tables = datTablePaths.ToDictionary(
+    path => path,
+    path => new Datc64Table(path, rawTables[path]),
     StringComparer.OrdinalIgnoreCase);
 
 ValidatePair(tables[BaseItemsEn], tables[BaseItemsTw]);
 ValidatePair(tables[WordsEn], tables[WordsTw]);
 ValidatePair(tables[ModsEn], tables[ModsTw]);
 ValidatePair(tables[ClientStringsEn], tables[ClientStringsTw]);
+ValidatePair(tables[PassiveSkillsEn], tables[PassiveSkillsTw]);
 if (tables[ModsEn].RowSize != ModsExpectedRowSize) {
     throw new InvalidDataException(
         $"Mods schema changed: expected row size {ModsExpectedRowSize}, got {tables[ModsEn].RowSize}. " +
@@ -94,6 +102,8 @@ var baseResult = BuildBaseItems(tables[BaseItemsEn], tables[BaseItemsTw]);
 var wordsResult = BuildWords(tables[WordsEn], tables[WordsTw]);
 var affixResult = BuildAffixes(tables[ModsEn], tables[ModsTw]);
 var clientStringResult = BuildClientStrings(tables[ClientStringsEn], tables[ClientStringsTw]);
+var passiveResult = BuildPassiveSkills(tables[PassiveSkillsEn], tables[PassiveSkillsTw]);
+var statDescriptionResult = BuildStatDescriptions(rawTables[StatDescriptions], rawTables[PassiveStatDescriptions]);
 var generatedAt = DateTime.UtcNow.ToString("O");
 
 Directory.CreateDirectory(outputRoot);
@@ -162,6 +172,27 @@ var clientStrings = new {
     conflicts = clientStringResult.Conflicts,
     coverage = clientStringResult.Coverage,
 };
+var passiveSkills = new {
+    schemaVersion = 1,
+    generatedAt,
+    domain = "passive-skill",
+    source = "paired-local-content-ggpk",
+    schema = new { table = "PassiveSkills", idOffset = 0, nameOffset = 50 },
+    records = passiveResult.Records,
+    byEnglish = passiveResult.ByEnglish,
+    conflicts = passiveResult.Conflicts,
+    coverage = passiveResult.Coverage,
+};
+var statDescriptions = new {
+    schemaVersion = 1,
+    generatedAt,
+    domain = "stat-description",
+    source = "local-content-ggpk-csd",
+    files = new[] { StatDescriptions, PassiveStatDescriptions },
+    byEnglish = statDescriptionResult.ByEnglish,
+    conflicts = statDescriptionResult.Conflicts,
+    coverage = statDescriptionResult.Coverage,
+};
 
 var manifest = new {
     schemaVersion = 1,
@@ -183,7 +214,12 @@ var manifest = new {
         table.RowCount,
         table.RowSize,
         table.Sha256,
-    }),
+    }).Concat(rawTables.Where(pair => pair.Key.EndsWith(".csd", StringComparison.OrdinalIgnoreCase)).Select(pair => new {
+        path = pair.Key,
+        RowCount = 0,
+        RowSize = 0,
+        Sha256 = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(pair.Value)).ToLowerInvariant(),
+    })),
     coverage = new {
         baseItems = baseResult.Coverage,
         words = wordsResult.Coverage,
@@ -192,6 +228,8 @@ var manifest = new {
             suffixes = affixResult.Suffixes.Coverage,
         },
         clientStrings = clientStringResult.Coverage,
+        passiveSkills = passiveResult.Coverage,
+        statDescriptions = statDescriptionResult.Coverage,
         combinedUsablePercent = Percent(
             baseResult.ByEnglish.Count + wordsResult.ByEnglish.Count +
                 affixResult.Prefixes.ByEnglish.Count + affixResult.Suffixes.ByEnglish.Count +
@@ -210,6 +248,8 @@ WriteJsonAtomic(Path.Combine(outputRoot, "ggpk.json"), new {
     words,
     affixes,
     clientStrings,
+    passiveSkills,
+    statDescriptions,
 });
 
 Console.WriteLine($"Base-item usable coverage: {baseResult.Coverage.UsablePercent:F2}%");
@@ -217,6 +257,8 @@ Console.WriteLine($"Word-component usable coverage: {wordsResult.Coverage.Usable
 Console.WriteLine($"Affix-prefix usable coverage: {affixResult.Prefixes.Coverage.UsablePercent:F2}%");
 Console.WriteLine($"Affix-suffix usable coverage: {affixResult.Suffixes.Coverage.UsablePercent:F2}%");
 Console.WriteLine($"Client-string usable coverage: {clientStringResult.Coverage.UsablePercent:F2}%");
+Console.WriteLine($"Passive-skill usable coverage: {passiveResult.Coverage.UsablePercent:F2}%");
+Console.WriteLine($"Stat-description usable coverage: {statDescriptionResult.Coverage.UsablePercent:F2}%");
 Console.WriteLine($"Normalized output: {outputRoot}");
 
 static PairResult<BaseItemRecord> BuildBaseItems(Datc64Table english, Datc64Table translated) {
@@ -326,6 +368,91 @@ static PairResult<ClientStringRecord> BuildClientStrings(
     return CreatePairResult(records, record => record.English, record => record.ZhTW);
 }
 
+static PairResult<PassiveSkillRecord> BuildPassiveSkills(Datc64Table english, Datc64Table translated) {
+    const int idOffset = 0;
+    const int nameOffset = 50;
+    var records = new List<PassiveSkillRecord>();
+    for (var row = 0; row < english.RowCount; row += 1) {
+        var id = english.ReadString(row, idOffset);
+        var translatedId = translated.ReadString(row, idOffset);
+        if (!string.Equals(id, translatedId, StringComparison.Ordinal)) {
+            throw new InvalidDataException($"PassiveSkills ID mismatch at row {row}");
+        }
+        var en = english.ReadString(row, nameOffset).Trim();
+        var zh = translated.ReadString(row, nameOffset).Trim();
+        if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(en) ||
+            en.StartsWith("[DNT", StringComparison.Ordinal)) continue;
+        records.Add(new PassiveSkillRecord(id, row, en, zh));
+    }
+    return CreatePairResult(records, record => record.English, record => record.ZhTW);
+}
+
+static StatDescriptionResult BuildStatDescriptions(byte[] mainBytes, byte[] passiveBytes) {
+    var all = new List<StatDescriptionPair>();
+    all.AddRange(ParseCsd(mainBytes, "stat_descriptions.csd"));
+    all.AddRange(ParseCsd(passiveBytes, "passive_skill_stat_descriptions.csd"));
+    var byEnglish = new SortedDictionary<string, string>(StringComparer.Ordinal);
+    var conflicts = new List<PairConflict>();
+    foreach (var group in all.GroupBy(pair => pair.English, StringComparer.Ordinal)) {
+        var translations = group.Select(pair => pair.ZhTW)
+            .Where(value => !string.IsNullOrEmpty(value) && value != group.Key)
+            .Distinct(StringComparer.Ordinal).OrderBy(value => value, StringComparer.Ordinal).ToArray();
+        if (translations.Length == 1) byEnglish[group.Key] = translations[0];
+        else if (translations.Length > 1) conflicts.Add(new PairConflict(group.Key, translations));
+    }
+    var uniqueEnglish = all.Select(pair => pair.English).Distinct(StringComparer.Ordinal).Count();
+    return new StatDescriptionResult(byEnglish, conflicts,
+        new Coverage(all.Count, uniqueEnglish, byEnglish.Count, conflicts.Count,
+            Percent(byEnglish.Count, uniqueEnglish)));
+}
+
+static IEnumerable<StatDescriptionPair> ParseCsd(byte[] bytes, string source) {
+    var text = Encoding.Unicode.GetString(bytes).TrimStart('\uFEFF');
+    var lines = text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+    var english = new List<string>();
+    var translated = new List<string>();
+    var inDescription = false;
+    var language = "English";
+    foreach (var raw in lines.Append("description")) {
+        var line = raw.Trim();
+        if (line.Equals("description", StringComparison.Ordinal)) {
+            foreach (var pair in PairDescriptionVariants(english, translated, source)) yield return pair;
+            english.Clear(); translated.Clear(); inDescription = true; language = "English"; continue;
+        }
+        if (!inDescription) continue;
+        if (line.StartsWith("lang \"", StringComparison.Ordinal)) {
+            language = line.Contains("Traditional Chinese", StringComparison.Ordinal) ? "Traditional Chinese" : "Other";
+            continue;
+        }
+        var match = Regex.Match(line, "(?:^|\\|)#\\s+\\\"(?<text>(?:\\\\.|[^\\\"])*)\\\"");
+        if (!match.Success) continue;
+        var value = NormalizeCsdText(match.Groups["text"].Value);
+        if (string.IsNullOrEmpty(value)) continue;
+        if (language == "English") english.Add(value);
+        else if (language == "Traditional Chinese") translated.Add(value);
+    }
+}
+
+static IEnumerable<StatDescriptionPair> PairDescriptionVariants(
+    IReadOnlyList<string> english, IReadOnlyList<string> translated, string source) {
+    if (english.Count == 0 || english.Count != translated.Count) yield break;
+    for (var index = 0; index < english.Count; index += 1) {
+        var en = english[index]; var zh = translated[index];
+        if (en == zh || CountPlaceholders(en) != CountPlaceholders(zh)) continue;
+        yield return new StatDescriptionPair(en, zh, source);
+    }
+}
+
+static string NormalizeCsdText(string value) {
+    value = value.Replace("\\\"", "\"");
+    value = Regex.Replace(value, @"\[([^|\]]+)\|([^\]]+)\]", "$2");
+    value = Regex.Replace(value, @"\[([^\]]+)\]", "$1");
+    value = Regex.Replace(value, @"\{[^}]*\}", "#");
+    return Regex.Replace(value, @"\s+", " ").Trim();
+}
+
+static int CountPlaceholders(string value) => value.Count(character => character == '#');
+
 static PairResult<T> CreatePairResult<T>(
     List<T> records,
     Func<T, string> getEnglish,
@@ -419,6 +546,8 @@ internal sealed record AffixRecord(
     string English,
     string ZhTW);
 internal sealed record ClientStringRecord(string Id, int Row, string English, string ZhTW);
+internal sealed record PassiveSkillRecord(string Id, int Row, string English, string ZhTW);
+internal sealed record StatDescriptionPair(string English, string ZhTW, string Source);
 internal sealed record PairConflict(string English, string[] Translations);
 internal sealed record Coverage(
     int Records,
@@ -435,3 +564,7 @@ internal sealed record AffixResult(
     List<AffixRecord> Records,
     PairResult<AffixRecord> Prefixes,
     PairResult<AffixRecord> Suffixes);
+internal sealed record StatDescriptionResult(
+    SortedDictionary<string, string> ByEnglish,
+    List<PairConflict> Conflicts,
+    Coverage Coverage);

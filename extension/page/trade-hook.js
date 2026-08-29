@@ -343,7 +343,13 @@
           const original = originalText || [originalName, originalType].filter(Boolean).join(" ");
           const name = fixedNameTranslation(originalName);
           const type = baseItemTranslation(originalType);
-          const direct = fixedNameTranslation(original) || baseItemTranslation(original);
+          const direct = !originalText
+            ? null
+            : originalText === originalType && !originalName
+              ? type
+              : originalText === originalName && !originalType
+                ? name
+                : fixedNameTranslation(original) || baseItemTranslation(original);
           const allPartsTranslated = (!originalName || name) && (!originalType || type);
           const translated = direct || (
             allPartsTranslated ? [name, type].filter(Boolean).join(" ") : null

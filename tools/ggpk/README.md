@@ -8,7 +8,7 @@ This developer tool pairs selected English and Traditional Chinese tables from a
 - Opens `Content.ggpk` through a `FileStream` with `FileAccess.Read`.
 - Uses `FileShare.Read`, preventing a writer from changing the file during extraction.
 - Never calls GGPK/Index save, replace, compact, hash-renewal or repair APIs.
-- Keeps extracted `.datc64` bytes in memory; raw tables are not written to disk.
+- Keeps extracted `.datc64`/`.csd` bytes in memory; raw tables are not written to disk.
 - Writes normalized JSON only under the repository path selected with `--output`.
 - Verifies game-file size and modified time before writing output.
 - Does not attach to the game process, inject a DLL, read memory or access account credentials.
@@ -45,6 +45,11 @@ safety result. It does not contain the local absolute game path.
 - `Words`: same-version official fixed-name/name-component pairs.
 - `Mods`: same-version English/Traditional-Chinese pairing by stable mod ID for `Domain=ITEM`
   prefix/suffix display names. Other mod domains and stat-description rendering are not mixed into this map.
+- `PassiveSkills`: same-version pairing by row ID (`Id`) using the PoE2 schema's `Name` field. These complete
+  node-name pairs feed `Allocates` translations; no component-level guesses are made.
+- `stat_descriptions.csd` and `passive_skill_stat_descriptions.csd`: UTF-16 English/Traditional-Chinese
+  description blocks. Only unique pairs with equal normalized placeholder counts are retained as a conservative
+  stat-description fallback; ambiguous blocks are reported as conflicts.
 - `ClientStrings`: same-version pairing by stable string ID. The runtime build currently selects only the
   reviewed `QualityItem` template (`Superior {0}` -> `精良的 {0}`), rather than exposing this broad table
   as a flat translation dictionary.

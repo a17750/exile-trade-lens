@@ -158,14 +158,13 @@ export function createQualityReport(snapshot, dataset, diff) {
   };
 }
 
-export function createReviewQueue(snapshot, dataset, diff, suggest) {
+export function createReviewQueue(snapshot, dataset, diff) {
   const records = [];
   for (const [section, data] of Object.entries(snapshot.sections)) {
     const domain = domainForSection(section);
     for (const [key, entry] of Object.entries(data.entries)) {
       if (!String(entry.english ?? "").trim()) continue;
       if (translatedText(dataset, domain, key)) continue;
-      const candidate = suggest(entry.english, domain);
       records.push({
         id: `${domain}:${key}`,
         domain,
@@ -173,7 +172,7 @@ export function createReviewQueue(snapshot, dataset, diff, suggest) {
         english: entry.english,
         context: entry.contexts ?? [entry.groupId].filter(Boolean),
         reason: "missing-translation",
-        suggestions: candidate ? [candidate] : [],
+        suggestions: [],
       });
     }
   }
@@ -182,7 +181,6 @@ export function createReviewQueue(snapshot, dataset, diff, suggest) {
     const domain = domainForSection(change.section);
     const currentTranslation = translatedText(dataset, domain, change.id);
     if (!currentTranslation) continue;
-    const candidate = suggest(change.english, domain);
     records.push({
       id: `${domain}:${change.id}:semantic-change`,
       domain,
@@ -192,7 +190,7 @@ export function createReviewQueue(snapshot, dataset, diff, suggest) {
       currentTranslation,
       context: change.contexts ?? [],
       reason: "source-text-changed",
-      suggestions: candidate ? [candidate] : [],
+      suggestions: [],
     });
   }
   records.sort((a, b) => a.domain.localeCompare(b.domain) || a.english.localeCompare(b.english));

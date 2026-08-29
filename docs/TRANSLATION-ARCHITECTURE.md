@@ -37,6 +37,8 @@
 | `Words.datc64` | 3,246 | 3,246 | 64 字节/行 | 固定名称与随机命名组件 |
 | `Mods.datc64` | 16,679 | 16,679 | 677 字节/行 | 模组结构、内部关联与数值范围 |
 | `ClientStrings.datc64` | 9,619 | 9,619 | 52 字节/行 | 带稳定 ID 的客户端展示模板 |
+| `PassiveSkills.datc64` | 9,729 | 9,729 | 487 字节/行 | 被动节点 ID 与英繁名称 |
+| `stat_descriptions/*.csd` | — | — | UTF-16 文本 | 英繁 stat description 模板；只收唯一、占位符一致项 |
 
 已确认的官方配对样本：
 
@@ -59,13 +61,13 @@ Golem Crack -> 魔像 + 裂骨錘   （随机名称组件，最终空格和语�
 ### 2.2 当前实现状态
 
 - `tools/ggpk/` 已提供正式只读提取器，并锁定源码依赖、哈希、补丁和许可证。
-- `data/ggpk.json` 已按独立区域保存 `BaseItemTypes`、`Words`、`Mods` 装备前后缀和 `ClientStrings` 的规范化官方英繁映射。
+- `data/ggpk.json` 已按独立区域保存 `BaseItemTypes`、`Words`、`Mods` 装备前后缀、`PassiveSkills`、stat description CSD 和 `ClientStrings` 的规范化官方英繁映射。
 - `scripts/build-data.mjs` 已把映射写入 `baseItems`、`fixedNames`、`wordComponents`、`affixNames` 和经过审核的 `itemDisplayTemplates` 等隔离域。
 - `/fetch` 运行时已经区分 `name`、`baseType` 和 `typeLine`；普通品质展示必须完整匹配 `ClientStrings.QualityItem`，稀有名称必须被 `Words` 整段覆盖，魔法名称必须由 `ITEM` 前缀、底材、后缀完整覆盖。
 - `/fetch` 的 `Mods` 与 `Stats` 已按英文模板和稳定 ID 双重校验；不会再仅按数组位置套用翻译。具体的词组、占位符和回退规则见 [词组与词条翻译对照规范](PHRASE-TRANSLATION.md)。
 - `Words` 的类别、组合顺序和所有语言规则尚未完全解析；当前采用保守的整段匹配。
 - GGPK 不负责交易站固定 UI、筛选器或服务端专有文本，这些仍以 Trade API 和项目 UI 词库为准。
-- `poe-game-data` 暂时保留为兼容补缺及冲突审计来源，不再参与随机名称解析。
+- 第三方 `poe-game-data` 不参与构建、运行或冲突审计，仅在数据清单中保留人工参考链接。
 
 所以 GGPK 现在已经是扩展名称域的正式官方来源，但不是所有交易站文本的统一来源。
 
@@ -116,12 +118,12 @@ ui:clear_filter_group
 
 扩展只下载声明式 JSON，不解析 GGPK、不访问第三方翻译站、不执行远程代码。
 
-### 3.3 正式译文与候选必须分开
+### 3.3 正式译文与缺失记录必须分开
 
 - 官方相同稳定键配对：可以自动进入正式数据。
 - 已审核人工覆盖：可以进入正式数据，并保存预期英文/来源版本。
-- 第三方英文精确匹配：只能在稳定来源被锁定且没有冲突时补缺。
-- 分词、术语组合、模糊匹配和 AI：只生成候选。
+- 分词、术语组合和模糊匹配：不参与正式翻译或候选生成。
+- AI：只能作为维护者在流程外的人工查阅辅助，不能直接写入正式数据或审核队列。
 - 找不到可靠证据：保留英文并进入审核报告。
 
 ## 4. 每个领域的来源优先级
@@ -134,8 +136,6 @@ ui:clear_filter_group
 带 expectedEnglish 的人工覆盖
   > 台服 Trade API 相同稳定 ID
   > 项目已审核正式译文
-  > 锁定第三方来源的精确稳定键/英文匹配
-  > 候选系统
   > 英文回退
 ```
 
@@ -149,12 +149,10 @@ ui:clear_filter_group
   > 同版本英文/繁中 BaseItemTypes 按 Id 配对
   > 台服 Trade API 中具备相同稳定键的条目
   > 项目已审核名称
-  > 锁定 poe-game-data 精确英文补缺
-  > 候选系统
   > 英文回退
 ```
 
-GGPK 接入稳定后，`poe-game-data/names/tw.json` 从主要名称补充源降为审计/兜底源。
+第三方名称表不作为兜底源；官方来源和已审核数据均未命中时保留英文。
 
 ### 4.3 随机魔法和稀有名称
 
@@ -231,10 +229,6 @@ data/
 
 data/
   manual-overrides.json
-  glossary.zh-TW.json
-  phrase-exceptions.zh-TW.json
-  source-lock.json
-
 reports/
   ggpk-source-report.json
   source-conflicts.json

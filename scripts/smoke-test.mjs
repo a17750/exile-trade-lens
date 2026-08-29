@@ -13,9 +13,6 @@ const bundledRaw = fs.readFileSync(path.join(root, "extension/data/bundled.json"
 const remoteManifest = JSON.parse(
   fs.readFileSync(path.join(root, "extension/data/remote-manifest.json"), "utf8"),
 );
-const translationSource = JSON.parse(
-  fs.readFileSync(path.join(root, "data/translations.zh-TW.json"), "utf8"),
-);
 const uiSource = JSON.parse(
   fs.readFileSync(path.join(root, "data/ui.zh-TW.json"), "utf8"),
 );
@@ -63,20 +60,30 @@ assert.equal(
   "https://raw.githubusercontent.com/a17750/exile-trade-lens/main/extension/data/bundled.json",
 );
 assert.equal(dataset.source, "project-owned translation pipeline");
-assert.ok(dataset.sources.includes("data/translations.zh-TW.json"));
 assert.ok(dataset.sources.includes("data/trade-api.json"));
-assert.equal(translationSource.provenance.kind, "one-time-legacy-migration");
-assert.match(translationSource.provenance.referenceSha256, /^[a-f0-9]{64}$/);
-assert.equal(translationSource.ui, undefined, "历史兼容词库不得继续保存 UI 翻译");
+assert.ok(!dataset.sources.includes("data/translations.zh-TW.json"));
 assert.equal(verifiedLabels.ui, undefined, "人工标签文件不得继续保存 UI 翻译");
 assert.deepEqual(dataset.ui, uiSource.entries, "运行 UI 词库必须完全来自 data/ui.zh-TW.json");
-assert.ok(Object.keys(dataset.items).length > 2_000);
+assert.ok(
+  new Set([
+    ...Object.keys(dataset.items),
+    ...Object.keys(dataset.baseItems),
+    ...Object.keys(dataset.fixedNames),
+  ]).size > 6_000,
+  "GGPK 底材和固定名称的合并覆盖不得下降",
+);
 assert.ok(Object.keys(dataset.baseItems).length > 4_000);
 assert.ok(Object.keys(dataset.wordComponents).length > 3_000);
 assert.ok(Object.keys(dataset.affixNames.prefixes).length > 500);
 assert.ok(Object.keys(dataset.affixNames.suffixes).length > 400);
 assert.ok(Object.keys(dataset.stats.entries).length > 5_000);
-assert.ok(Object.keys(dataset.exact).length > 5_000);
+assert.ok(Object.keys(dataset.allocates).length > 2_000);
+assert.equal(dataset.allocates["Overwhelming Strike"], "鎮壓打擊");
+assert.equal(dataset.exact["Allocates Overwhelming Strike"], "配置 鎮壓打擊");
+assert.ok(
+  Object.keys(dataset.exact).length > 4_000,
+  "官方 stable-ID、验证属性和 UI 生成的精确索引不得异常为空",
+);
 assert.equal(dataset.exact["Item Category"], "道具分類");
 assert.equal(dataset.properties["Bow"], "弓");
 assert.equal(dataset.properties["Cold Damage"], "冰冷傷害");
@@ -95,7 +102,12 @@ assert.equal(dataset.ui["Mercenary Skill Group"], "傭兵技能群組");
 assert.equal(dataset.ui.Weapons, "武器");
 assert.equal(dataset.ui["Waystone Packsize"], "換界石怪群規模");
 assert.equal(dataset.ui["Waystone IIR"], "換界石物品稀有度");
-assert.equal(dataset.items["Abyssal Flail"], "深淵鏈錘");
+assert.equal(
+  dataset.baseItems["Abyssal Flail"] ||
+    dataset.fixedNames["Abyssal Flail"] ||
+    dataset.items["Abyssal Flail"],
+  "深淵鏈錘",
+);
 assert.equal(dataset.baseItems["Slim Mace"], "纖細之錘");
 assert.equal(dataset.wordComponents.Golem, "魔像");
 assert.equal(dataset.wordComponents[" Crack"], " 裂骨錘");
@@ -281,7 +293,7 @@ assert.match(
   new RegExp(statTranslation.text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
 );
 
-const [itemEn, itemZh] = Object.entries(dataset.items)[0];
+const [itemEn, itemZh] = Object.entries(dataset.baseItems)[0];
 const itemRequest = { url: "https://www.pathofexile.com/api/trade2/data/items" };
 hook(itemRequest);
 const itemResponse = {

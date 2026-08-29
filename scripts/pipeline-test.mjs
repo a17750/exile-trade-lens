@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { dataPath, readJson, rootPath } from "./lib/project.mjs";
 import { diffSnapshots } from "./lib/audit.mjs";
-import { countPlaceholders, createCandidateEngine } from "./lib/translation-engine.mjs";
+import { countPlaceholders } from "./lib/translation-engine.mjs";
 import { createOfficialTwOverlay } from "./lib/official-tw.mjs";
 
 const ggpkSource = readJson(path.join(rootPath, "data", "ggpk.json"));
@@ -12,6 +12,8 @@ const ggpkBaseItems = ggpkSource.baseItems;
 const ggpkWords = ggpkSource.words;
 const ggpkAffixes = ggpkSource.affixes;
 const ggpkClientStrings = ggpkSource.clientStrings;
+const ggpkPassiveSkills = ggpkSource.passiveSkills;
+const ggpkStatDescriptions = ggpkSource.statDescriptions;
 const verifiedStatRenderings = readJson(
   path.join(dataPath, "verified-stat-renderings.zh-TW.json"),
 );
@@ -39,6 +41,13 @@ assert.equal(ggpkAffixes.suffixes["of the Fletcher"], "製箭者之");
 assert.equal(ggpkAffixes.suffixes["of Osmosis"], "逆滲透之");
 assert.equal(ggpkClientStrings.byId.QualityItem.english, "Superior {0}");
 assert.equal(ggpkClientStrings.byId.QualityItem.zhTW, "精良的 {0}");
+assert.equal(ggpkPassiveSkills.schema.nameOffset, 50);
+assert.equal(ggpkPassiveSkills.byEnglish["Overwhelming Strike"], "鎮壓打擊");
+assert.ok(Object.keys(ggpkStatDescriptions.byEnglish).length > 10000);
+assert.equal(
+  ggpkStatDescriptions.byEnglish["# to Strength and Dexterity"],
+  "#點力量與敏捷",
+);
 assert.ok(ggpkAffixes.records.every((record) => record.domain === "item"));
 const poisonRendering =
   verifiedStatRenderings.statsById["explicit.stat_3885634897"].variants[0];
@@ -56,21 +65,6 @@ for (const conflict of ggpkAffixes.conflicts.suffixes) {
 }
 assert.equal(ggpkBaseItems.byEnglish["Calamity Fragment"], undefined);
 
-const glossary = readJson(path.join(dataPath, "glossary.zh-TW.json"));
-const phrases = readJson(path.join(dataPath, "phrase-exceptions.zh-TW.json"));
-const suggest = createCandidateEngine(glossary, phrases);
-
-const composed = suggest("Abyssal Flail", "item");
-assert.equal(composed.text, "深淵鏈錘");
-assert.equal(composed.method, "glossary-composition");
-assert.equal(composed.status, "needs-review");
-assert.ok(composed.confidence < 0.9);
-
-const exception = suggest("Abyssal Signet", "item");
-assert.equal(exception.text, "深淵之記");
-assert.equal(exception.method, "phrase-exception");
-assert.equal(exception.confidence, 1);
-assert.equal(suggest("Unknown Unmapped Thing", "item"), null);
 assert.equal(countPlaceholders("+#% to # Things"), 2);
 
 const baseline = {

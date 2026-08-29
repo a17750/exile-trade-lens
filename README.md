@@ -22,14 +22,14 @@
 - 只读提取本机客户端英/繁中 `BaseItemTypes`、`Words`、`Mods` 装备前后缀和 `ClientStrings` 展示模板，生成可审计的官方名称数据
 - 基础类型、固定名称、稀有名称组件和魔法装备前后缀分域查找；仅在完整名称可由官方组件覆盖时组合翻译
 - 已翻译的双语文本不会再次被 DOM 自检当作漏译上报
-- `data/manual-overrides.json` 保存第三方数据缺失或语义过期时的人工校正
+- `data/manual-overrides.json` 保存自动来源缺失或语义过期时的人工校正
 
 完整说明：
 
 - [功能说明](docs/FEATURES.md)
 - [当前进度与后续交接](docs/PROGRESS.md)
 - [中英对照与目标数据架构](docs/TRANSLATION-ARCHITECTURE.md)
-- [翻译获取、候选生成与审核流程](docs/TRANSLATION-WORKFLOW.md)
+- [翻译获取与审核流程](docs/TRANSLATION-WORKFLOW.md)
 - [大型改动后的回归自检流程](docs/REGRESSION-CHECK.md)
 - [当前功能边界与项目复盘](docs/PROJECT-RETROSPECTIVE.md)
 - [漏译采集守门策略](docs/MISSING-REPORT-POLICY.md)
@@ -48,12 +48,11 @@
 `data/ggpk.json`。随后运行仓库数据构建：
 
 ```powershell
-node scripts/sync-external-sources.mjs
 node scripts/build-data.mjs
 node scripts/check-quality.mjs
 ```
 
-这会读取 GGPK 规范化数据、项目词库、锁定版本的外部名称、人工修正、国际服英文接口和台服官方繁中接口，更新最近一次验证成功的 `data/trade-api.json`，并生成运行词库以及 `reports/` 下的覆盖率、差异、质量和审核报告：
+这会读取 GGPK 规范化数据、项目词库、人工修正、国际服英文接口和台服官方繁中接口，更新最近一次验证成功的 `data/trade-api.json`，并生成运行词库以及 `reports/` 下的覆盖率、差异、质量和审核报告：
 
 - `extension/data/bundled.json`
 - `extension/data/bundled-manifest.json`
@@ -100,7 +99,7 @@ https://raw.githubusercontent.com/a17750/exile-trade-lens/main/extension/data/re
 
 ## 当前限制
 
-- 当前基础译文已一次性迁移到 `data/translations.zh-TW.json`，后续只在项目数据源中维护。
+- 历史 `trade.js` 迁移词库已从构建中移除；缺失翻译不再使用历史兜底，而是保留英文并进入审核记录。
 - GGPK `BaseItemTypes`、`Words`、`Mods` 的 `ITEM` 前后缀名称和经过明确 ID 审核的 `ClientStrings` 展示模板已并入正式构建；其他 Mods 领域以及 stat description 的完整关联仍未完成。
 - 稀有名称只有在英文整段能被官方 `Words` 组件无缝覆盖时才翻译；魔法 `typeLine` 必须由官方前缀、底材、后缀全部覆盖。不完整或冲突的名称保留英文。
 - 普通品质物品只接受官方 `ClientStrings.QualityItem` 的完整模板匹配，例如 `Superior Bombard Crossbow`；其他未知展示修饰词保留英文并进入漏译记录。

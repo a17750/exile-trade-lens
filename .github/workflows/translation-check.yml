@@ -24,9 +24,6 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Verify locked external sources
-        run: node scripts/sync-external-sources.mjs
-
       - name: Build dataset from English and official TW sources
         run: node scripts/build-data.mjs
 

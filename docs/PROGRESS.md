@@ -119,7 +119,7 @@ Superior Bombard Crossbow -> 精良的 轟擊十字弓
 ```text
 本机 Content.ggpk（只读）
   -> BaseItemTypes / Words / Mods ITEM 前后缀 / ClientStrings 规范化 JSON + 表指纹
-国际服 Trade API + 台服 Trade API + 人工覆盖 + 锁定第三方源
+国际服 Trade API + 台服 Trade API + 人工覆盖
   -> 分领域合并 + 冲突排除 + 质量门禁
   -> extension/data/bundled.json
   -> 扩展运行时按字段查对应领域
@@ -134,7 +134,6 @@ Superior Bombard Crossbow -> 精良的 轟擊十字弓
 完整构建与验证：
 
 ```powershell
-node scripts/sync-external-sources.mjs
 node scripts/build-data.mjs
 node scripts/check-quality.mjs
 node scripts/pipeline-test.mjs

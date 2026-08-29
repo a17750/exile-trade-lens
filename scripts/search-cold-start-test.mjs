@@ -56,7 +56,7 @@ vm.runInContext(
   { filename: "trade-hook.js" },
 );
 
-const [itemEn, itemZh] = Object.entries(dataset.items)[0];
+const [itemEn, itemZh] = Object.entries(dataset.baseItems)[0];
 const request = { url: "https://www.pathofexile.com/api/trade2/data/items" };
 hook(request);
 const response = {
