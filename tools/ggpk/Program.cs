@@ -97,7 +97,7 @@ var clientStringResult = BuildClientStrings(tables[ClientStringsEn], tables[Clie
 var generatedAt = DateTime.UtcNow.ToString("O");
 
 Directory.CreateDirectory(outputRoot);
-WriteJsonAtomic(Path.Combine(outputRoot, "base-items.zh-TW.json"), new {
+var baseItems = new {
     schemaVersion = 1,
     generatedAt,
     domain = "base-item",
@@ -106,8 +106,8 @@ WriteJsonAtomic(Path.Combine(outputRoot, "base-items.zh-TW.json"), new {
     byEnglish = baseResult.ByEnglish,
     conflicts = baseResult.Conflicts,
     coverage = baseResult.Coverage,
-});
-WriteJsonAtomic(Path.Combine(outputRoot, "words.zh-TW.json"), new {
+};
+var words = new {
     schemaVersion = 1,
     generatedAt,
     domain = "word-component",
@@ -116,8 +116,8 @@ WriteJsonAtomic(Path.Combine(outputRoot, "words.zh-TW.json"), new {
     byEnglish = wordsResult.ByEnglish,
     conflicts = wordsResult.Conflicts,
     coverage = wordsResult.Coverage,
-});
-WriteJsonAtomic(Path.Combine(outputRoot, "affixes.zh-TW.json"), new {
+};
+var affixes = new {
     schemaVersion = 1,
     generatedAt,
     domain = "affix-name",
@@ -147,8 +147,8 @@ WriteJsonAtomic(Path.Combine(outputRoot, "affixes.zh-TW.json"), new {
             affixResult.Prefixes.ByEnglish.Count + affixResult.Suffixes.ByEnglish.Count,
             affixResult.Prefixes.Coverage.UniqueEnglish + affixResult.Suffixes.Coverage.UniqueEnglish),
     },
-});
-WriteJsonAtomic(Path.Combine(outputRoot, "client-strings.zh-TW.json"), new {
+};
+var clientStrings = new {
     schemaVersion = 1,
     generatedAt,
     domain = "client-string",
@@ -161,7 +161,7 @@ WriteJsonAtomic(Path.Combine(outputRoot, "client-strings.zh-TW.json"), new {
     byEnglish = clientStringResult.ByEnglish,
     conflicts = clientStringResult.Conflicts,
     coverage = clientStringResult.Coverage,
-});
+};
 
 var manifest = new {
     schemaVersion = 1,
@@ -201,7 +201,16 @@ var manifest = new {
                 clientStringResult.Coverage.UniqueEnglish),
     },
 };
-WriteJsonAtomic(Path.Combine(outputRoot, "manifest.json"), manifest);
+WriteJsonAtomic(Path.Combine(outputRoot, "ggpk.json"), new {
+    schemaVersion = 1,
+    locale = "zh-TW",
+    source = "local-read-only-content-ggpk",
+    manifest,
+    baseItems,
+    words,
+    affixes,
+    clientStrings,
+});
 
 Console.WriteLine($"Base-item usable coverage: {baseResult.Coverage.UsablePercent:F2}%");
 Console.WriteLine($"Word-component usable coverage: {wordsResult.Coverage.UsablePercent:F2}%");
@@ -395,7 +404,7 @@ internal sealed record CliOptions(string GgpkPath, string OutputPath, string Rep
         if (!values.TryGetValue("--repository-root", out var root)) {
             throw new ArgumentException("Missing --repository-root");
         }
-        return new CliOptions(ggpk, values.GetValueOrDefault("--output", "sources/generated/ggpk"), root);
+        return new CliOptions(ggpk, values.GetValueOrDefault("--output", "data"), root);
     }
 }
 

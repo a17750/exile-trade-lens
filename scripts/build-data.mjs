@@ -38,12 +38,12 @@ const sourceLock = readJson(path.join(sourcesPath, "source-lock.json"));
 const externalNames = readJson(
   path.join(sourcesPath, "external", "poe-game-data.names.tw.json"),
 );
-const ggpkSourcePath = path.join(sourcesPath, "generated", "ggpk");
-const ggpkManifest = readJson(path.join(ggpkSourcePath, "manifest.json"));
-const ggpkBaseItems = readJson(path.join(ggpkSourcePath, "base-items.zh-TW.json"));
-const ggpkWords = readJson(path.join(ggpkSourcePath, "words.zh-TW.json"));
-const ggpkAffixes = readJson(path.join(ggpkSourcePath, "affixes.zh-TW.json"));
-const ggpkClientStrings = readJson(path.join(ggpkSourcePath, "client-strings.zh-TW.json"));
+const ggpkSource = readJson(path.join(rootPath, "data", "ggpk.json"));
+const ggpkManifest = ggpkSource.manifest;
+const ggpkBaseItems = ggpkSource.baseItems;
+const ggpkWords = ggpkSource.words;
+const ggpkAffixes = ggpkSource.affixes;
+const ggpkClientStrings = ggpkSource.clientStrings;
 const baseline = readJson(path.join(sourcesPath, "upstream-baseline.en.json"), null);
 
 if (translations.schemaVersion !== 1 || translations.locale !== "zh-TW") {
@@ -75,7 +75,7 @@ if (
   ggpkAffixes.domain !== "affix-name" ||
   ggpkClientStrings.domain !== "client-string"
 ) {
-  throw new Error("sources/generated/ggpk 格式不兼容，请重新运行 tools/ggpk/run.ps1");
+  throw new Error("data/ggpk.json 格式不兼容，请重新运行 tools/ggpk/run.ps1");
 }
 
 let official = null;
@@ -364,11 +364,7 @@ const datasetContent = {
     "sources/verified-stat-renderings.zh-TW.json",
     "sources/glossary.zh-TW.json",
     "sources/phrase-exceptions.zh-TW.json",
-    "sources/generated/ggpk/manifest.json",
-    "sources/generated/ggpk/base-items.zh-TW.json",
-    "sources/generated/ggpk/words.zh-TW.json",
-    "sources/generated/ggpk/affixes.zh-TW.json",
-    "sources/generated/ggpk/client-strings.zh-TW.json",
+    "data/ggpk.json",
     `${OFFICIAL_TW_BASE_URL}/{items,stats,static,filters}`,
     `poe-game-data@${sourceLock.sources.poeGameDataNamesTw.ref}`,
   ],

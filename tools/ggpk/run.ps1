@@ -4,7 +4,7 @@ param(
   [ValidateNotNullOrEmpty()]
   [string]$GamePath,
 
-  [string]$OutputPath = 'sources/generated/ggpk'
+  [string]$OutputPath = 'data'
 )
 
 $ErrorActionPreference = 'Stop'

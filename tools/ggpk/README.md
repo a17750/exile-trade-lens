@@ -31,16 +31,13 @@ the committed decompression-only patch, and builds the local tool. Dependencies 
 Default normalized output:
 
 ```text
-sources/generated/ggpk/
-  manifest.json
-  base-items.zh-TW.json
-  words.zh-TW.json
-  affixes.zh-TW.json
-  client-strings.zh-TW.json
+data/
+  ggpk.json
 ```
 
-The manifest contains source-table hashes, row geometry, coverage, and the read-only safety result. It does
-not contain the local absolute game path.
+`ggpk.json` keeps `manifest`, `baseItems`, `words`, `affixes`, and `clientStrings` in separate top-level
+sections. The embedded manifest contains source-table hashes, row geometry, coverage, and the read-only
+safety result. It does not contain the local absolute game path.
 
 ## Current scope
 

@@ -78,11 +78,11 @@
 
 - `BaseItemTypes.datc64`：基础物品内部 ID 与本地化名称。
 - `Words.datc64`：固定名称和随机名称组件。
-- `Mods.datc64`：按稳定 Mod ID 配对 `Domain=ITEM`、`PREFIX/SUFFIX` 的官方英繁名称，生成 `affixes.zh-TW.json`。怪物、区域等其他领域不混入装备词缀表。
+- `Mods.datc64`：按稳定 Mod ID 配对 `Domain=ITEM`、`PREFIX/SUFFIX` 的官方英繁名称，写入 `data/ggpk.json` 的 `affixes` 区域。怪物、区域等其他领域不混入装备词缀表。
 
 `Mods.Name` 可以直接解决 `Frosted`、`of Osmosis`、`of the Fletcher` 这类魔法物品标题组件。数值词条正文仍需要联合 `Stats` 与 stat descriptions；它与名称前后缀是两个独立领域。
 
-正式提取器和规范化数据只允许位于本仓库的 `tools/ggpk/`、`sources/generated/ggpk/`
+正式提取器和规范化数据只允许位于本仓库的 `tools/ggpk/`、`data/ggpk.json`
 和 `reports/`。原始 GGPK/Dat 文件不得进入 Git 或扩展包。
 
 ### 生成结果

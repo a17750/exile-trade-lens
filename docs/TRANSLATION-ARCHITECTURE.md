@@ -59,7 +59,7 @@ Golem Crack -> 魔像 + 裂骨錘   （随机名称组件，最终空格和语�
 ### 2.2 当前实现状态
 
 - `tools/ggpk/` 已提供正式只读提取器，并锁定源码依赖、哈希、补丁和许可证。
-- `sources/generated/ggpk/` 已生成 `BaseItemTypes`、`Words`、`Mods` 装备前后缀和 `ClientStrings` 的规范化官方英繁映射。
+- `data/ggpk.json` 已按独立区域保存 `BaseItemTypes`、`Words`、`Mods` 装备前后缀和 `ClientStrings` 的规范化官方英繁映射。
 - `scripts/build-data.mjs` 已把映射写入 `baseItems`、`fixedNames`、`wordComponents`、`affixNames` 和经过审核的 `itemDisplayTemplates` 等隔离域。
 - `/fetch` 运行时已经区分 `name`、`baseType` 和 `typeLine`；普通品质展示必须完整匹配 `ClientStrings.QualityItem`，稀有名称必须被 `Words` 整段覆盖，魔法名称必须由 `ITEM` 前缀、底材、后缀完整覆盖。
 - `/fetch` 的 `Mods` 与 `Stats` 已按英文模板和稳定 ID 双重校验；不会再仅按数组位置套用翻译。具体的词组、占位符和回退规则见 [词组与词条翻译对照规范](PHRASE-TRANSLATION.md)。
@@ -224,18 +224,15 @@ tools/
     extractor source
     table schema adapters
 
+data/
+  ggpk.json
+  ui.zh-TW.json
+
 sources/
   manual-overrides.json
   glossary.zh-TW.json
   phrase-exceptions.zh-TW.json
   source-lock.json
-  generated/
-    ggpk/
-      manifest.json
-      base-items.zh-TW.json
-      words.zh-TW.json
-      affixes.zh-TW.json
-      client-strings.zh-TW.json
 
 reports/
   ggpk-source-report.json

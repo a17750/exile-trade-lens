@@ -68,7 +68,7 @@
 - 原始 `.datc64` 只在内存中处理，不写入仓库或扩展包。
 - 运行前后比较游戏文件大小与修改时间；本轮两者完全一致。
 - 依赖版本、哈希、补丁和许可证均已锁定并记录。
-- 规范化数据输出到 `sources/generated/ggpk/`，报告输出到
+- 规范化数据输出到 `data/ggpk.json`，报告输出到
   `reports/ggpk-source-report.json`。
 
 本轮从同一客户端版本读取并配对：
@@ -168,11 +168,7 @@ node --check extension/background/service-worker.js
 ## 关键文件
 
 - `tools/ggpk/README.md`：只读提取器用法和安全边界。
-- `sources/generated/ggpk/manifest.json`：游戏表指纹、覆盖率和只读结果。
-- `sources/generated/ggpk/base-items.zh-TW.json`：官方基础物品对照。
-- `sources/generated/ggpk/words.zh-TW.json`：官方固定名/名称组件对照。
-- `sources/generated/ggpk/affixes.zh-TW.json`：官方装备前后缀对照。
-- `sources/generated/ggpk/client-strings.zh-TW.json`：官方客户端字符串对照；构建时按 ID 白名单选用。
+- `data/ggpk.json`：集中保存游戏表指纹、覆盖率、只读结果，以及官方基础物品、名称组件、装备前后缀和客户端字符串对照；各领域保持独立区域。
 - `sources/verified-stat-renderings.zh-TW.json`：英台官方 `/fetch` 成对验证的 stat 特殊显示形式。
 - `scripts/build-data.mjs`：Trade 与 GGPK 数据构建。
 - `extension/page/trade-hook.js`：接口翻译和名称分域解析。

@@ -44,8 +44,8 @@
 .\tools\ggpk\run.ps1 -GamePath 'D:\games\Path of Exile 2\Content.ggpk'
 ```
 
-工具只以 `FileAccess.Read` 打开游戏文件，原始表只留在内存，规范化结果写入
-`sources/generated/ggpk/`。随后运行仓库数据构建：
+工具只以 `FileAccess.Read` 打开游戏文件，原始表只留在内存，规范化结果统一写入
+`data/ggpk.json`。随后运行仓库数据构建：
 
 ```powershell
 node scripts/sync-external-sources.mjs

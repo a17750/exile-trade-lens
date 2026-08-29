@@ -1,17 +1,16 @@
 import assert from "node:assert/strict";
 import path from "node:path";
-import { readJson, sourcesPath } from "./lib/project.mjs";
+import { readJson, rootPath, sourcesPath } from "./lib/project.mjs";
 import { diffSnapshots } from "./lib/audit.mjs";
 import { countPlaceholders, createCandidateEngine } from "./lib/translation-engine.mjs";
 import { createOfficialTwOverlay } from "./lib/official-tw.mjs";
 
-const ggpkManifest = readJson(path.join(sourcesPath, "generated", "ggpk", "manifest.json"));
-const ggpkBaseItems = readJson(path.join(sourcesPath, "generated", "ggpk", "base-items.zh-TW.json"));
-const ggpkWords = readJson(path.join(sourcesPath, "generated", "ggpk", "words.zh-TW.json"));
-const ggpkAffixes = readJson(path.join(sourcesPath, "generated", "ggpk", "affixes.zh-TW.json"));
-const ggpkClientStrings = readJson(
-  path.join(sourcesPath, "generated", "ggpk", "client-strings.zh-TW.json"),
-);
+const ggpkSource = readJson(path.join(rootPath, "data", "ggpk.json"));
+const ggpkManifest = ggpkSource.manifest;
+const ggpkBaseItems = ggpkSource.baseItems;
+const ggpkWords = ggpkSource.words;
+const ggpkAffixes = ggpkSource.affixes;
+const ggpkClientStrings = ggpkSource.clientStrings;
 const verifiedStatRenderings = readJson(
   path.join(sourcesPath, "verified-stat-renderings.zh-TW.json"),
 );
