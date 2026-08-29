@@ -3,17 +3,20 @@
   const MATCH_LIMIT = 60;
   const MATCH_GROUP = "中文匹配";
 
-  function labelOf(multiselect, option) {
+  function searchableTextOf(multiselect, option) {
     if (option == null) return "";
     if (typeof option === "string") return option;
+    const labels = [];
+    if (typeof option.text === "string") labels.push(option.text);
     try {
       if (typeof multiselect.customLabel === "function") {
-        return String(multiselect.customLabel(option, multiselect.label) ?? "");
+        labels.push(String(multiselect.customLabel(option, multiselect.label) ?? ""));
       }
     } catch (_) {
       // Fall back to the configured label field if the site's renderer fails.
     }
-    return String(multiselect.label ? option[multiselect.label] ?? "" : option);
+    if (multiselect.label) labels.push(String(option[multiselect.label] ?? ""));
+    return [...new Set(labels.filter(Boolean))].join(" ");
   }
 
   function eachOption(multiselect, visit) {
@@ -36,7 +39,7 @@
     const matches = [];
     eachOption(multiselect, (option) => {
       if (matches.length >= MATCH_LIMIT || seen.has(option)) return;
-      if (!labelOf(multiselect, option).toLocaleLowerCase().includes(query)) return;
+      if (!searchableTextOf(multiselect, option).toLocaleLowerCase().includes(query)) return;
       seen.add(option);
       matches.push(option);
     });
@@ -68,17 +71,25 @@
       }
     };
     multiselect[PATCHED] = true;
+    document.documentElement.dataset.poe2zhDropdownSearch = "patched";
     return true;
   }
+
+  document.documentElement.dataset.poe2zhDropdownSearch = "loaded";
 
   document.addEventListener("focusin", (event) => {
     const input = event.target;
     if (!(input instanceof HTMLElement) || !input.classList.contains("multiselect__input")) {
       return;
     }
-    patchMultiselect(input.closest(".multiselect")?.__vue__);
+    const multiselect = input.closest(".multiselect")?.__vue__;
+    if (!multiselect) {
+      document.documentElement.dataset.poe2zhDropdownSearch = "component-missing";
+      return;
+    }
+    patchMultiselect(multiselect);
   }, true);
 
   // Read-only test hook. It never contains page data or user input.
-  window.__poe2zhDropdownSearch = { appendLabelMatches, patchMultiselect };
+  window.__poe2zhDropdownSearch = { appendLabelMatches, patchMultiselect, searchableTextOf };
 })();

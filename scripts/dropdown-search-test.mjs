@@ -13,6 +13,7 @@ const context = vm.createContext({
   HTMLElement: FakeHTMLElement,
   window: {},
   document: {
+    documentElement: { dataset: {} },
     addEventListener(name, callback) {
       if (name === "focusin") focusIn = callback;
     },
@@ -41,7 +42,7 @@ const multiselect = {
   groupValues: "entries",
   groupLabel: "label",
   customLabel(option) {
-    return option.text;
+    return `${option.name} ${option.type}`;
   },
   _computedWatchers: {
     filteredOptions: {
@@ -66,6 +67,11 @@ assert.equal(chineseResults[0].$groupLabel, "中文匹配");
 assert.equal(chineseResults[1], storm, "必须返回官方原始选项对象，不能创建自定义查询值");
 assert.equal(storm.name, "Choir of the Storm");
 assert.equal(storm.type, "Jade Amulet");
+assert.match(
+  context.window.__poe2zhDropdownSearch.searchableTextOf(multiselect, storm),
+  /暴風之語/,
+  "双语 text 必须独立进入搜索文本，不能依赖官网英文 customLabel",
+);
 
 multiselect.search = "Jade";
 const englishResults = multiselect._computedWatchers.filteredOptions.getter(multiselect);
