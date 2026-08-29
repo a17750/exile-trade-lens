@@ -466,15 +466,22 @@
   ajaxHooker.hook((request) => {
     if (!request.url.includes("/api/trade2/")) return;
     request.response = async (response) => {
+      const key = endpointKey(request.url);
       if (!config.dataset) {
-        await Promise.race([
-          ready,
-          new Promise((resolve) => setTimeout(resolve, 3_000)),
-        ]);
+        if (key) {
+          // The trade site caches these catalog responses for the lifetime of
+          // the page. Letting an English response through during extension
+          // startup permanently breaks Chinese search until the next reload.
+          await ready;
+        } else {
+          await Promise.race([
+            ready,
+            new Promise((resolve) => setTimeout(resolve, 3_000)),
+          ]);
+        }
       }
       if (!config.enabled || !config.dataset || !response.responseText) return;
       try {
-        const key = endpointKey(request.url);
         if (key) {
           response.responseText = JSON.stringify(
             translateDataResponse(JSON.parse(response.responseText), key),

@@ -31,6 +31,7 @@
 - [中英对照与目标数据架构](docs/TRANSLATION-ARCHITECTURE.md)
 - [翻译获取、候选生成与审核流程](docs/TRANSLATION-WORKFLOW.md)
 - [大型改动后的回归自检流程](docs/REGRESSION-CHECK.md)
+- [当前功能边界与项目复盘](docs/PROJECT-RETROSPECTIVE.md)
 - [漏译采集守门策略](docs/MISSING-REPORT-POLICY.md)
 - [权限说明](docs/PERMISSIONS.md)
 - [隐私说明草案](docs/PRIVACY-DRAFT.md)
