@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "version": "2",
+  "locale": "zh-TW",
+  "provenance": {
+    "kind": "reviewed-missing-export",
+    "reviewedAt": "2026-08-29",
+    "input": "poe2zh-missing-2026-08-28.json",
+    "policy": "Game data remains accuracy-first. Plain interface copy may use reviewed direct translation without waiting for an official zh-TW source. Composed item names and ambiguous property values are excluded."
+  },
+  "evidence": {
+    "promotedFromProjectExact": [
+      "Bow",
+      "Amulet",
+      "Body Armour",
+      "Helmet",
+      "Shield",
+      "Talisman",
+      "Wand",
+      "Sceptre",
+      "Crossbow",
+      "Gloves",
+      "Buckler",
+      "Boots",
+      "Belt",
+      "Quiver",
+      "Spear"
+    ],
+    "officialTerminology": [
+      "Cold Damage",
+      "Fire Damage",
+      "Lightning Damage",
+      "Dex",
+      "One Hand Mace",
+      "Two Hand Mace",
+      "Jewel"
+    ],
+    "unambiguousUi": [
+      "Log Out",
+      "Weighted Sum v2"
+    ],
+    "directInterfaceTranslation": [
+      "Crucible Passive Tree Path",
+      "Dismiss News",
+      "Includes base value and local modifiers",
+      "Includes base value, local modifiers, and maximum quality",
+      "Increased Item Rarity",
+      "Mercenary Skill Group",
+      "No elements found. Consider changing the search query.",
+      "No matches.",
+      "PoE2 - HC Runes of Aldur",
+      "PoE2 - Hardcore",
+      "PoE2 - Runes of Aldur",
+      "PoE2 - Standard"
+    ]
+  },
+  "properties": {
+    "Bow": "弓",
+    "Amulet": "項鍊",
+    "Body Armour": "胸甲",
+    "Helmet": "頭盔",
+    "Shield": "盾",
+    "Talisman": "魔符",
+    "Wand": "法杖",
+    "Sceptre": "權杖",
+    "Crossbow": "十字弓",
+    "Gloves": "手套",
+    "Buckler": "輕盾",
+    "Boots": "鞋子",
+    "Belt": "腰帶",
+    "Quiver": "箭袋",
+    "Spear": "長鋒",
+    "Cold Damage": "冰冷傷害",
+    "Fire Damage": "火焰傷害",
+    "Lightning Damage": "閃電傷害",
+    "Dex": "敏捷",
+    "One Hand Mace": "單手錘",
+    "Two Hand Mace": "雙手錘",
+    "Jewel": "珠寶"
+  },
+  "ui": {
+    "Log Out": "登出",
+    "Weighted Sum v2": "加權總和 v2",
+    "Crucible Passive Tree Path": "熔爐天賦樹路徑",
+    "Dismiss News": "關閉公告",
+    "Includes base value and local modifiers": "包含基礎值與本地詞綴",
+    "Includes base value, local modifiers, and maximum quality": "包含基礎值、本地詞綴與最高品質",
+    "Increased Item Rarity": "增加物品稀有度",
+    "Mercenary Skill Group": "傭兵技能群組",
+    "No elements found. Consider changing the search query.": "找不到項目，請嘗試修改搜尋條件。",
+    "No matches.": "沒有符合項目。",
+    "PoE2 - HC Runes of Aldur": "PoE2 - 專家 阿德爾的符文",
+    "PoE2 - Hardcore": "PoE2 - 專家模式",
+    "PoE2 - Runes of Aldur": "PoE2 - 阿德爾的符文",
+    "PoE2 - Standard": "PoE2 - 標準模式"
+  }
+}

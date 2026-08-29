@@ -6,8 +6,10 @@
 
 这套流程把维护者从“逐条找译文”转变为“只审核不确定项”。正式译文必须来自可追踪来源；分词、术语组合、模糊匹配和 AI 只能生成候选，不得直接覆盖正式词库。
 
-> 状态说明：Trade API 与 GGPK 官方英繁配对都已并入构建。GGPK 当前负责基础物品、固定名称
-> 和可完整解析的随机名称组件；`/fetch` 的 `Mods`/`Stats` 显示文本已使用英文模板和稳定 ID 双重校验。
+提出的问题都不应以个例处理。用户给出的字符串或搜索页只用于复现和建立回归样本；修复必须落在共同的数据源、构建管线或运行时规则上，并验证受影响的整类输入。中英文片段混排属于错误翻译，完整可靠对照缺失时应整段保留英文。
+
+> 状态说明：Trade API 与 GGPK 官方英繁配对都已并入构建。GGPK 当前负责基础物品、固定名称、
+> 可完整解析的随机名称组件，以及 `Domain=ITEM` 的魔法装备前后缀；`/fetch` 的数值词条显示文本已使用英文模板和稳定 ID 双重校验。
 > 所有无法唯一确认的情况都保留英文并进入报告，详见 [翻译准确性审计与禁止猜译规则](TRANSLATION-ACCURACY-AUDIT.md)。
 
 ## 当前已实现的数据层级
@@ -27,7 +29,7 @@
 “层级”决定来源能否使用，“置信度”只用于排列候选。低层级候选即使分数很高，也不能覆盖更高层级的正式译文。
 
 当前构建器已经先按 `trade-stat`、`trade-filter`、`base-item`、`fixed-name`、
-`word-component` 和 `ui` 分域，再在同一领域内应用来源优先级。不存在一个可以跨领域覆盖所有
+`word-component`、`item-affix` 和 `ui` 分域，再在同一领域内应用来源优先级。不存在一个可以跨领域覆盖所有
 英文字符串的全局权重。旧 `items` 字段暂时作为兼容层保留。
 
 ## 当前 V2 数据层级
@@ -55,8 +57,7 @@
   > 英文
 ```
 
-`BaseItemTypes` 负责基础类型，`Words` 负责固定名称或命名组件。两者不得写入同一个无领域的
-英文键空间。
+`BaseItemTypes` 负责基础类型，`Words` 负责固定名称或稀有命名组件，`Mods` 的 `ITEM` 领域负责魔法装备前后缀。三者不得写入同一个无领域的英文键空间。
 `Words` 行号只用于同一游戏版本内的英繁配对；跨版本必须结合游戏指纹、词表类别和内容哈希，
 不能把裸行号当作永久 ID。
 
@@ -76,7 +77,9 @@
 
 - `BaseItemTypes.datc64`：基础物品内部 ID 与本地化名称。
 - `Words.datc64`：固定名称和随机名称组件。
-- `Mods.datc64`：当前只保存结构和来源指纹；仍需联合 `Stats` 与 stat descriptions 才能形成显示文本。
+- `Mods.datc64`：按稳定 Mod ID 配对 `Domain=ITEM`、`PREFIX/SUFFIX` 的官方英繁名称，生成 `affixes.zh-TW.json`。怪物、区域等其他领域不混入装备词缀表。
+
+`Mods.Name` 可以直接解决 `Frosted`、`of Osmosis`、`of the Fletcher` 这类魔法物品标题组件。数值词条正文仍需要联合 `Stats` 与 stat descriptions；它与名称前后缀是两个独立领域。
 
 正式提取器和规范化数据只允许位于本仓库的 `tools/ggpk/`、`sources/generated/ggpk/`
 和 `reports/`。原始 GGPK/Dat 文件不得进入 Git 或扩展包。
@@ -112,13 +115,13 @@ node scripts/background-smoke-test.mjs
 
 流程如下：
 
-1. 本机只读配对 GGPK 英文/繁中 `BaseItemTypes`、`Words`，并生成表指纹和规范化 JSON。
+1. 本机只读配对 GGPK 英文/繁中 `BaseItemTypes`、`Words`、`Mods` 装备前后缀，并生成表指纹和规范化 JSON。
 2. 根据 `source-lock.json` 下载固定 commit 的 `poe-game-data` 并校验 SHA-256。
 3. 获取官方 `items`、`stats`、`static`、`filters` 英文及台服繁中接口。
 4. 对 `stats`、`static`、`filters` 按稳定 ID 对齐，并校验 `#` 占位符和选项 ID。
 5. 物品只在两端存在相同稳定 `id` 或唯一图片资源时自动采用；不按数组位置猜测。
 6. 与 `upstream-baseline.en.json` 比较稳定 ID、英文和选项。
-7. 把 GGPK 名称映射写入相互隔离的运行域，再合并 Trade、人工和第三方来源。
+7. 把 GGPK 名称映射写入 `baseItems`、`wordComponents`、`affixNames.prefixes/suffixes` 等相互隔离的运行域，再合并 Trade、人工和第三方来源。
 8. 对缺失项尝试完整短语或最长术语组合，但候选不自动覆盖正式译文。
 9. 生成覆盖率、来源、质量报告和审核队列，通过门禁后才允许发布。
 

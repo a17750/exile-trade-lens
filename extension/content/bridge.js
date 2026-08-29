@@ -17,6 +17,7 @@
   const pendingMissing = new Map();
   const reportedUiMissing = new Set();
   let missingTimer = null;
+  let contextInvalidated = false;
   const CONFIG_ELEMENT_ID = "poe2zh-shared-config";
   const TRANSLATABLE_ATTRIBUTES = ["placeholder", "title", "aria-label"];
   const RESULT_TEXT_SELECTORS = ".search-results, .resultset, .results, .listing, [class*='itemPopup']";
@@ -36,7 +37,58 @@
     "Custom Search": "自訂搜尋",
   };
 
+  function hasRuntimeContext() {
+    try {
+      return Boolean(chrome.runtime?.id);
+    } catch {
+      return false;
+    }
+  }
+
+  function isContextInvalidatedError(error) {
+    return (
+      !hasRuntimeContext() ||
+      /Extension context invalidated/i.test(String(error?.message ?? error ?? ""))
+    );
+  }
+
+  function stopInvalidatedBridge() {
+    if (contextInvalidated) return;
+    contextInvalidated = true;
+    clearTimeout(missingTimer);
+    missingTimer = null;
+    pendingMissing.clear();
+    observer?.disconnect();
+    observer = null;
+    document.removeEventListener("poe2zh:missing", queueMissing);
+    document.documentElement.dataset.poe2zhBridge = "reload-required";
+    console.info("流亡譯鏡：擴充功能已重新載入，請重新整理目前的交易頁。");
+  }
+
+  function handleContextInvalidation(error) {
+    if (!isContextInvalidatedError(error)) return false;
+    stopInvalidatedBridge();
+    return true;
+  }
+
+  async function sendRuntimeMessage(message) {
+    if (!hasRuntimeContext()) {
+      stopInvalidatedBridge();
+      return null;
+    }
+    try {
+      return await chrome.runtime.sendMessage(message);
+    } catch (error) {
+      if (handleContextInvalidation(error)) return null;
+      throw error;
+    }
+  }
+
   function queueMissing(event) {
+    if (contextInvalidated || !hasRuntimeContext()) {
+      stopInvalidatedBridge();
+      return;
+    }
     const report = event?.detail ?? event;
     const allowed = ["stat", "item", "static", "filter", "property", "ui"];
     if (!report || !allowed.includes(report.type)) return;
@@ -102,23 +154,34 @@
   }
 
   async function flushMissing() {
-    if (!pendingMissing.size) return;
+    missingTimer = null;
+    if (contextInvalidated || !pendingMissing.size) return;
     const reports = [...pendingMissing.values()];
     pendingMissing.clear();
-    await chrome.runtime.sendMessage({ type: "POE2ZH_REPORT_MISSING", reports });
+    try {
+      await sendRuntimeMessage({ type: "POE2ZH_REPORT_MISSING", reports });
+    } catch (error) {
+      console.warn("流亡譯鏡：漏譯上報失敗", error);
+    }
   }
 
   async function publish() {
-    settings = {
-      ...DEFAULT_SETTINGS,
-      ...(await chrome.storage.sync.get(DEFAULT_SETTINGS)),
-    };
-    const response = await chrome.runtime.sendMessage({ type: "POE2ZH_GET_DATASET" });
-    if (!response?.ok) throw new Error(response?.message || "词库加载失败");
-    dataset = response.dataset;
-    buildExactTranslations();
-    publishSharedConfig();
-    translateDocument();
+    if (contextInvalidated) return;
+    try {
+      settings = {
+        ...DEFAULT_SETTINGS,
+        ...(await chrome.storage.sync.get(DEFAULT_SETTINGS)),
+      };
+      const response = await sendRuntimeMessage({ type: "POE2ZH_GET_DATASET" });
+      if (contextInvalidated || !response) return;
+      if (!response.ok) throw new Error(response.message || "词库加载失败");
+      dataset = response.dataset;
+      buildExactTranslations();
+      publishSharedConfig();
+      translateDocument();
+    } catch (error) {
+      if (!handleContextInvalidation(error)) throw error;
+    }
   }
 
   function publishSharedConfig() {

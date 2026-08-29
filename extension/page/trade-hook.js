@@ -164,6 +164,45 @@
     return result?.texts?.length === 1 ? result.texts[0] : null;
   }
 
+  function composeMagicTypeLine(original, baseType) {
+    original = String(original ?? "");
+    baseType = String(baseType ?? "");
+    const translatedBase = baseItemTranslation(baseType);
+    if (!original || !baseType || !translatedBase) return null;
+
+    const baseOffset = original.indexOf(baseType);
+    if (baseOffset < 0 || original.indexOf(baseType, baseOffset + baseType.length) >= 0) {
+      return null;
+    }
+
+    const prefix = original.slice(0, baseOffset).trim();
+    const suffix = original.slice(baseOffset + baseType.length).trim();
+    const translatedPrefix = prefix ? config.dataset?.affixNames?.prefixes?.[prefix] : "";
+    const translatedSuffix = suffix ? config.dataset?.affixNames?.suffixes?.[suffix] : "";
+    if ((prefix && !translatedPrefix) || (suffix && !translatedSuffix)) return null;
+
+    return `${translatedPrefix}${translatedBase}${translatedSuffix}`;
+  }
+
+  function composeNormalTypeLine(original, baseType) {
+    original = String(original ?? "");
+    baseType = String(baseType ?? "");
+    const translatedBase = baseItemTranslation(baseType);
+    if (!original || !baseType || !translatedBase) return null;
+    if (original === baseType) return translatedBase;
+
+    const quality = config.dataset?.itemDisplayTemplates?.quality;
+    if (
+      quality?.english !== "Superior {0}" ||
+      typeof quality.text !== "string" ||
+      !quality.text.includes("{0}")
+    ) {
+      return null;
+    }
+    if (original !== quality.english.replace("{0}", baseType)) return null;
+    return quality.text.replace("{0}", translatedBase);
+  }
+
   function reportMissing(type, key, en, context = "") {
     key = String(key ?? "").trim();
     en = clean(en).trim();
@@ -221,7 +260,11 @@
           const original = entry.text;
           const name = fixedNameTranslation(entry.name);
           const type = baseItemTranslation(entry.type);
-          const translated = [name, type].filter(Boolean).join(" ");
+          const direct = fixedNameTranslation(original) || baseItemTranslation(original);
+          const allPartsTranslated = (!entry.name || name) && (!entry.type || type);
+          const translated = direct || (
+            allPartsTranslated ? [name, type].filter(Boolean).join(" ") : null
+          );
           if (translated) entry.text = format(translated, original);
         }
       }
@@ -333,20 +376,24 @@
           config.dataset.fixedNames?.[originalTypeLine] ||
           config.dataset.items?.[originalTypeLine];
         const composedTypeLine =
-          item.frameType === 1 || item.frameType === 2
-            ? composeOfficialName(originalTypeLine, true)
-            : null;
+          item.frameType === 0
+            ? composeNormalTypeLine(originalTypeLine, originalBaseType)
+            : item.frameType === 1
+            ? composeMagicTypeLine(originalTypeLine, originalBaseType)
+            : item.frameType === 2
+              ? composeOfficialName(originalTypeLine, true)
+              : null;
         if (directTypeLine) {
           item.typeLine = format(directTypeLine, originalTypeLine);
         } else if (composedTypeLine) {
           item.typeLine = format(composedTypeLine, originalTypeLine);
-        } else if (
-          translatedBaseType &&
-          originalBaseType &&
-          originalTypeLine.split(originalBaseType).length === 2
-        ) {
-          const composed = originalTypeLine.replace(originalBaseType, translatedBaseType);
-          item.typeLine = format(composed, originalTypeLine);
+        } else if (item.frameType === 0) {
+          reportMissing(
+            "item",
+            originalTypeLine,
+            originalTypeLine,
+            "fetch:typeLine:normal-display-unresolved",
+          );
         } else if (originalTypeLine === originalBaseType && !translatedBaseType) {
           reportMissing("item", originalTypeLine, originalTypeLine, "fetch:typeLine");
         }

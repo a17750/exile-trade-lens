@@ -8,6 +8,10 @@ import { createOfficialTwOverlay } from "./lib/official-tw.mjs";
 const ggpkManifest = readJson(path.join(sourcesPath, "generated", "ggpk", "manifest.json"));
 const ggpkBaseItems = readJson(path.join(sourcesPath, "generated", "ggpk", "base-items.zh-TW.json"));
 const ggpkWords = readJson(path.join(sourcesPath, "generated", "ggpk", "words.zh-TW.json"));
+const ggpkAffixes = readJson(path.join(sourcesPath, "generated", "ggpk", "affixes.zh-TW.json"));
+const ggpkClientStrings = readJson(
+  path.join(sourcesPath, "generated", "ggpk", "client-strings.zh-TW.json"),
+);
 
 assert.equal(ggpkManifest.safety.fileAccess, "Read");
 assert.equal(ggpkManifest.safety.rawTablesWritten, false);
@@ -15,6 +19,20 @@ assert.equal(ggpkManifest.safety.gameDirectoryWritten, false);
 assert.ok(ggpkManifest.coverage.combinedUsablePercent >= 80);
 assert.equal(ggpkBaseItems.byEnglish["Slim Mace"], "纖細之錘");
 assert.equal(ggpkWords.byEnglish.Golem, "魔像");
+assert.equal(ggpkAffixes.schema.includedDomain, "ITEM");
+assert.equal(ggpkAffixes.schema.rowSize, 677);
+assert.equal(ggpkAffixes.prefixes.Frosted, "結霜的");
+assert.equal(ggpkAffixes.suffixes["of the Fletcher"], "製箭者之");
+assert.equal(ggpkAffixes.suffixes["of Osmosis"], "逆滲透之");
+assert.equal(ggpkClientStrings.byId.QualityItem.english, "Superior {0}");
+assert.equal(ggpkClientStrings.byId.QualityItem.zhTW, "精良的 {0}");
+assert.ok(ggpkAffixes.records.every((record) => record.domain === "item"));
+for (const conflict of ggpkAffixes.conflicts.prefixes) {
+  assert.equal(ggpkAffixes.prefixes[conflict.english], undefined);
+}
+for (const conflict of ggpkAffixes.conflicts.suffixes) {
+  assert.equal(ggpkAffixes.suffixes[conflict.english], undefined);
+}
 assert.equal(ggpkBaseItems.byEnglish["Calamity Fragment"], undefined);
 
 const glossary = readJson(path.join(sourcesPath, "glossary.zh-TW.json"));

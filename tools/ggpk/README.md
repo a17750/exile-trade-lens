@@ -35,6 +35,8 @@ sources/generated/ggpk/
   manifest.json
   base-items.zh-TW.json
   words.zh-TW.json
+  affixes.zh-TW.json
+  client-strings.zh-TW.json
 ```
 
 The manifest contains source-table hashes, row geometry, coverage, and the read-only safety result. It does
@@ -44,7 +46,16 @@ not contain the local absolute game path.
 
 - `BaseItemTypes`: stable-ID base-item translations.
 - `Words`: same-version official fixed-name/name-component pairs.
-- `Mods`: geometry and source fingerprint only; display-text joins are a later stage.
+- `Mods`: same-version English/Traditional-Chinese pairing by stable mod ID for `Domain=ITEM`
+  prefix/suffix display names. Other mod domains and stat-description rendering are not mixed into this map.
+- `ClientStrings`: same-version pairing by stable string ID. The runtime build currently selects only the
+  reviewed `QualityItem` template (`Superior {0}` -> `精良的 {0}`), rather than exposing this broad table
+  as a flat translation dictionary.
 
 `Words` row numbers are safe for pairing the English and Traditional Chinese tables from the same GGPK.
 They are not treated as permanent IDs across game patches.
+
+The current PoE2 `Mods` schema is guarded by its observed 677-byte row size and the
+`poe-tool-dev/dat-schema` field offsets. A schema change stops extraction and requires review instead of
+silently producing shifted translations. Duplicate English affix names with different Traditional Chinese
+translations are emitted as conflicts and excluded from the runtime maps.

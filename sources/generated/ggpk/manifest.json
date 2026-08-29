@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-28T16:57:14.0358673Z",
+  "generatedAt": "2026-08-29T02:51:58.8402641Z",
   "source": "local-read-only-content-ggpk",
   "gameFile": {
     "name": "Content.ggpk",
@@ -21,6 +21,12 @@
       "sha256": "a52d3b1131ea1eb44dc685427326361a30fb27e673cd45e10a72c80fcac28099"
     },
     {
+      "path": "data/balance/clientstrings.datc64",
+      "rowCount": 9619,
+      "rowSize": 52,
+      "sha256": "7dcb3fc894b0a92bf8fb354b91c3cb8a0ff9012fe17141f818350bede67dc144"
+    },
+    {
       "path": "data/balance/mods.datc64",
       "rowCount": 16679,
       "rowSize": 677,
@@ -31,6 +37,12 @@
       "rowCount": 5476,
       "rowSize": 360,
       "sha256": "b3a5ee2c5981b30b75b3d36900328924ca48f77eb8ac11cdfc9327e00731737a"
+    },
+    {
+      "path": "data/balance/traditional chinese/clientstrings.datc64",
+      "rowCount": 9619,
+      "rowSize": 52,
+      "sha256": "74d4b943624ab1acebfea20f5640cd8480afb9829adb425f034dc468fd986419"
     },
     {
       "path": "data/balance/traditional chinese/mods.datc64",
@@ -66,6 +78,29 @@
       "conflicts": 6,
       "usablePercent": 98.96
     },
-    "combinedUsablePercent": 99.46
+    "affixes": {
+      "prefixes": {
+        "records": 1399,
+        "uniqueEnglish": 622,
+        "mappedEnglish": 584,
+        "conflicts": 38,
+        "usablePercent": 93.89
+      },
+      "suffixes": {
+        "records": 1144,
+        "uniqueEnglish": 518,
+        "mappedEnglish": 487,
+        "conflicts": 30,
+        "usablePercent": 94.02
+      }
+    },
+    "clientStrings": {
+      "records": 9305,
+      "uniqueEnglish": 8458,
+      "mappedEnglish": 8201,
+      "conflicts": 47,
+      "usablePercent": 96.96
+    },
+    "combinedUsablePercent": 97.87
   }
 }

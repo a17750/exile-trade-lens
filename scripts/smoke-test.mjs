@@ -42,9 +42,23 @@ assert.match(translationSource.provenance.referenceSha256, /^[a-f0-9]{64}$/);
 assert.ok(Object.keys(dataset.items).length > 2_000);
 assert.ok(Object.keys(dataset.baseItems).length > 4_000);
 assert.ok(Object.keys(dataset.wordComponents).length > 3_000);
+assert.ok(Object.keys(dataset.affixNames.prefixes).length > 500);
+assert.ok(Object.keys(dataset.affixNames.suffixes).length > 400);
 assert.ok(Object.keys(dataset.stats.entries).length > 5_000);
 assert.ok(Object.keys(dataset.exact).length > 5_000);
 assert.equal(dataset.exact["Item Category"], "道具分類");
+assert.equal(dataset.properties["Bow"], "弓");
+assert.equal(dataset.properties["Cold Damage"], "冰冷傷害");
+assert.equal(dataset.properties.Dex, "敏捷");
+assert.equal(dataset.properties["One Hand Mace"], "單手錘");
+assert.equal(dataset.properties["Two Hand Mace"], "雙手錘");
+assert.equal(dataset.properties.Jewel, "珠寶");
+assert.equal(dataset.ui["Log Out"], "登出");
+assert.equal(dataset.ui["Weighted Sum v2"], "加權總和 v2");
+assert.equal(dataset.ui["Dismiss News"], "關閉公告");
+assert.equal(dataset.ui["No matches."], "沒有符合項目。");
+assert.equal(dataset.ui["PoE2 - Runes of Aldur"], "PoE2 - 阿德爾的符文");
+assert.equal(dataset.ui["Mercenary Skill Group"], "傭兵技能群組");
 assert.equal(dataset.ui.Weapons, "武器");
 assert.equal(dataset.ui["Waystone Packsize"], "換界石怪群規模");
 assert.equal(dataset.ui["Waystone IIR"], "換界石物品稀有度");
@@ -52,6 +66,14 @@ assert.equal(dataset.items["Abyssal Flail"], "深淵鏈錘");
 assert.equal(dataset.baseItems["Slim Mace"], "纖細之錘");
 assert.equal(dataset.wordComponents.Golem, "魔像");
 assert.equal(dataset.wordComponents[" Crack"], " 裂骨錘");
+assert.equal(dataset.affixNames.prefixes.Frosted, "結霜的");
+assert.equal(dataset.affixNames.suffixes["of the Fletcher"], "製箭者之");
+assert.equal(dataset.affixNames.suffixes["of Osmosis"], "逆滲透之");
+assert.deepEqual(dataset.itemDisplayTemplates.quality, {
+  sourceId: "QualityItem",
+  english: "Superior {0}",
+  text: "精良的 {0}",
+});
 assert.equal(dataset.stats.entries["explicit.stat_3146310524"].text, "擊中時造成目眩");
 assert.equal(
   dataset.stats.entries["explicit.stat_2162097452"].english,
@@ -136,20 +158,134 @@ const itemResponse = {
 await itemRequest.response(itemResponse);
 assert.match(JSON.parse(itemResponse.responseText).result[0].entries[0].text, new RegExp(itemZh));
 
+const partialCatalogRequest = { url: "https://www.pathofexile.com/api/trade2/data/items" };
+hook(partialCatalogRequest);
+const partialCatalogText = `Unverified Name ${itemEn}`;
+const partialCatalogResponse = {
+  responseText: JSON.stringify({
+    result: [{
+      id: "test",
+      entries: [{ name: "Unverified Name", type: itemEn, text: partialCatalogText }],
+    }],
+  }),
+};
+await partialCatalogRequest.response(partialCatalogResponse);
+assert.equal(
+  JSON.parse(partialCatalogResponse.responseText).result[0].entries[0].text,
+  partialCatalogText,
+  "物品目录的名称和类型必须全部命中，不能输出残缺组合",
+);
+
 const magicFetchRequest = { url: "https://www.pathofexile.com/api/trade2/fetch/magic-test" };
 hook(magicFetchRequest);
-const magicTypeLine = `Shining ${itemEn} of the Crystal`;
+const magicTypeLine = `Unverified Prefix ${itemEn} of Unverified Suffix`;
 const magicFetchResponse = {
   responseText: JSON.stringify({
-    result: [{ item: { frameType: 1, baseType: itemEn, typeLine: magicTypeLine, properties: [], requirements: [] } }],
+    result: [
+      { item: { frameType: 1, baseType: itemEn, typeLine: magicTypeLine, properties: [], requirements: [] } },
+      { item: { frameType: 1, baseType: "Composite Bow", typeLine: "Frosted Composite Bow of Unverified Suffix", properties: [], requirements: [] } },
+      { item: { frameType: 1, baseType: "Composite Bow", typeLine: "Unverified Prefix Composite Bow of the Fletcher", properties: [], requirements: [] } },
+    ],
   }),
 };
 await magicFetchRequest.response(magicFetchResponse);
-const translatedMagicItem = JSON.parse(magicFetchResponse.responseText).result[0].item;
+const untranslatedMagicResults = JSON.parse(magicFetchResponse.responseText).result;
+const translatedMagicItem = untranslatedMagicResults[0].item;
 assert.match(translatedMagicItem.baseType, new RegExp(itemZh));
-assert.match(translatedMagicItem.typeLine, new RegExp(itemZh));
-assert.match(translatedMagicItem.typeLine, /Shining/);
-assert.match(translatedMagicItem.typeLine, /of the Crystal/);
+assert.equal(
+  translatedMagicItem.typeLine,
+  magicTypeLine,
+  "复合名称无法完整翻译时必须整段保留英文，不能只替换已知底材",
+);
+assert.doesNotMatch(translatedMagicItem.typeLine, new RegExp(itemZh));
+assert.equal(
+  untranslatedMagicResults[1].item.typeLine,
+  "Frosted Composite Bow of Unverified Suffix",
+  "已知前缀不能掩盖未知后缀",
+);
+assert.equal(
+  untranslatedMagicResults[2].item.typeLine,
+  "Unverified Prefix Composite Bow of the Fletcher",
+  "已知后缀不能掩盖未知前缀",
+);
+
+const officialAffixRequest = { url: "https://www.pathofexile.com/api/trade2/fetch/official-affix-test" };
+hook(officialAffixRequest);
+const officialAffixResponse = {
+  responseText: JSON.stringify({
+    result: [{ item: {
+      frameType: 1,
+      baseType: "Composite Bow",
+      typeLine: "Composite Bow of the Fletcher",
+      properties: [],
+      requirements: [],
+    } }, { item: {
+      frameType: 1,
+      baseType: "Recurve Bow",
+      typeLine: "Frosted Recurve Bow of Osmosis",
+      properties: [],
+      requirements: [],
+    } }],
+  }),
+};
+await officialAffixRequest.response(officialAffixResponse);
+const translatedOfficialAffixes = JSON.parse(officialAffixResponse.responseText).result;
+assert.equal(
+  translatedOfficialAffixes[0].item.typeLine,
+  "合成弓製箭者之 (Composite Bow of the Fletcher)",
+);
+assert.equal(
+  translatedOfficialAffixes[1].item.typeLine,
+  "結霜的反曲弓逆滲透之 (Frosted Recurve Bow of Osmosis)",
+);
+
+const superiorNormalRequest = {
+  url: "https://www.pathofexile.com/api/trade2/fetch/superior-normal-test",
+};
+hook(superiorNormalRequest);
+const superiorNormalResponse = {
+  responseText: JSON.stringify({
+    result: [{ item: {
+      frameType: 0,
+      baseType: "Bombard Crossbow",
+      typeLine: "Superior Bombard Crossbow",
+      properties: [],
+      requirements: [],
+    } }],
+  }),
+};
+await superiorNormalRequest.response(superiorNormalResponse);
+const translatedSuperiorNormal = JSON.parse(superiorNormalResponse.responseText).result[0].item;
+assert.equal(translatedSuperiorNormal.baseType, "轟擊十字弓 (Bombard Crossbow)");
+assert.equal(
+  translatedSuperiorNormal.typeLine,
+  "精良的 轟擊十字弓 (Superior Bombard Crossbow)",
+);
+
+const unknownNormalDisplayRequest = {
+  url: "https://www.pathofexile.com/api/trade2/fetch/unknown-normal-display-test",
+};
+hook(unknownNormalDisplayRequest);
+const emittedBeforeUnknownNormal = emitted.length;
+const unknownNormalDisplayResponse = {
+  responseText: JSON.stringify({
+    result: [{ item: {
+      frameType: 0,
+      baseType: "Bombard Crossbow",
+      typeLine: "Unverified Bombard Crossbow",
+      properties: [],
+      requirements: [],
+    } }],
+  }),
+};
+await unknownNormalDisplayRequest.response(unknownNormalDisplayResponse);
+assert.equal(
+  JSON.parse(unknownNormalDisplayResponse.responseText).result[0].item.typeLine,
+  "Unverified Bombard Crossbow",
+);
+assert.equal(emitted.length, emittedBeforeUnknownNormal + 1);
+assert.equal(emitted.at(-1).detail.key, "Unverified Bombard Crossbow");
+assert.equal(emitted.at(-1).detail.context, "fetch:typeLine:normal-display-unresolved");
 
 // Hash order is not a safe association key. The fixture intentionally assigns
 // the two stat IDs to the opposite mod indexes; matching the concrete English
@@ -202,6 +338,7 @@ assert.match(translatedRareItem.name, /魔像 裂骨錘/);
 assert.match(translatedRareItem.name, /Golem Crack/);
 assert.doesNotMatch(translatedRareItem.name, /纖細之錘/);
 assert.match(translatedRareItem.baseType, /纖細之錘/);
+assert.match(translatedRareItem.typeLine, /纖細之錘/);
 
 const missingRequest = { url: "https://www.pathofexile.com/api/trade2/data/stats" };
 hook(missingRequest);

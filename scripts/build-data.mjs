@@ -25,6 +25,7 @@ import {
 } from "./lib/audit.mjs";
 
 const translations = readJson(path.join(sourcesPath, "translations.zh-TW.json"));
+const verifiedLabels = readJson(path.join(sourcesPath, "verified-labels.zh-TW.json"));
 const manualOverrides = readJson(path.join(sourcesPath, "manual-overrides.json"));
 const glossary = readJson(path.join(sourcesPath, "glossary.zh-TW.json"));
 const phraseExceptions = readJson(path.join(sourcesPath, "phrase-exceptions.zh-TW.json"));
@@ -36,10 +37,15 @@ const ggpkSourcePath = path.join(sourcesPath, "generated", "ggpk");
 const ggpkManifest = readJson(path.join(ggpkSourcePath, "manifest.json"));
 const ggpkBaseItems = readJson(path.join(ggpkSourcePath, "base-items.zh-TW.json"));
 const ggpkWords = readJson(path.join(ggpkSourcePath, "words.zh-TW.json"));
+const ggpkAffixes = readJson(path.join(ggpkSourcePath, "affixes.zh-TW.json"));
+const ggpkClientStrings = readJson(path.join(ggpkSourcePath, "client-strings.zh-TW.json"));
 const baseline = readJson(path.join(sourcesPath, "upstream-baseline.en.json"), null);
 
 if (translations.schemaVersion !== 1 || translations.locale !== "zh-TW") {
   throw new Error("sources/translations.zh-TW.json 格式不兼容");
+}
+if (verifiedLabels.schemaVersion !== 1 || verifiedLabels.locale !== "zh-TW") {
+  throw new Error("sources/verified-labels.zh-TW.json 格式不兼容");
 }
 if (manualOverrides.schemaVersion !== 1) {
   throw new Error("sources/manual-overrides.json 格式不兼容");
@@ -48,8 +54,12 @@ if (
   ggpkManifest.schemaVersion !== 1 ||
   ggpkBaseItems.schemaVersion !== 1 ||
   ggpkWords.schemaVersion !== 1 ||
+  ggpkAffixes.schemaVersion !== 1 ||
+  ggpkClientStrings.schemaVersion !== 1 ||
   ggpkBaseItems.domain !== "base-item" ||
-  ggpkWords.domain !== "word-component"
+  ggpkWords.domain !== "word-component" ||
+  ggpkAffixes.domain !== "affix-name" ||
+  ggpkClientStrings.domain !== "client-string"
 ) {
   throw new Error("sources/generated/ggpk 格式不兼容，请重新运行 tools/ggpk/run.ps1");
 }
@@ -84,13 +94,37 @@ const items = clone(translations.items ?? {});
 const stats = clone(translations.stats ?? { groups: {}, entries: {} });
 const staticData = clone(translations.static ?? { groups: {}, entries: {} });
 const filters = clone(translations.filters ?? { groups: {}, entries: {} });
-const properties = clone(translations.properties ?? {});
+const properties = {
+  ...clone(translations.properties ?? {}),
+  ...clone(verifiedLabels.properties ?? {}),
+};
 const allocates = clone(translations.allocates ?? {});
-const ui = clone(translations.ui ?? {});
+const ui = {
+  ...clone(translations.ui ?? {}),
+  ...clone(verifiedLabels.ui ?? {}),
+};
 const exact = clone(translations.exact ?? {});
 const baseItems = clone(ggpkBaseItems.byEnglish ?? {});
 const fixedNames = clone(ggpkWords.byEnglish ?? {});
 const wordComponents = clone(ggpkWords.byEnglish ?? {});
+const affixNames = {
+  prefixes: clone(ggpkAffixes.prefixes ?? {}),
+  suffixes: clone(ggpkAffixes.suffixes ?? {}),
+};
+const qualityItemClientString = ggpkClientStrings.byId?.QualityItem;
+if (
+  qualityItemClientString?.english !== "Superior {0}" ||
+  !qualityItemClientString?.zhTW?.includes("{0}")
+) {
+  throw new Error("GGPK ClientStrings.QualityItem 格式已变化，请重新审查普通品质物品标题");
+}
+const itemDisplayTemplates = {
+  quality: {
+    sourceId: "QualityItem",
+    english: qualityItemClientString.english,
+    text: qualityItemClientString.zhTW,
+  },
+};
 const normalizeExternalName = (value) =>
   String(value ?? "").trim().toLocaleLowerCase("en-US").replace(/\s+/g, " ");
 const externalApplied = [];
@@ -254,12 +288,15 @@ const datasetContent = {
   source: "project-owned translation pipeline",
   sources: [
     "sources/translations.zh-TW.json",
+    "sources/verified-labels.zh-TW.json",
     "sources/manual-overrides.json",
     "sources/glossary.zh-TW.json",
     "sources/phrase-exceptions.zh-TW.json",
     "sources/generated/ggpk/manifest.json",
     "sources/generated/ggpk/base-items.zh-TW.json",
     "sources/generated/ggpk/words.zh-TW.json",
+    "sources/generated/ggpk/affixes.zh-TW.json",
+    "sources/generated/ggpk/client-strings.zh-TW.json",
     `${OFFICIAL_TW_BASE_URL}/{items,stats,static,filters}`,
     `poe-game-data@${sourceLock.sources.poeGameDataNamesTw.ref}`,
   ],
@@ -267,6 +304,8 @@ const datasetContent = {
   baseItems,
   fixedNames,
   wordComponents,
+  affixNames,
+  itemDisplayTemplates,
   stats,
   static: staticData,
   filters,
@@ -282,6 +321,7 @@ const contentHash = crypto
   .slice(0, 8);
 const datasetVersion =
   `project-zhTW-${translations.version}` +
+  `.labels-${verifiedLabels.version ?? 0}` +
   `.manual-${manualOverrides.version ?? 0}` +
   `.terms-${glossary.version ?? 0}` +
   `.names-${sourceLock.sources.poeGameDataNamesTw.ref.slice(0, 7)}` +
@@ -453,6 +493,9 @@ writeJson(path.join(reportsPath, "ggpk-source-report.json"), {
   conflicts: {
     baseItems: ggpkBaseItems.conflicts,
     words: ggpkWords.conflicts,
+    affixPrefixes: ggpkAffixes.conflicts.prefixes,
+    affixSuffixes: ggpkAffixes.conflicts.suffixes,
+    clientStrings: ggpkClientStrings.conflicts,
   },
 });
 

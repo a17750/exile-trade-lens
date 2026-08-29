@@ -102,6 +102,28 @@ assert.equal(health.records.length, 0);
 assert.equal(health.overrideCount, 1);
 const dataset = await send({ type: "POE2ZH_GET_DATASET" });
 assert.equal(dataset.dataset.stats.entries[report.key].text, "增加 #% 测试伤害");
+assert.equal(dataset.dataset.affixNames.prefixes.Frosted, "結霜的");
+assert.equal(dataset.dataset.affixNames.suffixes["of the Fletcher"], "製箭者之");
+assert.deepEqual(dataset.dataset.itemDisplayTemplates.quality, {
+  sourceId: "QualityItem",
+  english: "Superior {0}",
+  text: "精良的 {0}",
+});
+
+const resolvedPropertyReports = [
+  { type: "property", key: "Bow", en: "Bow", context: "item-property" },
+  { type: "property", key: "Cold Damage", en: "Cold Damage", context: "item-property" },
+  { type: "property", key: "Dex", en: "Dex", context: "item-property" },
+];
+await send({ type: "POE2ZH_REPORT_MISSING", reports: resolvedPropertyReports });
+health = await send({ type: "POE2ZH_GET_HEALTH" });
+for (const report of resolvedPropertyReports) {
+  assert.equal(
+    health.records.some((entry) => entry.key === report.key),
+    false,
+    `${report.key} 已有领域翻译，不应进入缺失记录`,
+  );
+}
 
 const uiReport = {
   type: "ui",
@@ -140,5 +162,23 @@ const bilingualReport = {
 await send({ type: "POE2ZH_REPORT_MISSING", reports: [bilingualReport] });
 health = await send({ type: "POE2ZH_GET_HEALTH" });
 assert.equal(health.records.some((entry) => entry.key === bilingualReport.key), false);
+
+const unknownNormalDisplayReport = {
+  type: "item",
+  key: "Unverified Bombard Crossbow",
+  en: "Unverified Bombard Crossbow",
+  context: "fetch:typeLine:normal-display-unresolved",
+};
+await send({ type: "POE2ZH_REPORT_MISSING", reports: [unknownNormalDisplayReport] });
+health = await send({ type: "POE2ZH_GET_HEALTH" });
+assert.equal(
+  health.records.some(
+    (entry) =>
+      entry.key === unknownNormalDisplayReport.key &&
+      entry.context === unknownNormalDisplayReport.context,
+  ),
+  true,
+  "未知普通物品展示模板必须保留在漏译队列",
+);
 
 console.log("background-smoke-test: ok");

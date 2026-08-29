@@ -27,6 +27,14 @@ function mergeDatasets(base, extra) {
   base.baseItems = { ...base.baseItems, ...extra.baseItems };
   base.fixedNames = { ...base.fixedNames, ...extra.fixedNames };
   base.wordComponents = { ...base.wordComponents, ...extra.wordComponents };
+  base.affixNames = {
+    prefixes: { ...base.affixNames?.prefixes, ...extra.affixNames?.prefixes },
+    suffixes: { ...base.affixNames?.suffixes, ...extra.affixNames?.suffixes },
+  };
+  base.itemDisplayTemplates = {
+    ...base.itemDisplayTemplates,
+    ...extra.itemDisplayTemplates,
+  };
   base.properties = { ...base.properties, ...extra.properties };
   base.allocates = { ...base.allocates, ...extra.allocates };
   base.ui = { ...base.ui, ...extra.ui };

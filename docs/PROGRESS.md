@@ -4,10 +4,10 @@
 
 ## 当前可交付版本
 
-- 扩展版本：`0.5.0`
+- 扩展版本：`0.5.4`
 - 安装目录：`extension/`
-- 压缩包：`poe2zh-extension-0.5.0.zip`
-- 词库版本：`project-zhTW-1.manual-7.terms-1.names-e10b747.ggpk-e9052386.tw-e96cf5bd.data-4e3eabed`
+- 压缩包：`poe2zh-extension-0.5.4.zip`
+- 词库版本：`project-zhTW-1.labels-2.manual-7.terms-1.names-e10b747.ggpk-2ca5516d.tw-22d97c72.data-cd3674f7`
 - 权限：`storage`、`alarms`
 - 网站范围：POE 官网、GitHub Raw、jsDelivr
 
@@ -22,9 +22,13 @@
 | 筛选器选项 | 100% |
 | GGPK 基础物品可用映射 | 99.82% |
 | GGPK 名称组件可用映射 | 98.96% |
+| GGPK 装备前缀可用映射 | 93.89% |
+| GGPK 装备后缀可用映射 | 94.02% |
+| GGPK 客户端字符串可用映射 | 96.96% |
 
-运行数据包含 4,445 条基础物品映射、3,138 条固定名称/名称组件映射、7,136 条交易属性和
-7,459 条动态界面精确对照。质量门禁阻断项为 0；逐条审核队列为 187 条，批量积压 991 条。
+运行数据包含 4,445 条基础物品映射、3,138 条固定名称/名称组件映射、584 条装备前缀、487 条
+装备后缀、7,136 条交易属性和 7,480 条动态界面精确对照。质量门禁阻断项为 0；逐条审核队列
+为 187 条。
 
 这些数字表示当前官方目录的静态覆盖，不等同于所有网页情境都已人工浏览验证。真实页面仍需在
 每次游戏或交易站改版后回归。
@@ -45,25 +49,31 @@
 
 - `BaseItemTypes`：基础物品名称。
 - `Words`：固定名称及随机命名组件。
-- `Mods`：本轮只记录表结构和指纹，尚未生成显示文本。
+- `Mods`：已按稳定 Mod ID 配对 `Domain=ITEM` 的 `PREFIX/SUFFIX` 官方英繁名称；其他领域仍隔离。
+- `ClientStrings`：按稳定字符串 ID 配对客户端展示模板；运行数据目前只选入已审核的
+  `QualityItem`（`Superior {0} -> 精良的 {0}`）。
 
 ### 分域运行时
 
-运行词库已经新增三个相互隔离的域：
+运行词库已经新增相互隔离的名称域：
 
 - `baseItems`：只翻译 `item.baseType` 和明确的基础类型。
 - `fixedNames`：翻译完整匹配的固定名称。
 - `wordComponents`：只用于完整随机名称组合。
+- `affixNames.prefixes/suffixes`：只用于魔法装备 `typeLine` 的完整前缀/底材/后缀组合。
+- `itemDisplayTemplates.quality`：只用于普通品质物品 `typeLine` 的官方完整模板。
 
-随机名称采用“整段覆盖”规则：动态规划必须从第一个字符一直匹配到最后一个字符，且每个组件都
-来自官方同版本 `Words` 配对，才会产生中文。无法完整匹配时保留英文，不做部分猜译，也不会借用
-基础物品译文。
+稀有名称采用 `Words` 的“整段覆盖”规则。魔法名称则用原始 `baseType` 切分，再分别匹配官方
+`ITEM` 前缀和后缀；三部分全部存在才产生中文。无法完整匹配时保留英文，不做部分猜译。
 
 已加入回归样本：
 
 ```text
 Slim Mace   -> 纖細之錘
 Golem Crack -> 魔像 裂骨錘
+Composite Bow of the Fletcher -> 合成弓製箭者之
+Frosted Recurve Bow of Osmosis -> 結霜的反曲弓逆滲透之
+Superior Bombard Crossbow -> 精良的 轟擊十字弓
 ```
 
 测试同时断言 `Golem Crack` 不能出现 `纖細之錘`，从机制上防止此前的跨领域误翻。
@@ -82,7 +92,7 @@ Golem Crack -> 魔像 裂骨錘
 
 ```text
 本机 Content.ggpk（只读）
-  -> BaseItemTypes / Words 规范化 JSON + 表指纹
+  -> BaseItemTypes / Words / Mods ITEM 前后缀 / ClientStrings 规范化 JSON + 表指纹
 国际服 Trade API + 台服 Trade API + 人工覆盖 + 锁定第三方源
   -> 分领域合并 + 冲突排除 + 质量门禁
   -> extension/data/bundled.json
@@ -112,9 +122,9 @@ node --check extension/background/service-worker.js
 
 ## 尚未完成
 
-- 用真实 Chrome 重新加载 `0.5.0`，逐项展开全部筛选组并执行搜索结果回归。
-- 分析 `Words` 的类别和语言组合规则；当前安全策略只支持能够无缝整段覆盖的名称。
-- 将 `Mods`、`Stats` 和 stat descriptions 关联，进一步提高剩余属性翻译准确率。
+- 用真实 Chrome 重新加载 `0.5.4`，逐项展开全部筛选组并执行搜索结果回归。
+- 分析 `Words` 的类别和语言组合规则；当前安全策略只支持能够无缝整段覆盖的稀有名称。
+- 将 `Mods`、`Stats` 和 stat descriptions 关联，进一步提高剩余数值属性翻译准确率；装备前后缀名称配对已经完成。
 - 为 GGPK 规范化快照增加跨版本结构漂移门禁；当前已记录表哈希、行数和行宽。
 - 决定本机游戏更新后的触发方式。GitHub Actions 没有本机 GGPK，因此只能消费已经提交的
   规范化数据，不能自行提取客户端文件。
@@ -135,6 +145,8 @@ node --check extension/background/service-worker.js
 - `sources/generated/ggpk/manifest.json`：游戏表指纹、覆盖率和只读结果。
 - `sources/generated/ggpk/base-items.zh-TW.json`：官方基础物品对照。
 - `sources/generated/ggpk/words.zh-TW.json`：官方固定名/名称组件对照。
+- `sources/generated/ggpk/affixes.zh-TW.json`：官方装备前后缀对照。
+- `sources/generated/ggpk/client-strings.zh-TW.json`：官方客户端字符串对照；构建时按 ID 白名单选用。
 - `scripts/build-data.mjs`：Trade 与 GGPK 数据构建。
 - `extension/page/trade-hook.js`：接口翻译和名称分域解析。
 - `extension/background/service-worker.js`：词库合并、更新、自检与本地修正。

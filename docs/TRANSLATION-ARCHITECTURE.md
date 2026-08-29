@@ -36,6 +36,7 @@
 | `BaseItemTypes.datc64` | 5,476 | 5,476 | 360 字节/行 | 基础物品稳定 ID 与名称 |
 | `Words.datc64` | 3,246 | 3,246 | 64 字节/行 | 固定名称与随机命名组件 |
 | `Mods.datc64` | 16,679 | 16,679 | 677 字节/行 | 模组结构、内部关联与数值范围 |
+| `ClientStrings.datc64` | 9,619 | 9,619 | 52 字节/行 | 带稳定 ID 的客户端展示模板 |
 
 已确认的官方配对样本：
 
@@ -46,6 +47,7 @@
 | 命名组件 | `Golem` | `魔像` |
 | 命名组件 | `Crack` | `裂骨錘` |
 | 命名组件 | `the Cracked` | `爆發之靈` |
+| 普通品质展示模板 `QualityItem` | `Superior {0}` | `精良的 {0}` |
 
 因此正确结论是：
 
@@ -57,9 +59,9 @@ Golem Crack -> 魔像 + 裂骨錘   （随机名称组件，最终空格和语�
 ### 2.2 当前实现状态
 
 - `tools/ggpk/` 已提供正式只读提取器，并锁定源码依赖、哈希、补丁和许可证。
-- `sources/generated/ggpk/` 已生成 `BaseItemTypes` 与 `Words` 的规范化官方英繁映射。
-- `scripts/build-data.mjs` 已把映射写入 `baseItems`、`fixedNames` 和 `wordComponents` 三个域。
-- `/fetch` 运行时已经区分 `name`、`baseType` 和 `typeLine`；随机名称必须被官方组件整段覆盖才翻译。
+- `sources/generated/ggpk/` 已生成 `BaseItemTypes`、`Words`、`Mods` 装备前后缀和 `ClientStrings` 的规范化官方英繁映射。
+- `scripts/build-data.mjs` 已把映射写入 `baseItems`、`fixedNames`、`wordComponents`、`affixNames` 和经过审核的 `itemDisplayTemplates` 等隔离域。
+- `/fetch` 运行时已经区分 `name`、`baseType` 和 `typeLine`；普通品质展示必须完整匹配 `ClientStrings.QualityItem`，稀有名称必须被 `Words` 整段覆盖，魔法名称必须由 `ITEM` 前缀、底材、后缀完整覆盖。
 - `/fetch` 的 `Mods` 与 `Stats` 已按英文模板和稳定 ID 双重校验；不会再仅按数组位置套用翻译。具体的词组、占位符和回退规则见 [词组与词条翻译对照规范](PHRASE-TRANSLATION.md)。
 - `Words` 的类别、组合顺序和所有语言规则尚未完全解析；当前采用保守的整段匹配。
 - GGPK 不负责交易站固定 UI、筛选器或服务端专有文本，这些仍以 Trade API 和项目 UI 词库为准。
@@ -80,7 +82,9 @@ Golem Crack -> 魔像 + 裂骨錘   （随机名称组件，最终空格和语�
 | 静态交易项目 | Trade API static ID | 英文与台服 Trade API |
 | 基础物品 | `BaseItemTypes.Id` | 英文与繁中 GGPK 表 |
 | 固定名称/随机名称组件 | 同版本 `Words` 行 + 词表类别 | 英文与繁中 GGPK 表 |
-| 游戏模组结构 | `Mods` 内部 ID | GGPK 表与 stat descriptions |
+| 魔法装备前后缀 | `Mods.Id` + `Domain=ITEM` + `GenerationType` | 英文与繁中 GGPK `Mods` 表 |
+| 普通物品展示模板 | `ClientStrings.Id` | 英文与繁中 GGPK `ClientStrings` 表 |
+| 游戏模组数值结构 | `Mods` 内部 ID | GGPK 表与 stat descriptions |
 | 固定网页 UI | 项目定义的 UI key/精确文本 | 项目自有人工词库 |
 | 用户搜索输入 | 无 | 不翻译、不收集 |
 
@@ -156,15 +160,25 @@ GGPK 接入稳定后，`poe-game-data/names/tw.json` 从主要名称补充源降
 
 不能把完整名称交给基础物品字典，也不能用普通英文分词直接拼中文。目标流程是：
 
-1. 从 API 的 `name`、`baseType`、`rarity` 分辨名称类型。
-2. 使用同版本 `Words` 行、词表类别和内容指纹建立前缀、后缀、专有名组件映射。
-3. 根据该语言的命名格式组合，而不是保留英文词序的简单空格拼接。
-4. 无法确认组件或语序时保留原文，不回退到基础物品翻译。
-5. 自检只记录未知组件的内部键；不记录玩家输入或完整随机物品名。
+1. 从 API 的 `name`、`baseType`、`frameType` 分辨名称类型。
+2. 稀有 `name` 使用同版本 `Words` 行、词表类别和内容指纹建立专有名组件映射。
+3. 魔法 `typeLine` 使用同版本 `Mods.Id` 配对的 `Domain=ITEM` 前后缀，并以原始 `baseType` 作为结构边界。
+4. 根据繁中的命名顺序组合，不保留英文分隔空格；前缀、底材、后缀必须全部命中。
+5. 无法确认组件或语序时保留原文，不回退到“只翻译底材”。
+6. 自检只记录可定位的稳定键或冲突；不记录玩家输入或大量完整随机物品名。
+
+普通物品的 `typeLine` 是另一独立领域。`frameType=0` 时，当前只接受两种情况：
+
+1. `typeLine` 与 `baseType` 完全相同，只显示官方基础类型译文。
+2. `typeLine` 完整匹配已审核的 `ClientStrings.QualityItem` 模板 `Superior {0}`，将 `{0}` 替换为官方基础类型译文。
+
+例如 `Superior Bombard Crossbow` 输出 `精良的 轟擊十字弓`。不能从魔法前缀表借用同名
+`Superior -> 優越的`，因为两者属于不同显示领域。若以后出现其他普通展示修饰词，整段保留英文并以
+`fetch:typeLine:normal-display-unresolved` 上报，避免再次发生“既不翻译也不收集”。
 
 ### 4.4 模组描述
 
-`Mods.datc64` 本身不等于最终显示文本。目标需要联合：
+`Mods.Name` 是魔法物品标题中直接显示的前后缀，已可通过同一 Mod ID 在英文/繁中表间配对；它不需要 stat description。下面讨论的是物品面板里的数值词条正文，这部分不能只靠 `Mods.datc64`，目标仍需联合：
 
 - `Mods`：模组 ID、类别、关联 stat 和数值。
 - `Stats`：stat 稳定 ID。
@@ -220,7 +234,8 @@ sources/
       manifest.json
       base-items.zh-TW.json
       words.zh-TW.json
-      mods.zh-TW.json
+      affixes.zh-TW.json
+      client-strings.zh-TW.json
 
 reports/
   ggpk-source-report.json
@@ -301,8 +316,9 @@ GGG 数据使用政策；在此之前可以只将其作为本地构建输入和�
   -> 单独保存原始 name/baseType/typeLine/rarity
   -> baseType 只查 base-item 域
   -> 固定 name 查 unique/fixed-name 域
-  -> 随机 name 查 word-component 域并按规则组合
-  -> typeLine 只用明确字段重建或精确替换
+  -> 普通 typeLine 只按审核过的 ClientStrings 模板完整匹配
+  -> 稀有随机 name 查 word-component 域并按规则组合
+  -> 魔法 typeLine 按 ITEM prefix + base-item + ITEM suffix 完整重建
   -> 属性和词缀按 Trade stat ID 翻译
   -> 任一域失败只回退该字段，不跨域借用译文
 ```
@@ -331,6 +347,7 @@ GGG 数据使用政策；在此之前可以只将其作为本地构建输入和�
 
 - API 层：只记录缺失稳定 ID、endpoint、英文模板和出现次数。
 - 物品层：分别记录未知基础类型、未知固定名或未知命名组件。
+- 普通物品展示层：记录未命中审核模板的完整 `typeLine`，上下文为 `fetch:typeLine:normal-display-unresolved`。
 - DOM 层：仅扫描白名单 UI 区域，并排除输入框、结果物品名、卖家信息和已双语文本。
 - 本地去重；默认不自动上传。
 - 更新词库后自动消解已经覆盖的稳定键。
@@ -383,14 +400,14 @@ ignored       用户输入、随机完整名称、卖家或交易内容
 
 完成标准：可重复生成相同映射，且不会修改游戏目录。
 
-### 阶段 B：建立规范化 GGPK 数据（基础名称已完成）
+### 阶段 B：建立规范化 GGPK 数据（基础名称和装备前后缀已完成）
 
 1. 配对 `BaseItemTypes`。
 2. 配对 `Words` 并解析词表类别/组合规则。
-3. 研究 `Mods`、`Stats` 和 stat descriptions 的关联。
+3. 配对 `Mods` 的 `ITEM` 前后缀名称；继续研究数值 `Stats` 和 stat descriptions 的关联。
 4. 生成覆盖率、冲突和结构漂移报告。
 
-完成标准：`Slim Mace`、`Jade Amulet`、`Golem Crack` 等样本能按正确领域解析。
+完成标准：`Slim Mace`、`Golem Crack`、`Frosted Recurve Bow of Osmosis` 等样本能按正确领域解析。
 
 ### 阶段 C：重构构建器（兼容迁移已完成）
 
@@ -425,3 +442,4 @@ ignored       用户输入、随机完整名称、卖家或交易内容
 4. 临时目录仅可承载可删除的编译缓存或一次性输出，且不得成为任何正式流程依赖。
 5. GGPK 解析已经并入扩展构建，但只消费规范化 JSON；浏览器扩展本身不读取本地游戏文件。
 6. `trade.js` 继续仅作为历史参考，不参与运行、构建或 GGPK 数据生成。
+7. 經漏譯導出確認的領域標籤與一般 UI 直譯存放在 `sources/verified-labels.zh-TW.json`；UI 可採較低準確性門檻，但該檔不接收完整隨機物品名或上下文不明的遊戲資料。

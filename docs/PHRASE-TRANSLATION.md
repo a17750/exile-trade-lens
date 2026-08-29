@@ -4,14 +4,16 @@
 
 本文件定義「英文詞組如何找到繁中對照」以及「交易結果如何安全套用對照」。目標不是把所有英文切成單字再逐一翻譯，而是在保留遊戲語義、詞條數值和物品命名規則的前提下，使用可追溯的證據完成翻譯。
 
-## 1. 先分辨四種資料
+## 1. 先分辨五種資料
 
 | 領域 | 例子 | 穩定鍵 | 主要來源 | 運行時處理 |
 |---|---|---|---|---|
 | 交易站 UI、篩選器 | `Clear Filter Group`、`Weapon` | UI/篩選器 ID 或完整英文 | Trade API、專案 UI 詞庫 | 完整文字或穩定 ID |
 | 數值詞條模板 | `#% increased Spirit` | `explicit.stat_3984865854` | 英文/台服 Trade API | ID 與英文模板雙重校驗，再填入實際數值 |
 | 基礎物品與固定名稱 | `Slim Mace`、暗金名稱 | GGPK 行 ID 或完整英文 | `Content.ggpk`（只讀） | 完整名稱匹配 |
-| 隨機名稱組件 | `Golem`、`Crack` | GGPK Words 行 ID/英文組件 | `Words.datc64` | 僅在魔法/稀有名稱域做組件拼接 |
+| 稀有名稱組件 | `Golem`、`Crack` | GGPK Words 行 ID/英文組件 | `Words.datc64` | 僅在稀有名稱域做組件拼接 |
+| 魔法裝備前後綴 | `Frosted`、`of the Fletcher` | `Mods.Id` + `Domain` + `GenerationType` | 英繁 `Mods.datc64` | 僅在魔法 `typeLine` 按前綴/底材/後綴組合 |
+| 普通品質展示模板 | `Superior {0}` | `ClientStrings.Id=QualityItem` | 英繁 `ClientStrings.datc64` | 僅在 `frameType=0` 的 `typeLine` 完整套用 |
 
 `trade.js` 只作歷史參考，不是本專案的運行時資料來源或邏輯依賴。
 
@@ -59,6 +61,35 @@
 
 前導空格、後綴空格和大小寫是組件邊界的一部分，不能在匯入時隨意 `trim`。組件翻譯只允許套用於 GGPK/Trade API 判定的隨機名稱域，不能把 `Slim Mace` 這類基礎類型拆成一般單字翻譯。
 
+### 2.4 魔法裝備前後綴
+
+`affixNames.prefixes` 和 `affixNames.suffixes` 來自同一遊戲版本的英文/繁中 `Mods` 表。建置只接受 `Domain=ITEM`，並按穩定 `Mods.Id` 校驗兩種語言的行；同一英文若對應多個繁中結果，整個英文鍵進入 conflict，不加入運行詞庫。
+
+```json
+{
+  "prefixes": { "Frosted": "結霜的" },
+  "suffixes": {
+    "of Osmosis": "逆滲透之",
+    "of the Fletcher": "製箭者之"
+  }
+}
+```
+
+### 2.5 普通品質展示模板
+
+`itemDisplayTemplates.quality` 只保存經過穩定 ID 審核的 `ClientStrings.QualityItem`：
+
+```json
+{
+  "sourceId": "QualityItem",
+  "english": "Superior {0}",
+  "text": "精良的 {0}"
+}
+```
+
+它與 `Mods` 中名稱同為 `Superior` 的魔法詞綴不是同一領域，不能互相借用譯文。構建器會檢查
+英文模板和中譯都保留唯一 `{0}`；模板結構變化時直接中止構建，等待重新審核。
+
 ## 3. 資料來源優先級
 
 每一筆翻譯都要保留來源和版本，合併順序如下：
@@ -77,14 +108,20 @@
 
 先以 API 穩定 ID 找到翻譯，再用完整英文作顯示校驗。選項使用 option ID，不按選項在陣列中的位置配對。
 
+物品資料目錄中的 `name` 和 `type` 是同一顯示名稱的組成部分。只要原文存在其中一部分而該部分沒有可靠譯文，就不組合殘缺中文，整個 `entry.text` 保留英文。
+
 ### 4.2 `/fetch` 物品名稱
 
 - `baseType`：只查基礎物品表。
 - 固定暗金名稱：只查固定名稱表。
-- 魔法/稀有名稱：先查完整名稱，再嘗試 GGPK 組件的最少片段拼接。
-- `typeLine`：先查完整類型；確認是名稱加基礎類型後，才替換基礎類型部分。
+- 稀有 `name`：先查完整名稱，再嘗試 GGPK `Words` 組件的唯一完整拼接。
+- 魔法 `typeLine`：以原始 `baseType` 精確切分前綴和後綴，分別查 `affixNames.prefixes/suffixes`；前綴、底材、後綴全部命中才組合。
+- 普通 `typeLine`：原文等於 `baseType` 時只翻譯底材；原文完整符合 `itemDisplayTemplates.quality` 時才套用官方品質模板。其他展示修飾不猜譯，保留英文並上報。
+- 任一部分缺失或存在多解時，整段保留英文。禁止在完整名稱失敗後只替換其中的基礎類型。
 
 因此 `Slim Mace -> 纖細之錘` 不應影響 `Golem Crack -> 魔像 裂骨錘`。
+
+雙語模式的合法結果是「完整繁中（完整英文原文）」，例如 `結霜的反曲弓逆滲透之 (Frosted Recurve Bow of Osmosis)`。`Frosted 反曲弓 of Osmosis (...)` 這種中英文殘片混合屬於錯譯；在前綴、底材和後綴尚未全部可靠對齊時，應顯示完整英文。
 
 ### 4.3 `/fetch` 數值詞條
 

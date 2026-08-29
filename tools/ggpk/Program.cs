@@ -12,6 +12,16 @@ const string WordsEn = "data/balance/words.datc64";
 const string WordsTw = "data/balance/traditional chinese/words.datc64";
 const string ModsEn = "data/balance/mods.datc64";
 const string ModsTw = "data/balance/traditional chinese/mods.datc64";
+const string ClientStringsEn = "data/balance/clientstrings.datc64";
+const string ClientStringsTw = "data/balance/traditional chinese/clientstrings.datc64";
+const int ModsExpectedRowSize = 677;
+const int ModsIdOffset = 0;
+const int ModsDomainOffset = 94;
+const int ModsNameOffset = 98;
+const int ModsGenerationTypeOffset = 106;
+const int ItemModDomain = 1;
+const int PrefixGenerationType = 1;
+const int SuffixGenerationType = 2;
 
 var options = CliOptions.Parse(args);
 var repositoryRoot = Path.GetFullPath(options.RepositoryRoot);
@@ -30,7 +40,10 @@ var before = SnapshotGameFile(ggpkPath);
 Console.WriteLine($"Opening read-only: {ggpkPath}");
 Console.WriteLine($"Size: {before.Length:N0} bytes; modified: {before.LastWriteTimeUtc:O}");
 
-var requestedPaths = new[] { BaseItemsEn, BaseItemsTw, WordsEn, WordsTw, ModsEn, ModsTw };
+var requestedPaths = new[] {
+    BaseItemsEn, BaseItemsTw, WordsEn, WordsTw, ModsEn, ModsTw,
+    ClientStringsEn, ClientStringsTw,
+};
 var rawTables = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
 
 using (var stream = new FileStream(ggpkPath, new FileStreamOptions {
@@ -70,9 +83,17 @@ var tables = rawTables.ToDictionary(
 ValidatePair(tables[BaseItemsEn], tables[BaseItemsTw]);
 ValidatePair(tables[WordsEn], tables[WordsTw]);
 ValidatePair(tables[ModsEn], tables[ModsTw]);
+ValidatePair(tables[ClientStringsEn], tables[ClientStringsTw]);
+if (tables[ModsEn].RowSize != ModsExpectedRowSize) {
+    throw new InvalidDataException(
+        $"Mods schema changed: expected row size {ModsExpectedRowSize}, got {tables[ModsEn].RowSize}. " +
+        "Review poe-tool-dev/dat-schema offsets before extracting localized affix names.");
+}
 
 var baseResult = BuildBaseItems(tables[BaseItemsEn], tables[BaseItemsTw]);
 var wordsResult = BuildWords(tables[WordsEn], tables[WordsTw]);
+var affixResult = BuildAffixes(tables[ModsEn], tables[ModsTw]);
+var clientStringResult = BuildClientStrings(tables[ClientStringsEn], tables[ClientStringsTw]);
 var generatedAt = DateTime.UtcNow.ToString("O");
 
 Directory.CreateDirectory(outputRoot);
@@ -95,6 +116,51 @@ WriteJsonAtomic(Path.Combine(outputRoot, "words.zh-TW.json"), new {
     byEnglish = wordsResult.ByEnglish,
     conflicts = wordsResult.Conflicts,
     coverage = wordsResult.Coverage,
+});
+WriteJsonAtomic(Path.Combine(outputRoot, "affixes.zh-TW.json"), new {
+    schemaVersion = 1,
+    generatedAt,
+    domain = "affix-name",
+    source = "paired-local-content-ggpk",
+    schema = new {
+        reference = "poe-tool-dev/dat-schema",
+        table = "Mods",
+        validFor = "poe2",
+        rowSize = ModsExpectedRowSize,
+        idOffset = ModsIdOffset,
+        domainOffset = ModsDomainOffset,
+        nameOffset = ModsNameOffset,
+        generationTypeOffset = ModsGenerationTypeOffset,
+        includedDomain = "ITEM",
+    },
+    records = affixResult.Records,
+    prefixes = affixResult.Prefixes.ByEnglish,
+    suffixes = affixResult.Suffixes.ByEnglish,
+    conflicts = new {
+        prefixes = affixResult.Prefixes.Conflicts,
+        suffixes = affixResult.Suffixes.Conflicts,
+    },
+    coverage = new {
+        prefixes = affixResult.Prefixes.Coverage,
+        suffixes = affixResult.Suffixes.Coverage,
+        combinedUsablePercent = Percent(
+            affixResult.Prefixes.ByEnglish.Count + affixResult.Suffixes.ByEnglish.Count,
+            affixResult.Prefixes.Coverage.UniqueEnglish + affixResult.Suffixes.Coverage.UniqueEnglish),
+    },
+});
+WriteJsonAtomic(Path.Combine(outputRoot, "client-strings.zh-TW.json"), new {
+    schemaVersion = 1,
+    generatedAt,
+    domain = "client-string",
+    source = "paired-local-content-ggpk",
+    records = clientStringResult.Records,
+    byId = clientStringResult.Records.ToDictionary(
+        record => record.Id,
+        record => new { record.English, record.ZhTW },
+        StringComparer.Ordinal),
+    byEnglish = clientStringResult.ByEnglish,
+    conflicts = clientStringResult.Conflicts,
+    coverage = clientStringResult.Coverage,
 });
 
 var manifest = new {
@@ -121,15 +187,27 @@ var manifest = new {
     coverage = new {
         baseItems = baseResult.Coverage,
         words = wordsResult.Coverage,
+        affixes = new {
+            prefixes = affixResult.Prefixes.Coverage,
+            suffixes = affixResult.Suffixes.Coverage,
+        },
+        clientStrings = clientStringResult.Coverage,
         combinedUsablePercent = Percent(
-            baseResult.ByEnglish.Count + wordsResult.ByEnglish.Count,
-            baseResult.Coverage.UniqueEnglish + wordsResult.Coverage.UniqueEnglish),
+            baseResult.ByEnglish.Count + wordsResult.ByEnglish.Count +
+                affixResult.Prefixes.ByEnglish.Count + affixResult.Suffixes.ByEnglish.Count +
+                clientStringResult.ByEnglish.Count,
+            baseResult.Coverage.UniqueEnglish + wordsResult.Coverage.UniqueEnglish +
+                affixResult.Prefixes.Coverage.UniqueEnglish + affixResult.Suffixes.Coverage.UniqueEnglish +
+                clientStringResult.Coverage.UniqueEnglish),
     },
 };
 WriteJsonAtomic(Path.Combine(outputRoot, "manifest.json"), manifest);
 
 Console.WriteLine($"Base-item usable coverage: {baseResult.Coverage.UsablePercent:F2}%");
 Console.WriteLine($"Word-component usable coverage: {wordsResult.Coverage.UsablePercent:F2}%");
+Console.WriteLine($"Affix-prefix usable coverage: {affixResult.Prefixes.Coverage.UsablePercent:F2}%");
+Console.WriteLine($"Affix-suffix usable coverage: {affixResult.Suffixes.Coverage.UsablePercent:F2}%");
+Console.WriteLine($"Client-string usable coverage: {clientStringResult.Coverage.UsablePercent:F2}%");
 Console.WriteLine($"Normalized output: {outputRoot}");
 
 static PairResult<BaseItemRecord> BuildBaseItems(Datc64Table english, Datc64Table translated) {
@@ -162,6 +240,79 @@ static PairResult<WordRecord> BuildWords(Datc64Table english, Datc64Table transl
             english.ReadHex(row, 0, 16),
             en,
             zh));
+    }
+    return CreatePairResult(records, record => record.English, record => record.ZhTW);
+}
+
+static AffixResult BuildAffixes(Datc64Table english, Datc64Table translated) {
+    var records = new List<AffixRecord>();
+    for (var row = 0; row < english.RowCount; row += 1) {
+        var englishId = english.ReadString(row, ModsIdOffset);
+        var translatedId = translated.ReadString(row, ModsIdOffset);
+        if (!string.Equals(englishId, translatedId, StringComparison.Ordinal)) {
+            throw new InvalidDataException($"Mods ID mismatch at row {row}");
+        }
+
+        var englishGenerationType = english.ReadInt32(row, ModsGenerationTypeOffset);
+        var translatedGenerationType = translated.ReadInt32(row, ModsGenerationTypeOffset);
+        if (englishGenerationType != translatedGenerationType) {
+            throw new InvalidDataException($"Mods generation type mismatch at row {row}");
+        }
+        if (englishGenerationType is not PrefixGenerationType and not SuffixGenerationType) continue;
+
+        var englishDomain = english.ReadInt32(row, ModsDomainOffset);
+        var translatedDomain = translated.ReadInt32(row, ModsDomainOffset);
+        if (englishDomain != translatedDomain) {
+            throw new InvalidDataException($"Mods domain mismatch at row {row}");
+        }
+        if (englishDomain != ItemModDomain) continue;
+
+        var en = english.ReadString(row, ModsNameOffset).Trim();
+        var zh = translated.ReadString(row, ModsNameOffset).Trim();
+        if (string.IsNullOrEmpty(englishId) || string.IsNullOrEmpty(en) ||
+            en.StartsWith("[DNT", StringComparison.Ordinal)) {
+            continue;
+        }
+        records.Add(new AffixRecord(
+            englishId,
+            row,
+            "item",
+            englishGenerationType == PrefixGenerationType ? "prefix" : "suffix",
+            en,
+            zh));
+    }
+
+    var prefixes = records.Where(record => record.GenerationType == "prefix").ToList();
+    var suffixes = records.Where(record => record.GenerationType == "suffix").ToList();
+    return new AffixResult(
+        records,
+        CreatePairResult(prefixes, record => record.English, record => record.ZhTW),
+        CreatePairResult(suffixes, record => record.English, record => record.ZhTW));
+}
+
+static PairResult<ClientStringRecord> BuildClientStrings(
+    Datc64Table english,
+    Datc64Table translated) {
+    const int idOffset = 0;
+    const int textOffset = 8;
+    if (english.RowSize < textOffset + sizeof(long)) {
+        throw new InvalidDataException($"ClientStrings row size is too small: {english.RowSize}");
+    }
+
+    var records = new List<ClientStringRecord>();
+    for (var row = 0; row < english.RowCount; row += 1) {
+        var englishId = english.ReadString(row, idOffset);
+        var translatedId = translated.ReadString(row, idOffset);
+        if (!string.Equals(englishId, translatedId, StringComparison.Ordinal)) {
+            throw new InvalidDataException($"ClientStrings ID mismatch at row {row}");
+        }
+        var en = english.ReadString(row, textOffset).Trim();
+        var zh = translated.ReadString(row, textOffset).Trim();
+        if (string.IsNullOrEmpty(englishId) || string.IsNullOrEmpty(en) ||
+            en.StartsWith("[DNT", StringComparison.Ordinal)) {
+            continue;
+        }
+        records.Add(new ClientStringRecord(englishId, row, en, zh));
     }
     return CreatePairResult(records, record => record.English, record => record.ZhTW);
 }
@@ -251,6 +402,14 @@ internal sealed record CliOptions(string GgpkPath, string OutputPath, string Rep
 internal sealed record GameFileSnapshot(long Length, DateTime LastWriteTimeUtc);
 internal sealed record BaseItemRecord(string Id, int Row, string English, string ZhTW);
 internal sealed record WordRecord(int Row, long WordlistReference, string WordlistKeyRaw, string English, string ZhTW);
+internal sealed record AffixRecord(
+    string Id,
+    int Row,
+    string Domain,
+    string GenerationType,
+    string English,
+    string ZhTW);
+internal sealed record ClientStringRecord(string Id, int Row, string English, string ZhTW);
 internal sealed record PairConflict(string English, string[] Translations);
 internal sealed record Coverage(
     int Records,
@@ -263,3 +422,7 @@ internal sealed record PairResult<T>(
     SortedDictionary<string, string> ByEnglish,
     List<PairConflict> Conflicts,
     Coverage Coverage);
+internal sealed record AffixResult(
+    List<AffixRecord> Records,
+    PairResult<AffixRecord> Prefixes,
+    PairResult<AffixRecord> Suffixes);
