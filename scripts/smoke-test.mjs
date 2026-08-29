@@ -52,6 +52,7 @@ assert.equal(
 );
 assert.equal(dataset.source, "project-owned translation pipeline");
 assert.ok(dataset.sources.includes("sources/translations.zh-TW.json"));
+assert.ok(dataset.sources.includes("data/trade-api.json"));
 assert.equal(translationSource.provenance.kind, "one-time-legacy-migration");
 assert.match(translationSource.provenance.referenceSha256, /^[a-f0-9]{64}$/);
 assert.ok(Object.keys(dataset.items).length > 2_000);

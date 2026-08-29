@@ -54,7 +54,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add extension/data/bundled.json extension/data/bundled-manifest.json extension/data/remote-manifest.json
+          git add data/trade-api.json extension/data/bundled.json extension/data/bundled-manifest.json extension/data/remote-manifest.json
           if git diff --cached --quiet; then
             echo "Translation dataset is unchanged."
           else

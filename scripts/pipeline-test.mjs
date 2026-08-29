@@ -6,6 +6,7 @@ import { countPlaceholders, createCandidateEngine } from "./lib/translation-engi
 import { createOfficialTwOverlay } from "./lib/official-tw.mjs";
 
 const ggpkSource = readJson(path.join(rootPath, "data", "ggpk.json"));
+const tradeApiSource = readJson(path.join(rootPath, "data", "trade-api.json"));
 const ggpkManifest = ggpkSource.manifest;
 const ggpkBaseItems = ggpkSource.baseItems;
 const ggpkWords = ggpkSource.words;
@@ -16,6 +17,16 @@ const verifiedStatRenderings = readJson(
 );
 
 assert.equal(ggpkManifest.safety.fileAccess, "Read");
+assert.equal(tradeApiSource.schemaVersion, 1);
+assert.equal(tradeApiSource.locale, "zh-TW");
+assert.equal(tradeApiSource.source, "official-trade-api-pair");
+assert.ok(tradeApiSource.english.sections.stats.entries);
+assert.ok(tradeApiSource.zhTW.sections.stats.entries);
+assert.ok(tradeApiSource.overlay.sections.stats.entries);
+assert.equal(
+  tradeApiSource.overlay.report.source,
+  tradeApiSource.endpoints.zhTW,
+);
 assert.equal(ggpkManifest.safety.rawTablesWritten, false);
 assert.equal(ggpkManifest.safety.gameDirectoryWritten, false);
 assert.ok(ggpkManifest.coverage.combinedUsablePercent >= 80);

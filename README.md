@@ -53,7 +53,7 @@ node scripts/build-data.mjs
 node scripts/check-quality.mjs
 ```
 
-这会读取 GGPK 规范化数据、项目词库、锁定版本的外部名称、人工修正、国际服英文接口和台服官方繁中接口，生成运行词库以及 `reports/` 下的覆盖率、差异、质量和审核报告：
+这会读取 GGPK 规范化数据、项目词库、锁定版本的外部名称、人工修正、国际服英文接口和台服官方繁中接口，更新最近一次验证成功的 `data/trade-api.json`，并生成运行词库以及 `reports/` 下的覆盖率、差异、质量和审核报告：
 
 - `extension/data/bundled.json`
 - `extension/data/bundled-manifest.json`

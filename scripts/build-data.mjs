@@ -9,11 +9,13 @@ import {
   rootPath,
   sourcesPath,
   writeJson,
+  writeJsonAtomic,
 } from "./lib/project.mjs";
 import {
   canonicalizeOfficialData,
   fetchOfficialTradeData,
   fetchOfficialTwTradeData,
+  OFFICIAL_EN_BASE_URL,
   OFFICIAL_TW_BASE_URL,
 } from "./lib/trade-data.mjs";
 import { createOfficialTwOverlay } from "./lib/official-tw.mjs";
@@ -44,6 +46,8 @@ const ggpkBaseItems = ggpkSource.baseItems;
 const ggpkWords = ggpkSource.words;
 const ggpkAffixes = ggpkSource.affixes;
 const ggpkClientStrings = ggpkSource.clientStrings;
+const tradeApiPath = path.join(rootPath, "data", "trade-api.json");
+const cachedTradeApi = readJson(tradeApiPath, null);
 const baseline = readJson(path.join(sourcesPath, "upstream-baseline.en.json"), null);
 
 if (translations.schemaVersion !== 1 || translations.locale !== "zh-TW") {
@@ -78,30 +82,68 @@ if (
   throw new Error("data/ggpk.json 格式不兼容，请重新运行 tools/ggpk/run.ps1");
 }
 
-let official = null;
-let snapshot = null;
-let englishSourceStatus = { fresh: true, error: null };
-try {
-  official = await fetchOfficialTradeData();
-  snapshot = canonicalizeOfficialData(official);
-} catch (error) {
-  snapshot = readJson(path.join(reportsPath, "upstream-current.en.json"), baseline);
-  if (!snapshot?.sections) throw error;
-  englishSourceStatus = { fresh: false, error: String(error?.message ?? error) };
-  console.warn(`official English source unavailable; using cached snapshot: ${englishSourceStatus.error}`);
+function isUsableTradeApiCache(value) {
+  return (
+    value?.schemaVersion === 1 &&
+    value?.locale === "zh-TW" &&
+    value?.english?.sections &&
+    value?.zhTW?.sections &&
+    value?.overlay?.sections &&
+    value?.overlay?.report
+  );
 }
-const officialTw = await fetchOfficialTwTradeData();
-const twSnapshot = canonicalizeOfficialData(
-  officialTw,
-  new Date().toISOString(),
-  `${OFFICIAL_TW_BASE_URL}/{items,stats,static,filters}`,
-);
-const officialTwOverlay = createOfficialTwOverlay({
-  englishSnapshot: snapshot,
-  translatedSnapshot: twSnapshot,
-  englishRaw: official,
-  translatedRaw: officialTw,
-});
+
+let snapshot;
+let twSnapshot;
+let officialTwOverlay;
+let pendingTradeApiSnapshot = null;
+let englishSourceStatus = { fresh: true, error: null };
+let twSourceStatus = { fresh: true, error: null };
+try {
+  const fetchedAt = new Date().toISOString();
+  const [official, officialTw] = await Promise.all([
+    fetchOfficialTradeData(),
+    fetchOfficialTwTradeData(),
+  ]);
+  snapshot = canonicalizeOfficialData(
+    official,
+    fetchedAt,
+    `${OFFICIAL_EN_BASE_URL}/{items,stats,static,filters}`,
+  );
+  twSnapshot = canonicalizeOfficialData(
+    officialTw,
+    fetchedAt,
+    `${OFFICIAL_TW_BASE_URL}/{items,stats,static,filters}`,
+  );
+  officialTwOverlay = createOfficialTwOverlay({
+    englishSnapshot: snapshot,
+    translatedSnapshot: twSnapshot,
+    englishRaw: official,
+    translatedRaw: officialTw,
+  });
+  pendingTradeApiSnapshot = {
+    schemaVersion: 1,
+    locale: "zh-TW",
+    generatedAt: fetchedAt,
+    source: "official-trade-api-pair",
+    endpoints: {
+      english: snapshot.source,
+      zhTW: twSnapshot.source,
+    },
+    english: snapshot,
+    zhTW: twSnapshot,
+    overlay: officialTwOverlay,
+  };
+} catch (error) {
+  if (!isUsableTradeApiCache(cachedTradeApi)) throw error;
+  snapshot = cachedTradeApi.english;
+  twSnapshot = cachedTradeApi.zhTW;
+  officialTwOverlay = cachedTradeApi.overlay;
+  const message = String(error?.message ?? error);
+  englishSourceStatus = { fresh: false, error: message };
+  twSourceStatus = { fresh: false, error: message };
+  console.warn(`official Trade API pair unavailable; using data/trade-api.json: ${message}`);
+}
 const suggest = createCandidateEngine(glossary, phraseExceptions);
 
 const items = clone(translations.items ?? {});
@@ -365,7 +407,7 @@ const datasetContent = {
     "sources/glossary.zh-TW.json",
     "sources/phrase-exceptions.zh-TW.json",
     "data/ggpk.json",
-    `${OFFICIAL_TW_BASE_URL}/{items,stats,static,filters}`,
+    "data/trade-api.json",
     `poe-game-data@${sourceLock.sources.poeGameDataNamesTw.ref}`,
   ],
   items,
@@ -511,7 +553,7 @@ writeJson(path.join(reportsPath, "bulk-backlog.json"), {
 quality.sources = {
   officialEnglish: englishSourceStatus,
   officialTw: {
-    fresh: true,
+    ...twSourceStatus,
     fetchedAt: twSnapshot.fetchedAt,
     rejected: officialTwOverlay.report.summary.rejected,
   },
@@ -567,6 +609,10 @@ writeJson(path.join(reportsPath, "ggpk-source-report.json"), {
     clientStrings: ggpkClientStrings.conflicts,
   },
 });
+
+if (pendingTradeApiSnapshot && quality.blocking.count === 0) {
+  writeJsonAtomic(tradeApiPath, pendingTradeApiSnapshot);
+}
 
 writeJson(dataPath, dataset, { compact: true });
 const compact = fs.readFileSync(dataPath);

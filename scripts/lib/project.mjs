@@ -22,6 +22,18 @@ export function writeJson(filePath, value, { compact = false } = {}) {
   fs.writeFileSync(filePath, `${body}\n`);
 }
 
+export function writeJsonAtomic(filePath, value, { compact = false } = {}) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const body = compact ? JSON.stringify(value) : JSON.stringify(value, null, 2);
+  const temporaryPath = `${filePath}.${process.pid}.tmp`;
+  try {
+    fs.writeFileSync(temporaryPath, `${body}\n`);
+    fs.renameSync(temporaryPath, filePath);
+  } finally {
+    if (fs.existsSync(temporaryPath)) fs.unlinkSync(temporaryPath);
+  }
+}
+
 export function clone(value) {
   return structuredClone(value);
 }
