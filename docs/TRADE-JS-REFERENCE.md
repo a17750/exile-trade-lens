@@ -50,6 +50,12 @@ typeLine: Composite Bow of the Fletcher -> 無完整鍵，保留英文
 3. 禁止子串替換、普通分詞猜譯和殘缺組合。
 4. 命中只代表顯示回退，不能反向證明官方語義或覆蓋高優先級衝突。
 
+## 社群下拉搜尋方案對照
+
+2026-08-29 核對 [`Hsiung-Shao/poe-market-zh` 的 `page/stat-search.js`](https://github.com/Hsiung-Shao/poe-market-zh/blob/main/page/stat-search.js)。它不改寫官方選項的 `name/type/id`，而是在 MAIN world 對官網 Vue multiselect 的 `filteredOptions` watcher 增補顯示標籤命中的原始選項。這避免了中文或自訂 ID 被送進官方搜索 API。
+
+Exile Trade Lens 的 `page/dropdown-search.js` 採用同一安全邊界，但只實現雙語標籤的連續子字串命中；沒有移植其模糊評分、縮寫、多 token 或自訂分組功能。官網 Vue 結構不符時靜默退回原生搜尋。
+
 ## 本次實現的差異
 
 本次沒有沿用 `typeTransMap`。魔法裝備名稱改由同版本英文/繁中 `Mods.datc64` 按 `Mod ID` 配對，僅採用 `Domain=ITEM` 且 `GenerationType=PREFIX/SUFFIX` 的無衝突名稱；運行時再與 `BaseItemTypes` 底材對照組合。任一部分缺失或多義時仍整段保留英文。
