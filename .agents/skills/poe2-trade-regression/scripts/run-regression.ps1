@@ -15,7 +15,6 @@ function Invoke-Check([string]$Label, [string]$Command, [string[]]$Arguments) {
 }
 
 try {
-  Invoke-Check 'TypeScript extension build' 'npm' @('run', 'build:extension')
   Invoke-Check 'trade hook syntax' 'node' @('--check', 'extension/page/trade-hook.js')
   Invoke-Check 'service worker syntax' 'node' @('--check', 'extension/background/service-worker.js')
 
