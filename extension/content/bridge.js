@@ -32,14 +32,19 @@
   let exactTranslations = new Map();
   let exactConflicts = new Set();
   let knownRenderedTranslations = new Set();
+  const hoverOriginals = new Map();
+  const hoverConflicts = new Set();
   const translatedTextValues = new WeakMap();
   const translatedAttributeValues = new WeakMap();
   const pendingMissing = new Map();
   const reportedUiMissing = new Set();
   let missingTimer = null;
+  let hoverScanTimer = null;
   let contextInvalidated = false;
   const CONFIG_ELEMENT_ID = "poe2zh-shared-config";
   const TRANSLATABLE_ATTRIBUTES = ["placeholder", "title", "aria-label"];
+  const HOVER_MAP_ELEMENT_ID = "poe2zh-hover-originals";
+  const HOVER_MAP_EVENT = "poe2zh:hover-originals";
   const RESULT_TEXT_SELECTORS = ".search-results, .resultset, .results, .listing, [class*='itemPopup']";
   function hasRuntimeContext() {
     try {
@@ -60,7 +65,9 @@
     if (contextInvalidated) return;
     contextInvalidated = true;
     clearTimeout(missingTimer);
+    clearTimeout(hoverScanTimer);
     missingTimer = null;
+    hoverScanTimer = null;
     pendingMissing.clear();
     domGuard?.dispose();
     domGuard = null;
@@ -166,6 +173,11 @@
       if (!response.ok) throw new Error(response.message || "词库加载失败");
       dataset = response.dataset;
       buildExactTranslations();
+      globalThis.POE2ZHItemCardFields?.configure({
+        enabled: settings.enabled,
+        mode: settings.mode,
+        fields: dataset?.itemFields?.dom,
+      });
       publishSharedConfig();
       translateDocument();
     } catch (error) {
@@ -232,6 +244,64 @@
       : translated;
   }
 
+  function normalizeVisibleText(value) {
+    return String(value ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  function rememberHoverOriginal(rendered, original) {
+    rendered = normalizeVisibleText(rendered);
+    original = normalizeVisibleText(original);
+    if (!rendered || !original || rendered === original || hoverConflicts.has(rendered)) return;
+    const previous = hoverOriginals.get(rendered);
+    if (previous && previous !== original) {
+      hoverOriginals.delete(rendered);
+      hoverConflicts.add(rendered);
+      return;
+    }
+    hoverOriginals.set(rendered, original);
+  }
+
+  function hoverTarget(node) {
+    const parent = node?.parentElement;
+    if (!parent) return null;
+    return parent.closest?.(
+      "[data-field], .item-mod, .itemName, .item-popup__header-line, .multiselect__option, button, label",
+    ) ?? parent;
+  }
+
+  function applyHoverOriginal(node, rendered = node?.nodeValue) {
+    if (!settings.enabled || settings.mode !== "translated") return;
+    const original = hoverOriginals.get(normalizeVisibleText(rendered));
+    const target = original ? hoverTarget(node) : null;
+    if (!target) return;
+    globalThis.POE2ZHOriginalTooltip?.annotate(target, original);
+  }
+
+  function applyHoverOriginalsWithin(root) {
+    if (!root || root.nodeType !== Node.ELEMENT_NODE) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) applyHoverOriginal(node);
+  }
+
+  function receiveHoverOriginals() {
+    const node = document.getElementById(HOVER_MAP_ELEMENT_ID);
+    if (!node?.textContent) return;
+    try {
+      const entries = JSON.parse(node.textContent);
+      for (const [rendered, original] of Array.isArray(entries) ? entries : []) {
+        rememberHoverOriginal(rendered, original);
+      }
+      clearTimeout(hoverScanTimer);
+      hoverScanTimer = setTimeout(() => {
+        hoverScanTimer = null;
+        applyHoverOriginalsWithin(document.body);
+      }, 0);
+    } catch (error) {
+      console.warn("流亡譯鏡：英文懸停映射無法讀取", error);
+    }
+  }
+
   function translateTextNode(node) {
     if (!settings.enabled || !exactTranslations.size || !node.nodeValue?.trim()) return;
     // Result cards are translated from /fetch using field-specific domains. Applying
@@ -239,6 +309,7 @@
     // mod, so only the small, explicitly verified item-panel label allowlist may pass.
     if (translatedTextValues.get(node) === node.nodeValue) return;
     const original = node.nodeValue.trim();
+    applyHoverOriginal(node, original);
     const inResult = node.parentElement?.closest?.(RESULT_TEXT_SELECTORS);
     const resultMatch = inResult ? resultLabelPolicy.match(original) : null;
     if (inResult && !resultMatch) return;
@@ -253,6 +324,10 @@
     const replacement = formatExact(lookup, translated);
     node.nodeValue = node.nodeValue.replace(lookup, replacement);
     translatedTextValues.set(node, node.nodeValue);
+    if (settings.mode === "translated") {
+      rememberHoverOriginal(replacement, lookup);
+      applyHoverOriginal(node, replacement);
+    }
   }
 
   function translateAttributes(element) {
@@ -278,6 +353,7 @@
 
   function translateRoot(root) {
     if (!root || root.nodeType !== Node.ELEMENT_NODE) return;
+    globalThis.POE2ZHItemCardFields?.translateRoot(root);
     translateAttributes(root);
     if (root.closest?.("script, style, textarea, input, [contenteditable='true']")) return;
     for (const element of root.querySelectorAll?.("[placeholder], [title], [aria-label]") ?? []) {
@@ -286,6 +362,10 @@
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     let node;
     while ((node = walker.nextNode())) translateTextNode(node);
+    const ownText = root.childNodes?.length === 1 && root.firstChild?.nodeType === Node.TEXT_NODE
+      ? root.firstChild
+      : null;
+    if (ownText) applyHoverOriginal(ownText);
   }
 
   function translateDocument() {
@@ -323,6 +403,7 @@
   });
 
   document.addEventListener("poe2zh:missing", queueMissing);
+  document.addEventListener(HOVER_MAP_EVENT, receiveHoverOriginals);
   // Start listening for editable-control activity before the first DOM miss is seen.
   // Otherwise the first autocomplete mutation could arrive before the guard exists.
   ensureDomGuard();

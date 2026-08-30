@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "locale": "zh-TW",
+  "policy": "Official equipment_filters fields are registered automatically. This file contains only reviewed exceptions and aliases.",
+  "propertyBindings": {
+    "Evasion Rating": { "source": "ggpk-client", "key": "[Evasion|Evasion Rating]" },
+    "Energy Shield": { "source": "ggpk-client", "key": "[EnergyShield|Energy Shield]" },
+    "Level": { "source": "ggpk-client", "key": "Level" },
+    "Str": { "source": "ggpk-client", "key": "[Strength|Str]" },
+    "Dex": { "source": "ggpk-client", "key": "[Dexterity|Dex]" },
+    "Int": { "source": "ggpk-client", "key": "[Intelligence|Int]" },
+    "Physical Damage": { "source": "ggpk-passive", "key": "Physical Damage" },
+    "Critical Hit Chance": { "source": "ggpk-passive", "key": "Critical Hit Chance" },
+    "Block chance": {
+      "source": "reviewed-trade-stat-term",
+      "text": "格擋機率",
+      "evidence": [
+        {
+          "id": "explicit.stat_4147897060",
+          "expectedEnglish": "#% increased Block chance",
+          "expectedText": "增加#%格擋機率"
+        },
+        {
+          "id": "explicit.stat_480796730",
+          "expectedEnglish": "#% to maximum Block chance",
+          "expectedText": "#%至最大格擋機率"
+        }
+      ]
+    },
+    "Quality": { "source": "ggpk-client", "key": "Quality" },
+    "Spirit": { "source": "ggpk-word", "key": "Spirit" },
+    "Runic Ward": { "source": "trade-filter", "id": "ward" }
+  },
+  "domFields": {
+    "ev": {
+      "labels": {
+        "Evasion Rating": { "source": "property", "key": "Evasion Rating" }
+      }
+    },
+    "ward": {
+      "labels": {
+        "Ward": { "source": "ggpk-client", "key": "Ward" }
+      }
+    },
+    "crit": {
+      "labels": {
+        "Critical Hit Chance": { "source": "property", "key": "Critical Hit Chance" }
+      }
+    },
+    "block": {
+      "labels": {
+        "Block chance": { "source": "property", "key": "Block chance" }
+      }
+    },
+    "quality": {
+      "labels": {
+        "Quality": { "source": "property", "key": "Quality" }
+      }
+    },
+    "pdamage": {
+      "labels": {
+        "Physical Damage": { "source": "property", "key": "Physical Damage" }
+      }
+    },
+    "dps": {
+      "labels": {
+        "DPS": { "source": "trade-filter", "id": "dps", "reviewedAlias": true }
+      }
+    },
+    "base_defence_percentile": {
+      "labels": {
+        "Base Percentile": { "source": "ui", "key": "Base Percentile" }
+      }
+    }
+  }
+}

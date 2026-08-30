@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "流亡译镜 — PoE2 市集中文助手",
   "description": "为 Path of Exile 2 官方交易站提供繁体中文、双语显示、漏译自检和可更新词库。",
-  "version": "0.5.15",
+  "version": "0.5.22",
   "minimum_chrome_version": "111",
   "permissions": ["storage", "alarms"],
   "host_permissions": [
@@ -25,7 +25,7 @@
         "https://www.pathofexile.com/trade2*",
         "https://pathofexile.com/trade2*"
       ],
-      "js": ["page/ajax-hooker.js", "page/stat-rendering.js", "page/trade-hook.js"],
+      "js": ["page/ajax-hooker.js", "page/hover-originals.js", "page/item-property-rendering.js", "page/stat-rendering.js", "page/trade-hook.js"],
       "run_at": "document_start",
       "world": "MAIN"
     },
@@ -37,8 +37,11 @@
       "js": [
         "shared/missing-report-policy.js",
         "shared/result-label-policy.js",
+        "content/original-tooltip.js",
+        "content/item-card-fields.js",
         "content/bridge.js"
       ],
+      "css": ["content/original-tooltip.css"],
       "run_at": "document_start"
     }
   ]

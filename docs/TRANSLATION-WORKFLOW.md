@@ -63,7 +63,11 @@
 
 ### 正式数据源
 
-- `data/verified-labels.zh-TW.json`：经过确认的稳定游戏属性标签；物品面板的 `Item Level`、`Requires` 等固定字段在此维护，不依赖漏译上报。低风险界面词汇统一维护在 `data/ui.zh-TW.json`。
+- `data/verified-labels.zh-TW.json`：早期经人工确认的稳定游戏属性标签；仍保留已有证据，不接收可由正式来源绑定的新字段。
+- Trade API `equipment_filters`：通过双端稳定 ID 自动生成结果卡 `data-field` 注册表；其中与 GGPK `ClientStrings` 完整英文精确相交的条目，同时生成 `/fetch` 属性翻译。
+- `data/item-fields.zh-TW.json`：只保存自动注册表覆盖不到的物品字段审核例外与别名；构建时仍验证来源英文，不把 UI 词库整体当作物品属性来源。
+- `itemPropertyIndex`：构建器从 Trade API 稳定标签、带语义标记的 GGPK ClientStrings 和一致的完整官方佐证生成，仅供 `/fetch item.properties` 使用；不会写入全局 UI 精确词库。来源冲突保持英文，已知但未接入则阻断构建。
+- `data/ui.zh-TW.json`：低风险固定界面词汇；只有 `Base Percentile` 等没有正式字段来源的明确标签可被物品字段绑定逐项引用。
 - `data/manual-overrides.json`：人工审核结果；稳定 ID 记录必须带 `expectedEnglish`。
 - `data/upstream-baseline.en.json`：上一次已经确认的官方英文结构。
 
@@ -105,6 +109,12 @@ node scripts/check-quality.mjs
 node scripts/pipeline-test.mjs
 node scripts/smoke-test.mjs
 node scripts/background-smoke-test.mjs
+```
+
+只需基于仓库内已验证的 `data/trade-api.json` 重建扩展产物、且不希望刷新官方接口快照时，使用：
+
+```powershell
+node scripts/build-data.mjs --cached-trade-api
 ```
 
 流程如下：

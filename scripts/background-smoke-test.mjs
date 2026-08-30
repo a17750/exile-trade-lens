@@ -119,11 +119,15 @@ assert.deepEqual(dataset.dataset.itemDisplayTemplates.quality, {
   english: "Superior {0}",
   text: "精良的 {0}",
 });
+assert.equal(dataset.dataset.itemPropertyType109.qualifiers.Ezomyte.text, "艾茲麥");
+assert.equal(dataset.dataset.itemPropertyType109.classes.Staff.text, "長杖");
 
 const resolvedPropertyReports = [
   { type: "property", key: "Bow", en: "Bow", context: "item-property", source: "trade-api" },
   { type: "property", key: "Cold Damage", en: "Cold Damage", context: "item-property", source: "trade-api" },
   { type: "property", key: "Dex", en: "Dex", context: "item-property", source: "trade-api" },
+  { type: "property", key: "Staff", en: "Staff", context: "item-property", source: "trade-api" },
+  { type: "property", key: "Elemental Damage", en: "Elemental Damage", context: "item-property", source: "trade-api" },
 ];
 await send({ type: "POE2ZH_REPORT_MISSING", reports: resolvedPropertyReports });
 health = await send({ type: "POE2ZH_GET_HEALTH" });

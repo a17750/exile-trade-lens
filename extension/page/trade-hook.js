@@ -299,9 +299,13 @@
     const source = String(original ?? "").trim();
     if (!translated) return source;
     if (!source || translated === source) return translated;
-    return config.mode === "bilingual"
+    const rendered = config.mode === "bilingual"
       ? `${translated} (${source})`
       : translated;
+    if (config.mode === "translated") {
+      globalThis.POE2ZHHoverOriginals?.register(rendered, source);
+    }
+    return rendered;
   }
 
   function replaceNumbers(template, original) {
@@ -386,11 +390,18 @@
   }
 
   function translateProperty(property) {
-    if (!property || typeof property !== "object") return;
-    const plain = clean(property.name);
-    const translated = config.dataset.properties[plain];
-    if (translated) property.name = format(translated, property.name);
-    else reportMissing("property", plain, plain, "item-property");
+    globalThis.POE2ZHItemPropertyRendering?.translate(property, {
+      translations: config.dataset.itemPropertyIndex,
+      fallbackTranslations: config.dataset.properties,
+      type109: config.dataset.itemPropertyType109,
+      format,
+      onMissing: (english, detail) => reportMissing(
+        "property",
+        english,
+        english,
+        detail?.kind === "type-109" ? "item-property:type-109" : "item-property",
+      ),
+    });
   }
 
   function translateMods(item) {

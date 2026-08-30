@@ -63,7 +63,7 @@ Golem Crack -> 魔像 + 裂骨錘   （随机名称组件，最终空格和语�
 - `tools/ggpk/` 已提供正式只读提取器，并锁定源码依赖、哈希、补丁和许可证。
 - `data/ggpk.json` 已按独立区域保存 `BaseItemTypes`、`Words`、`Mods` 装备前后缀、`PassiveSkills`、stat description CSD 和 `ClientStrings` 的规范化官方英繁映射。
 - `scripts/build-data.mjs` 已把映射写入 `baseItems`、`fixedNames`、`wordComponents`、`affixNames` 和经过审核的 `itemDisplayTemplates` 等隔离域。
-- `/fetch` 运行时已经区分 `name`、`baseType` 和 `typeLine`；普通品质展示必须完整匹配 `ClientStrings.QualityItem`，稀有名称必须被 `Words` 整段覆盖，魔法名称必须由 `ITEM` 前缀、底材、后缀完整覆盖。
+- `/fetch` 运行时已经区分 `name`、`baseType`、`typeLine` 和结构化 `properties`；属性只通过领域隔离的 `itemPropertyIndex` 解析。普通品质展示必须完整匹配 `ClientStrings.QualityItem`，稀有名称必须被 `Words` 整段覆盖，魔法名称必须由 `ITEM` 前缀、底材、后缀完整覆盖。
 - `/fetch` 的 `Mods` 与 `Stats` 已按英文模板和稳定 ID 双重校验；不会再仅按数组位置套用翻译。具体的词组、占位符和回退规则见 [词组与词条翻译对照规范](PHRASE-TRANSLATION.md)。
 - `Words` 的类别、组合顺序和所有语言规则尚未完全解析；当前采用保守的整段匹配。
 - GGPK 不负责交易站固定 UI、筛选器或服务端专有文本，这些仍以 Trade API 和项目 UI 词库为准。

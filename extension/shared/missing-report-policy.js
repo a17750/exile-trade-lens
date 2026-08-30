@@ -4,6 +4,7 @@
   const API_SOURCE = "trade-api";
   const DOM_SOURCE = "dom-static-ui";
   const INPUT_SOURCE = "dom-input-derived";
+  const ITEM_CARD_SOURCE = "item-card-field";
   const DOM_REGIONS = new Set([
     "button",
     "filter-panel",
@@ -132,6 +133,15 @@
     const region = String(report?.region ?? report?.context ?? "");
     if (source === API_SOURCE && report?.type !== "ui") return { allow: true };
     if (source === INPUT_SOURCE) return { allow: false, reason: "input-derived" };
+    if (
+      source === ITEM_CARD_SOURCE &&
+      report?.type === "property" &&
+      region === "result-card" &&
+      /^data-field:[a-z0-9_.-]+$/i.test(String(report?.key ?? "")) &&
+      /^[A-Za-z][A-Za-z %'()/.+-]{0,119}$/.test(normalizeText(report?.en))
+    ) {
+      return { allow: true };
+    }
     if (source === DOM_SOURCE && report?.type === "ui" && DOM_REGIONS.has(region)) {
       return { allow: true };
     }
@@ -235,6 +245,7 @@
     API_SOURCE,
     DOM_SOURCE,
     INPUT_SOURCE,
+    ITEM_CARD_SOURCE,
     normalizeText,
     classifyDomCandidate,
     classifyReport,

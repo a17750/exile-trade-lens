@@ -28,6 +28,10 @@ import {
 } from "./lib/audit.mjs";
 
 const uiSource = readJson(path.join(rootPath, "data", "ui.zh-TW.json"));
+const itemFieldSource = readJson(path.join(rootPath, "data", "item-fields.zh-TW.json"));
+const itemPropertyType109Source = readJson(
+  path.join(rootPath, "data", "item-property-type109.zh-TW.json"),
+);
 const verifiedLabels = readJson(path.join(dataPath, "verified-labels.zh-TW.json"));
 const manualOverrides = readJson(path.join(dataPath, "manual-overrides.json"));
 const verifiedStatRenderings = readJson(
@@ -47,6 +51,17 @@ const baseline = readJson(path.join(dataPath, "upstream-baseline.en.json"), null
 
 if (uiSource.schemaVersion !== 1 || uiSource.locale !== "zh-TW") {
   throw new Error("data/ui.zh-TW.json 格式不兼容");
+}
+if (itemFieldSource.schemaVersion !== 1 || itemFieldSource.locale !== "zh-TW") {
+  throw new Error("data/item-fields.zh-TW.json 格式不兼容");
+}
+if (
+  itemPropertyType109Source.schemaVersion !== 1 ||
+  itemPropertyType109Source.locale !== "zh-TW" ||
+  itemPropertyType109Source.propertyType !== 109 ||
+  itemPropertyType109Source.template !== "{qualifier}{class}"
+) {
+  throw new Error("data/item-property-type109.zh-TW.json 格式不兼容");
 }
 if (verifiedLabels.schemaVersion !== 1 || verifiedLabels.locale !== "zh-TW") {
   throw new Error("data/verified-labels.zh-TW.json 格式不兼容");
@@ -95,7 +110,17 @@ let officialTwOverlay;
 let pendingTradeApiSnapshot = null;
 let englishSourceStatus = { fresh: true, error: null };
 let twSourceStatus = { fresh: true, error: null };
-try {
+const useCachedTradeApi = process.argv.includes("--cached-trade-api");
+if (useCachedTradeApi) {
+  if (!isUsableTradeApiCache(cachedTradeApi)) {
+    throw new Error("--cached-trade-api 需要有效的 data/trade-api.json");
+  }
+  snapshot = cachedTradeApi.english;
+  twSnapshot = cachedTradeApi.zhTW;
+  officialTwOverlay = cachedTradeApi.overlay;
+  englishSourceStatus = { fresh: false, error: "explicit cached Trade API build" };
+  twSourceStatus = { fresh: false, error: "explicit cached Trade API build" };
+} else try {
   const fetchedAt = new Date().toISOString();
   const [official, officialTw] = await Promise.all([
     fetchOfficialTradeData(),
@@ -205,6 +230,323 @@ function applyOfficialStableSection(target, overlay, sectionName) {
 applyOfficialStableSection(stats, officialTwOverlay.sections.stats, "stats");
 applyOfficialStableSection(staticData, officialTwOverlay.sections.static, "static");
 applyOfficialStableSection(filters, officialTwOverlay.sections.filters, "filters");
+
+const normalizeBoundLabel = (value) =>
+  String(value ?? "")
+    .replace(/\[([^|\]]+)\|([^\]]+)\]/g, "$2")
+    .replace(/\[([^\]]+)\]/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+
+function resolveItemFieldBinding(targetEnglish, binding, resolvedProperties = properties) {
+  let sourceEnglish;
+  let text;
+  if (binding.source === "ggpk-client") {
+    sourceEnglish = normalizeBoundLabel(binding.key);
+    text = normalizeBoundLabel(ggpkClientStrings.byEnglish?.[binding.key]);
+  } else if (binding.source === "ggpk-word") {
+    sourceEnglish = binding.key;
+    text = ggpkWords.byEnglish?.[binding.key];
+  } else if (binding.source === "ggpk-passive") {
+    sourceEnglish = binding.key;
+    text = ggpkPassiveSkills.byEnglish?.[binding.key];
+  } else if (binding.source === "trade-filter") {
+    sourceEnglish = snapshot.sections.filters.entries?.[binding.id]?.english;
+    text = officialTwOverlay.sections.filters.entries?.[binding.id]?.text;
+  } else if (binding.source === "reviewed-trade-stat-term") {
+    sourceEnglish = targetEnglish;
+    text = binding.text;
+    if (!Array.isArray(binding.evidence) || !binding.evidence.length) {
+      throw new Error(`已审核物品术语缺少官方证据：${targetEnglish}`);
+    }
+    for (const evidence of binding.evidence) {
+      const currentEnglish = snapshot.sections.stats.entries?.[evidence.id]?.english;
+      const currentText = officialTwOverlay.sections.stats.entries?.[evidence.id]?.text;
+      if (
+        currentEnglish !== evidence.expectedEnglish ||
+        currentText !== evidence.expectedText
+      ) {
+        throw new Error(
+          `已审核物品术语证据已变化：${targetEnglish}:${evidence.id} ` +
+            `${JSON.stringify({ currentEnglish, currentText })}`,
+        );
+      }
+    }
+  } else if (binding.source === "property") {
+    sourceEnglish = binding.key;
+    text = resolvedProperties[binding.key];
+  } else if (binding.source === "ui") {
+    sourceEnglish = binding.key;
+    text = uiSource.entries?.[binding.key];
+  } else {
+    throw new Error(`未知物品字段来源：${targetEnglish}:${binding.source}`);
+  }
+  sourceEnglish = normalizeBoundLabel(sourceEnglish);
+  text = normalizeBoundLabel(text);
+  if (!sourceEnglish || !text || sourceEnglish === text) {
+    throw new Error(`物品字段来源缺失：${targetEnglish}:${binding.source}:${binding.key ?? binding.id}`);
+  }
+  if (sourceEnglish !== targetEnglish && !binding.reviewedAlias) {
+    throw new Error(
+      `物品字段英文不一致：目标 ${JSON.stringify(targetEnglish)}，` +
+        `来源 ${JSON.stringify(sourceEnglish)}`,
+    );
+  }
+  return {
+    text,
+    source: {
+      kind: binding.source,
+      key: binding.key ?? binding.id,
+      english: sourceEnglish,
+      ...(binding.source === "reviewed-trade-stat-term"
+        ? { evidenceIds: binding.evidence.map((entry) => entry.id) }
+        : {}),
+      ...(binding.reviewedAlias ? { reviewedAlias: true } : {}),
+    },
+  };
+}
+
+const itemFields = { properties: {}, dom: {} };
+const automaticItemFieldIds = [];
+const automaticItemPropertyNames = [];
+
+function setItemProperty(english, resolved, origin) {
+  const previous = properties[english];
+  if (previous && previous !== resolved.text) {
+    throw new Error(
+      `物品属性来源冲突：${english} 已有 ${JSON.stringify(previous)}，` +
+        `${origin} 提供 ${JSON.stringify(resolved.text)}`,
+    );
+  }
+  properties[english] = resolved.text;
+  itemFields.properties[english] = resolved;
+}
+
+function addItemDomLabel(fieldId, english, resolved) {
+  itemFields.dom[fieldId] ??= { labels: {} };
+  const previous = itemFields.dom[fieldId].labels[english];
+  if (previous?.text && previous.text !== resolved.text) {
+    throw new Error(
+      `物品 data-field 来源冲突：${fieldId}:${english} ` +
+        `${JSON.stringify(previous.text)} / ${JSON.stringify(resolved.text)}`,
+    );
+  }
+  itemFields.dom[fieldId].labels[english] = resolved;
+}
+
+// The official equipment filter registry is also the stable field registry used by
+// result cards. Exact ID+English pairs are safe to import in bulk. If the same full
+// English label exists in GGPK ClientStrings, use the client wording for /fetch
+// properties while retaining the Trade API wording as the DOM fallback.
+for (const [fieldId, entry] of Object.entries(snapshot.sections.filters.entries ?? {})) {
+  if (entry?.groupId !== "equipment_filters") continue;
+  const translated = officialTwOverlay.sections.filters.entries?.[fieldId]?.text;
+  if (!entry.english || !translated) continue;
+  addItemDomLabel(
+    fieldId,
+    entry.english,
+    resolveItemFieldBinding(entry.english, { source: "trade-filter", id: fieldId }),
+  );
+  automaticItemFieldIds.push(fieldId);
+  if (ggpkClientStrings.byEnglish?.[entry.english]) {
+    const resolved = resolveItemFieldBinding(entry.english, {
+      source: "ggpk-client",
+      key: entry.english,
+    });
+    setItemProperty(entry.english, resolved, `equipment_filters:${fieldId}`);
+    automaticItemPropertyNames.push(entry.english);
+  }
+}
+
+for (const [english, binding] of Object.entries(itemFieldSource.propertyBindings ?? {})) {
+  setItemProperty(
+    english,
+    resolveItemFieldBinding(english, binding),
+    "data/item-fields.zh-TW.json",
+  );
+}
+
+for (const [fieldId, field] of Object.entries(itemFieldSource.domFields ?? {})) {
+  for (const [english, binding] of Object.entries(field.labels ?? {})) {
+    addItemDomLabel(fieldId, english, resolveItemFieldBinding(english, binding));
+  }
+}
+
+// Build one domain-scoped resolver for /fetch item.properties. Previously the
+// runtime consulted only `properties`, so labels already translated in an
+// official GGPK or Trade API index could still be reported as missing. These
+// candidates are never added to the global exact/UI index.
+const itemPropertyCandidates = new Map();
+function addItemPropertyCandidate(english, text, source) {
+  english = normalizeBoundLabel(english);
+  text = normalizeBoundLabel(text);
+  if (
+    !english ||
+    !text ||
+    english === text ||
+    english.length > 120 ||
+    /[{}\r\n<>]/.test(english) ||
+    !/[A-Za-z]/.test(english)
+  ) return;
+  const candidates = itemPropertyCandidates.get(english) ?? [];
+  if (!candidates.some((candidate) =>
+    candidate.text === text &&
+    candidate.source.kind === source.kind &&
+    candidate.source.key === source.key
+  )) {
+    candidates.push({ text, source });
+  }
+  itemPropertyCandidates.set(english, candidates);
+}
+
+for (const [english, text] of Object.entries(verifiedLabels.properties ?? {})) {
+  addItemPropertyCandidate(english, text, { kind: "verified-property", key: english });
+}
+for (const [english, record] of Object.entries(itemFields.properties)) {
+  addItemPropertyCandidate(english, record.text, record.source);
+}
+const tradePropertyLabels = new Set();
+for (const [id, entry] of Object.entries(snapshot.sections.filters.entries ?? {})) {
+  const translatedEntry = officialTwOverlay.sections.filters.entries?.[id];
+  if (translatedEntry?.text) {
+    tradePropertyLabels.add(normalizeBoundLabel(entry.english));
+    addItemPropertyCandidate(entry.english, translatedEntry.text, {
+      kind: "trade-filter",
+      key: id,
+    });
+  }
+  for (const [optionId, english] of Object.entries(entry.options ?? {})) {
+    const text = translatedEntry?.options?.[optionId];
+    if (!text) continue;
+    tradePropertyLabels.add(normalizeBoundLabel(english));
+    addItemPropertyCandidate(english, text, {
+      kind: "trade-filter-option",
+      key: `${id}:${optionId}`,
+    });
+  }
+}
+for (const [english, text] of Object.entries(ggpkClientStrings.byEnglish ?? {})) {
+  const normalizedEnglish = normalizeBoundLabel(english);
+  // Bracketed client strings carry a stable semantic token used by item
+  // properties (for example `[ElementalDamage|Elemental] Damage`). Untagged
+  // strings are admitted only when the Trade API independently exposes the
+  // same complete label, such as `Staff`.
+  if (!/\[[^\]]+\]/.test(english) && !tradePropertyLabels.has(normalizedEnglish)) continue;
+  addItemPropertyCandidate(english, text, { kind: "ggpk-client", key: english });
+}
+for (const [english, text] of Object.entries(ggpkPassiveSkills.byEnglish ?? {})) {
+  const normalizedEnglish = normalizeBoundLabel(english);
+  // Cross-domain names may corroborate a property candidate but may never
+  // create one on their own.
+  if (!itemPropertyCandidates.has(normalizedEnglish)) continue;
+  addItemPropertyCandidate(english, text, { kind: "ggpk-passive-exact", key: english });
+}
+
+const itemPropertyIndex = {};
+const itemPropertyConflicts = [];
+for (const [english, candidates] of [...itemPropertyCandidates.entries()].sort(([a], [b]) =>
+  a.localeCompare(b),
+)) {
+  const reviewed = itemFields.properties[english];
+  const translations = new Map();
+  for (const candidate of candidates) {
+    const sources = translations.get(candidate.text) ?? [];
+    sources.push(candidate.source);
+    translations.set(candidate.text, sources);
+  }
+  if (reviewed) {
+    itemPropertyIndex[english] = {
+      text: reviewed.text,
+      sources: [reviewed.source],
+      reviewed: true,
+    };
+    if (translations.size > 1) {
+      itemPropertyConflicts.push({
+        english,
+        status: "resolved-by-reviewed-binding",
+        selected: reviewed.text,
+        candidates: Object.fromEntries(translations),
+      });
+    }
+    continue;
+  }
+  if (translations.size !== 1) {
+    itemPropertyConflicts.push({
+      english,
+      status: "unresolved",
+      candidates: Object.fromEntries(translations),
+    });
+    continue;
+  }
+  const [[text, sources]] = translations;
+  itemPropertyIndex[english] = { text, sources: sources.slice(0, 8) };
+}
+
+const knownButUnrouted = [...itemPropertyCandidates.keys()].filter((english) => {
+  const candidates = itemPropertyCandidates.get(english) ?? [];
+  return new Set(candidates.map((candidate) => candidate.text)).size === 1 &&
+    !itemPropertyIndex[english];
+});
+if (knownButUnrouted.length) {
+  throw new Error(
+    `物品属性存在已知但未接入的官方译文：${knownButUnrouted.slice(0, 20).join(", ")}`,
+  );
+}
+
+function type109EvidenceText(evidence) {
+  if (evidence.source === "ggpk-base-item") return ggpkBaseItems.byEnglish?.[evidence.key];
+  if (evidence.source === "ggpk-word") return ggpkWords.byEnglish?.[evidence.key];
+  if (evidence.source === "ggpk-passive") return ggpkPassiveSkills.byEnglish?.[evidence.key];
+  throw new Error(`未知 type 109 前缀证据来源：${evidence.source}`);
+}
+
+const itemPropertyType109 = {
+  propertyType: 109,
+  template: itemPropertyType109Source.template,
+  qualifiers: {},
+  classes: {},
+};
+for (const [english, qualifier] of Object.entries(itemPropertyType109Source.qualifiers ?? {})) {
+  const text = normalizeBoundLabel(qualifier.text);
+  if (!english || !text || !Array.isArray(qualifier.evidence) || qualifier.evidence.length < 2) {
+    throw new Error(`type 109 前缀缺少双重官方证据：${english}`);
+  }
+  for (const evidence of qualifier.evidence) {
+    const currentText = type109EvidenceText(evidence);
+    if (currentText !== evidence.expectedText || !currentText.includes(text)) {
+      throw new Error(
+        `type 109 前缀证据已变化：${english}:${evidence.source}:${evidence.key}`,
+      );
+    }
+  }
+  itemPropertyType109.qualifiers[english] = {
+    text,
+    source: "reviewed-official-term",
+    evidence: qualifier.evidence,
+  };
+}
+
+const categoryEntry = snapshot.sections.filters.entries?.category;
+const translatedCategory = officialTwOverlay.sections.filters.entries?.category;
+for (const [optionId, english] of Object.entries(categoryEntry?.options ?? {})) {
+  if (
+    !itemPropertyType109Source.classOptionPrefixes.some((prefix) => optionId.startsWith(prefix)) ||
+    /^Any\b/.test(english)
+  ) continue;
+  const text = normalizeBoundLabel(translatedCategory?.options?.[optionId]);
+  if (!english || !text || english === text) continue;
+  const previous = itemPropertyType109.classes[english];
+  if (previous && previous.text !== text) {
+    throw new Error(`type 109 装备类别冲突：${english}:${previous.text}/${text}`);
+  }
+  itemPropertyType109.classes[english] = {
+    text,
+    source: { kind: "trade-filter-option", key: `category:${optionId}` },
+  };
+}
+if (!itemPropertyType109.classes.Staff || !itemPropertyType109.classes.Helmet) {
+  throw new Error("type 109 核心装备类别未从 Trade API 生成");
+}
 
 const addExact = (en, translated) => {
   en = String(en ?? "").trim();
@@ -401,6 +743,8 @@ const datasetContent = {
   source: "project-owned translation pipeline",
   sources: [
     "data/ui.zh-TW.json",
+    "data/item-fields.zh-TW.json",
+    "data/item-property-type109.zh-TW.json",
     "data/verified-labels.zh-TW.json",
     "data/manual-overrides.json",
     "data/verified-stat-renderings.zh-TW.json",
@@ -413,6 +757,9 @@ const datasetContent = {
   wordComponents,
   affixNames,
   itemDisplayTemplates,
+  itemFields,
+  itemPropertyIndex,
+  itemPropertyType109,
   stats,
   static: staticData,
   filters,
@@ -518,6 +865,42 @@ writeJson(path.join(reportsPath, "bulk-backlog.json"), {
     uniqueAllocations: new Set(allocationBacklog.map((record) => record.english.replace(/^Allocates\s+/i, ""))).size,
   },
   records: bulkBacklogRecords,
+});
+const automaticDomFieldSet = new Set(automaticItemFieldIds);
+const automaticPropertySet = new Set(automaticItemPropertyNames);
+writeJson(path.join(reportsPath, "item-field-coverage.json"), {
+  schemaVersion: 1,
+  generatedAt: snapshot.fetchedAt,
+  datasetVersion: dataset.datasetVersion,
+  registry: {
+    source: `${OFFICIAL_EN_BASE_URL}/filters#equipment_filters`,
+    automaticDomFields: [...automaticDomFieldSet].sort(),
+    automaticProperties: [...automaticPropertySet].sort(),
+    reviewedPropertyExceptions: Object.keys(itemFieldSource.propertyBindings ?? {}).sort(),
+    reviewedDomExceptions: Object.keys(itemFieldSource.domFields ?? {}).sort(),
+  },
+  summary: {
+    automaticDomFieldCount: automaticDomFieldSet.size,
+    automaticPropertyCount: automaticPropertySet.size,
+    totalDomFieldCount: Object.keys(itemFields.dom).length,
+    totalPropertyCount: Object.keys(itemFields.properties).length,
+  },
+});
+writeJson(path.join(reportsPath, "item-property-resolution.json"), {
+  schemaVersion: 1,
+  generatedAt: snapshot.fetchedAt,
+  datasetVersion: dataset.datasetVersion,
+  summary: {
+    candidates: itemPropertyCandidates.size,
+    resolved: Object.keys(itemPropertyIndex).length,
+    knownButUnrouted: knownButUnrouted.length,
+    conflicts: itemPropertyConflicts.length,
+    unresolvedConflicts: itemPropertyConflicts.filter((entry) => entry.status === "unresolved").length,
+    type109Qualifiers: Object.keys(itemPropertyType109.qualifiers).length,
+    type109Classes: Object.keys(itemPropertyType109.classes).length,
+  },
+  knownButUnrouted,
+  conflicts: itemPropertyConflicts,
 });
 quality.sources = {
   officialEnglish: englishSourceStatus,

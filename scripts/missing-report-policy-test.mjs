@@ -103,6 +103,27 @@ assert.equal(
   true,
 );
 assert.equal(policy.classifyReport({ source: "dom-input-derived" }).allow, false);
+assert.equal(
+  policy.classifyReport({
+    source: "item-card-field",
+    type: "property",
+    key: "data-field:reload_time",
+    en: "Reload Time",
+    region: "result-card",
+  }).allow,
+  true,
+);
+assert.equal(
+  policy.classifyReport({
+    source: "item-card-field",
+    type: "property",
+    key: "data-field:reload_time",
+    en: "Reload Time: 0.75",
+    region: "result-card",
+  }).allow,
+  false,
+  "物品字段上报不得夹带动态数值",
+);
 assert.equal(policy.classifyReport({ source: "", region: "dropdown-option" }).allow, false);
 assert.equal(
   policy.shouldDiscardStoredReport({ type: "ui", context: "dropdown-option" }),

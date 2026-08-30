@@ -37,8 +37,10 @@ powershell -ExecutionPolicy Bypass -File .agents/skills/poe2-trade-regression/sc
 | API 目录缓存 | 扩展冷启动时目录必须等词库就绪；目录结构升级时只失效 `items/stats/data/filters` 八个精确缓存键一次，避免展开与选中状态使用不同语言模型 | `search-cold-start-test.mjs`、`smoke-test.mjs` |
 | 中文下拉匹配 | 目录 `name/type` 使用可逆双语别名供官网原生过滤；还原索引必须能直接由正式词库建立，不能依赖本页曾拦截 `/data/items`；发出 `/search` 前必须精确还原官方英文，伪造或未知格式原样放行 | `smoke-test.mjs` |
 | 结果卡片摘要 | 结果区域继续默认跳过全局精确翻译；仅允许 `Item Level`、`Requires` 和五个固定防御摘要标签，翻译时必须保留冒号、数值与百分号，未知摘要保持英文 | `item-label-dom-smoke-test.mjs` |
+| 物品字段领域 | `equipment_filters` 自动登记稳定 `data-field`；`/fetch` 属性通过统一 `itemPropertyIndex` 解析；`knownButUnrouted` 必须为 0；未知字段只上报稳定 ID 与纯英文标签，数值、价格和卖家保持原样 | `item-field-rendering-test.mjs`、`smoke-test.mjs`、`missing-report-policy-test.mjs`、`item-field-coverage.json`、`item-property-resolution.json` |
 | 筛选项 | 分组、选项和动态下拉值都是字符串；缺失映射不会把 `undefined` 写进 DOM | `smoke-test.mjs`、DOM 采集规则 |
 | 属性/词缀 | 按稳定 stat id 绑定；数值和占位符保留；替代英文渲染只对声明的 id 生效；单复数等变体必须有独立官方证据；未知 id 回退原文 | `smoke-test.mjs`、`stat-rendering-test.mjs`、`pipeline-test.mjs` |
+| 原文悬停 | 仅繁中模式保持中文可见，并由全局唯一 Tooltip 显示本次翻译的实际英文原文；双语模式不标记；冲突映射停用，不创建逐元素实例 | `hover-original-smoke-test.mjs`、浏览器人工检查 |
 | `/fetch` | 单个坏条目不会取消同批其他条目的翻译；可选字段异常时保留源对象 | `trade-hook.js`、`smoke-test.mjs` |
 | bridge | 页面环境和 service worker 的消息可达；上下文失效时不产生未处理 Promise 错误 | `background-smoke-test.mjs`、`bridge-context-smoke-test.mjs` |
 | 漏译收集 | 排除输入值、自动完成行、双语文本和瞬时片段；只记录稳定且可复现的 UI 文本 | `MISSING-REPORT-POLICY.md`、质量报告 |

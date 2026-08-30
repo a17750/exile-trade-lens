@@ -28,6 +28,8 @@ try {
   Invoke-Check 'stat rendering variants test' 'node' @('scripts/stat-rendering-test.mjs')
   Invoke-Check 'Chinese item search cold-start test' 'node' @('scripts/search-cold-start-test.mjs')
   Invoke-Check 'item panel label DOM test' 'node' @('scripts/item-label-dom-smoke-test.mjs')
+  Invoke-Check 'item property and stable data-field test' 'node' @('scripts/item-field-rendering-test.mjs')
+  Invoke-Check 'translated-mode English hover test' 'node' @('scripts/hover-original-smoke-test.mjs')
   Invoke-Check 'background message tests' 'node' @('scripts/background-smoke-test.mjs')
   Invoke-Check 'page/background bridge tests' 'node' @('scripts/bridge-context-smoke-test.mjs')
   Invoke-Check 'patch whitespace' 'git' @('diff', '--check')

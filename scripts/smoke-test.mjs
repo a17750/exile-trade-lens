@@ -22,6 +22,9 @@ const verifiedLabels = JSON.parse(
 const extensionManifest = JSON.parse(
   fs.readFileSync(path.join(root, "extension/manifest.json"), "utf8"),
 );
+const itemFieldCoverage = JSON.parse(
+  fs.readFileSync(path.join(root, "reports/item-field-coverage.json"), "utf8"),
+);
 
 for (const relativePath of ["scripts/build-data.mjs", "extension/page/ajax-hooker.js"]) {
   assert.doesNotMatch(
@@ -35,22 +38,25 @@ assert.match(bridgeSource, /knownRenderedTranslations\.has\(text\)/);
 assert.match(bridgeSource, /exactConflicts/);
 assert.match(bridgeSource, /missingPolicy\.createDomGuard/);
 assert.doesNotMatch(bridgeSource, /UI_FALLBACK_TRANSLATIONS/);
-assert.equal(extensionManifest.version, "0.5.15");
+assert.equal(extensionManifest.version, "0.5.22");
 const mainScript = extensionManifest.content_scripts.find((entry) => entry.world === "MAIN");
 const isolatedScript = extensionManifest.content_scripts.find((entry) => entry.world !== "MAIN");
 assert.ok(mainScript?.js.includes("page/trade-hook.js"), "MAIN 环境必须加载交易拦截器");
 assert.deepEqual(
   mainScript?.js,
-  ["page/ajax-hooker.js", "page/stat-rendering.js", "page/trade-hook.js"],
+  ["page/ajax-hooker.js", "page/hover-originals.js", "page/item-property-rendering.js", "page/stat-rendering.js", "page/trade-hook.js"],
   "MAIN 环境必须先加载独立 stat 渲染模块，再加载交易拦截器",
 );
+assert.match(bridgeSource, /POE2ZHOriginalTooltip\?\.annotate/);
+assert.match(bridgeSource, /applyHoverOriginalsWithin/);
 assert.ok(isolatedScript?.js.includes("shared/missing-report-policy.js"), "隔离环境必须先加载漏译采集策略");
 assert.ok(isolatedScript?.js.includes("content/bridge.js"), "隔离环境必须加载 bridge");
 assert.deepEqual(
   isolatedScript?.js,
-  ["shared/missing-report-policy.js", "shared/result-label-policy.js", "content/bridge.js"],
+  ["shared/missing-report-policy.js", "shared/result-label-policy.js", "content/original-tooltip.js", "content/item-card-fields.js", "content/bridge.js"],
   "隔离环境必须先加载漏译与结果标签策略，再加载 bridge",
 );
+assert.deepEqual(isolatedScript?.css, ["content/original-tooltip.css"]);
 
 assert.equal(dataset.schemaVersion, 1);
 assert.equal(remoteManifest.datasetVersion, dataset.datasetVersion);
@@ -61,6 +67,8 @@ assert.equal(
 );
 assert.equal(dataset.source, "project-owned translation pipeline");
 assert.ok(dataset.sources.includes("data/trade-api.json"));
+assert.ok(dataset.sources.includes("data/item-fields.zh-TW.json"));
+assert.ok(dataset.sources.includes("data/item-property-type109.zh-TW.json"));
 assert.ok(!dataset.sources.includes("data/translations.zh-TW.json"));
 assert.equal(verifiedLabels.ui, undefined, "人工标签文件不得继续保存 UI 翻译");
 assert.deepEqual(dataset.ui, uiSource.entries, "运行 UI 词库必须完全来自 data/ui.zh-TW.json");
@@ -78,6 +86,43 @@ assert.ok(Object.keys(dataset.affixNames.prefixes).length > 500);
 assert.ok(Object.keys(dataset.affixNames.suffixes).length > 400);
 assert.ok(Object.keys(dataset.stats.entries).length > 5_000);
 assert.ok(Object.keys(dataset.allocates).length > 2_000);
+assert.equal(dataset.properties["Evasion Rating"], "閃避值");
+assert.equal(dataset.properties.Str, "力量");
+assert.equal(dataset.properties["Block chance"], "格擋機率");
+assert.equal(dataset.properties.Quality, "品質");
+assert.equal(dataset.properties["Reload Time"], "重新裝填時間");
+assert.equal(dataset.itemPropertyIndex.Staff.text, "長杖");
+assert.ok(
+  dataset.itemPropertyIndex.Staff.sources.some((source) => source.kind === "ggpk-client"),
+);
+assert.ok(
+  dataset.itemPropertyIndex.Staff.sources.some((source) => source.kind === "trade-filter-option"),
+);
+assert.equal(dataset.itemPropertyIndex["Elemental Damage"].text, "元素傷害");
+assert.ok(
+  dataset.itemPropertyIndex["Elemental Damage"].sources.some(
+    (source) => source.kind === "ggpk-passive-exact",
+  ),
+);
+assert.equal(dataset.itemPropertyType109.qualifiers.Ezomyte.text, "艾茲麥");
+assert.equal(dataset.itemPropertyType109.qualifiers.Vaal.text, "瓦爾");
+assert.equal(dataset.itemPropertyType109.classes.Staff.text, "長杖");
+assert.equal(dataset.itemPropertyType109.classes.Helmet.text, "頭盔");
+assert.equal(dataset.itemFields.dom.ar.labels.Armour.text, "護甲");
+assert.equal(dataset.itemFields.dom.ar.labels.Armour.source.kind, "trade-filter");
+assert.deepEqual(
+  dataset.itemFields.properties["Block chance"].source.evidenceIds,
+  ["explicit.stat_4147897060", "explicit.stat_480796730"],
+);
+assert.equal(dataset.itemFields.dom.block.labels["Block chance"].source.kind, "property");
+assert.equal(dataset.itemFields.dom.reload_time.labels["Reload Time"].text, "重新載入時間");
+assert.equal(
+  dataset.itemFields.dom.reload_time.labels["Reload Time"].source.kind,
+  "trade-filter",
+);
+assert.ok(itemFieldCoverage.registry.automaticDomFields.includes("reload_time"));
+assert.ok(itemFieldCoverage.registry.automaticProperties.includes("Reload Time"));
+assert.ok(itemFieldCoverage.summary.automaticDomFieldCount > 10);
 assert.equal(dataset.allocates["Overwhelming Strike"], "鎮壓打擊");
 assert.equal(dataset.exact["Allocates Overwhelming Strike"], "配置 鎮壓打擊");
 assert.ok(
@@ -195,6 +240,11 @@ vm.runInContext(
   fs.readFileSync(path.join(root, "extension/shared/missing-report-policy.js"), "utf8"),
   context,
   { filename: "missing-report-policy.js" },
+);
+vm.runInContext(
+  fs.readFileSync(path.join(root, "extension/page/item-property-rendering.js"), "utf8"),
+  context,
+  { filename: "item-property-rendering.js" },
 );
 vm.runInContext(
   fs.readFileSync(path.join(root, "extension/page/stat-rendering.js"), "utf8"),
@@ -455,6 +505,64 @@ assert.equal(
   translatedSuperiorNormal.typeLine,
   "精良的 轟擊十字弓 (Superior Bombard Crossbow)",
 );
+
+const knownPropertyRequest = {
+  url: "https://www.pathofexile.com/api/trade2/fetch/known-property-routing-test",
+};
+hook(knownPropertyRequest);
+const emittedBeforeKnownProperties = emitted.length;
+const knownPropertyResponse = {
+  responseText: JSON.stringify({
+    result: [{ item: {
+      frameType: 3,
+      properties: [
+        { name: "Staff", values: [], type: 109 },
+        { name: "[ElementalDamage|Elemental] Damage", values: [["1-10", 1]], type: 11 },
+        { name: "Ezomyte Staff", values: [], type: 109 },
+        { name: "Vaal Helmet", values: [], type: 109 },
+      ],
+      requirements: [],
+    } }],
+  }),
+};
+await knownPropertyRequest.response(knownPropertyResponse);
+const translatedKnownProperties =
+  JSON.parse(knownPropertyResponse.responseText).result[0].item.properties;
+assert.equal(translatedKnownProperties[0].name, "長杖 (Staff)");
+assert.equal(
+  translatedKnownProperties[1].name,
+  "元素傷害 (Elemental Damage)",
+);
+assert.equal(translatedKnownProperties[2].name, "艾茲麥長杖 (Ezomyte Staff)");
+assert.equal(translatedKnownProperties[3].name, "瓦爾頭盔 (Vaal Helmet)");
+assert.equal(
+  emitted.length,
+  emittedBeforeKnownProperties,
+  "官方属性索引已经解析的标签不得再触发漏译上报",
+);
+
+const unknownType109Request = {
+  url: "https://www.pathofexile.com/api/trade2/fetch/unknown-type109-test",
+};
+hook(unknownType109Request);
+const emittedBeforeUnknownType109 = emitted.length;
+const unknownType109Response = {
+  responseText: JSON.stringify({
+    result: [{ item: {
+      frameType: 3,
+      properties: [{ name: "Unknown Culture Helmet", values: [], type: 109 }],
+      requirements: [],
+    } }],
+  }),
+};
+await unknownType109Request.response(unknownType109Response);
+assert.equal(
+  JSON.parse(unknownType109Response.responseText).result[0].item.properties[0].name,
+  "Unknown Culture Helmet",
+);
+assert.equal(emitted.length, emittedBeforeUnknownType109 + 1);
+assert.equal(emitted.at(-1).detail.key, "Unknown Culture Helmet");
+assert.equal(emitted.at(-1).detail.context, "item-property:type-109");
 
 const unknownNormalDisplayRequest = {
   url: "https://www.pathofexile.com/api/trade2/fetch/unknown-normal-display-test",

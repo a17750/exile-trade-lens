@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "locale": "zh-TW",
+  "propertyType": 109,
+  "template": "{qualifier}{class}",
+  "classOptionPrefixes": ["weapon.", "armour."],
+  "qualifiers": {
+    "Vaal": {
+      "text": "瓦爾",
+      "evidence": [
+        {
+          "source": "ggpk-base-item",
+          "key": "Vaal Cuirass",
+          "expectedText": "瓦爾胸甲"
+        },
+        {
+          "source": "ggpk-passive",
+          "key": "History of the Vaal",
+          "expectedText": "瓦爾的歷史"
+        }
+      ]
+    },
+    "Ezomyte": {
+      "text": "艾茲麥",
+      "evidence": [
+        {
+          "source": "ggpk-word",
+          "key": "Ezomyte Peak",
+          "expectedText": "艾茲麥的榮光"
+        },
+        {
+          "source": "ggpk-passive",
+          "key": "History of the Ezomytes",
+          "expectedText": "艾茲麥的歷史"
+        }
+      ]
+    }
+  }
+}

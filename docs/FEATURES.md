@@ -13,6 +13,7 @@
 - 通货、静态项目和筛选器翻译。
 - 搜索结果中的物品名、属性、需求和词缀翻译。
 - 搜索结果卡片底部的 `Base Percentile`、`Armour`、`Evasion`、`Energy Shield`、`Ward` 摘要标签按白名单翻译，并保留原始数值。
+- 物品卡的 `/fetch` 属性与需求由独立属性模块翻译；网页计算的 DPS、防御摘要按稳定 `data-field` 渲染，不依赖文本正则。
 - 页面少量固定 UI 文本翻译。
 - 物品名称、分组名称和输入框提示文字提供 DOM 精确匹配兜底。
 - 构建时按稳定 ID 合并官方英文接口与中文数据，生成动态下拉菜单对照表；覆盖物品分类、筛选器、属性和选项。
@@ -26,13 +27,15 @@
 ### 2. 显示模式
 
 - 中英双语：`增加 #% 火焰傷害 (#% increased Fire Damage)`。
-- 仅繁体中文。
+- 仅繁体中文：页面只显示中文；鼠标或键盘聚焦时通过全局单例 Tooltip 显示该次翻译对应的英文原文。
+- 悬停原文直接取自翻译时仍在手中的英文值，不从中文反推；同一中文对应多个英文时停用该项提示。Tooltip 使用事件委托，不为每个文本重复创建实例。
 - Popup 中可启用或关闭汉化；改变设置后交易站页面自动刷新。
 
 ### 3. 词库构建
 
 - `scripts/build-data.mjs` 不读取历史 `trade.js` 或迁移词库；运行数据只由官方 Trade API、同版本 GGPK、项目验证数据、UI 和人工覆盖生成。
 - 固定网页 UI 只维护在 `data/ui.zh-TW.json`，由构建脚本写入扩展词库的 `ui` 区域，不参与物品、词缀和属性的稳定 ID 对照。
+- 物品卡稳定字段从双端 Trade API 的 `equipment_filters` 自动登记；`/fetch` 属性统一通过 `itemPropertyIndex` 解析，合并 Trade API 稳定标签、带语义标记的 GGPK ClientStrings 和一致官方佐证。`data/item-fields.zh-TW.json` 只保存无法自动取得的审核例外与别名。
 - 本地只读 GGPK 提取结果统一维护在 `data/ggpk.json`，并在文件内部按基础物品、名称组件、装备前后缀、被动节点、stat description、客户端字符串和来源清单分域，便于识别官方游戏文件来源。
 - 被动节点只按完整 `PassiveSkills.Id + Name` 英繁配对生成 `Allocates`；CSD stat description 只有英繁模板唯一且占位符一致时，才作为官方台服缺失词条的低优先级补充，绝不覆盖 Trade API 译文。
 - 国际服与台服官方 Trade API 在稳定 ID 对齐并通过质量门禁后写入 `data/trade-api.json`；接口失败时保留并使用最近一次有效快照，不以失败响应覆盖缓存。

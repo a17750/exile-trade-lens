@@ -41,6 +41,22 @@ function mergeDatasets(base, extra) {
     ...extra.itemDisplayTemplates,
   };
   base.properties = { ...base.properties, ...extra.properties };
+  base.itemPropertyIndex = {
+    ...base.itemPropertyIndex,
+    ...extra.itemPropertyIndex,
+  };
+  base.itemPropertyType109 = {
+    ...base.itemPropertyType109,
+    ...extra.itemPropertyType109,
+    qualifiers: {
+      ...base.itemPropertyType109?.qualifiers,
+      ...extra.itemPropertyType109?.qualifiers,
+    },
+    classes: {
+      ...base.itemPropertyType109?.classes,
+      ...extra.itemPropertyType109?.classes,
+    },
+  };
   base.allocates = { ...base.allocates, ...extra.allocates };
   base.ui = { ...base.ui, ...extra.ui };
   base.exact = { ...base.exact, ...extra.exact };
@@ -205,7 +221,11 @@ function lookupTranslation(dataset, type, key, renderedUiTexts = null) {
   }
   if (type === "static") return dataset.static?.entries?.[key];
   if (type === "filter") return dataset.filters?.entries?.[key]?.text;
-  if (type === "property") return dataset.properties?.[key];
+  if (type === "property") {
+    const indexed = dataset.itemPropertyIndex?.[key];
+    return dataset.properties?.[key] ||
+      (typeof indexed === "string" ? indexed : indexed?.text);
+  }
   if (type === "ui") {
     return (
       dataset.exact?.[key] ||
