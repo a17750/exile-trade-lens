@@ -1,9 +1,8 @@
 name: Translation data check
 
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: "17 21 * * *"
+# Temporarily disabled while the local data pipeline is being stabilized.
+# Restore the workflow_dispatch/schedule triggers after local regression passes.
+on: []
 
 permissions:
   contents: write
