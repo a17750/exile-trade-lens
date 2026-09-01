@@ -62,6 +62,24 @@ export function compileItemNameDomain(policy, clientStrings) {
     throw new Error("itemName 领域没有声明受支持的占位符");
   }
 
+  const magicAffixRendering = policy.magicAffixRendering;
+  const magicParts = ["prefix", "base", "suffix"];
+  const isCompleteOrder = (order) =>
+    Array.isArray(order) &&
+    order.length === magicParts.length &&
+    [...order].sort().join("|") === [...magicParts].sort().join("|");
+  if (
+    magicAffixRendering?.source !== "project-domain-policy" ||
+    magicAffixRendering?.locale !== "zh-TW" ||
+    !magicAffixRendering?.ruleId ||
+    !Array.isArray(magicAffixRendering?.frameTypes) ||
+    !magicAffixRendering.frameTypes.includes(1) ||
+    !isCompleteOrder(magicAffixRendering.sourceOrder) ||
+    !isCompleteOrder(magicAffixRendering.targetOrder)
+  ) {
+    throw new Error("itemName 魔法装备词缀顺序策略格式不兼容");
+  }
+
   const approvedSourceIds = new Set();
   const rules = (policy.normalDisplayTemplates ?? []).map((entry) => {
     if (
@@ -120,6 +138,15 @@ export function compileItemNameDomain(policy, clientStrings) {
   return {
     domain: {
       schemaVersion: 1,
+      magicAffixRule: {
+        ruleId: magicAffixRendering.ruleId,
+        domain: "item-name.magic-affix",
+        source: magicAffixRendering.source,
+        locale: magicAffixRendering.locale,
+        frameTypes: [...new Set(magicAffixRendering.frameTypes)].sort((a, b) => a - b),
+        sourceOrder: [...magicAffixRendering.sourceOrder],
+        targetOrder: [...magicAffixRendering.targetOrder],
+      },
       normalDisplayRules: rules,
     },
     report: {

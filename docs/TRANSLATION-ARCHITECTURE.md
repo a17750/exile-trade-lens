@@ -163,7 +163,7 @@ ui:clear_filter_group
 1. 从 API 的 `name`、`baseType`、`frameType` 分辨名称类型。
 2. 稀有 `name` 使用同版本 `Words` 行、词表类别和内容指纹建立专有名组件映射。
 3. 魔法 `typeLine` 使用同版本 `Mods.Id` 配对的 `Domain=ITEM` 前后缀，并以原始 `baseType` 作为结构边界。
-4. 根据繁中的命名顺序组合，不保留英文分隔空格；前缀、底材、后缀必须全部命中。
+4. 根据繁中的命名顺序组合，不保留英文分隔空格；当前魔法装备领域策略为“前缀 + 后缀 + 底材”，前缀、底材、后缀必须全部命中。
 5. 无法确认组件或语序时保留原文，不回退到“只翻译底材”。
 6. 自检只记录可定位的稳定键或冲突；不记录玩家输入或大量完整随机物品名。
 
@@ -334,7 +334,8 @@ GGG 数据使用政策；在此之前可以只将其作为本地构建输入和�
   -> 固定 name 查 unique/fixed-name 域
   -> 普通 typeLine 只按审核过的 ClientStrings 模板完整匹配
   -> 稀有随机 name 查 word-component 域并按规则组合
-  -> 魔法 typeLine 按 ITEM prefix + base-item + ITEM suffix 完整重建
+  -> 魔法 typeLine 按英文 prefix + base-item + suffix 完整解析
+  -> 仅在 frameType=1 按繁中 prefix + suffix + base-item 重建
   -> 属性和词缀按 Trade stat ID 翻译
   -> 任一域失败只回退该字段，不跨域借用译文
 ```

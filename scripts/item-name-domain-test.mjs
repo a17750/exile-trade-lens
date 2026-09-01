@@ -16,6 +16,15 @@ assert.deepEqual(
   compilation.domain.normalDisplayRules.map((rule) => rule.ruleId),
   ["client-string:QualityItem", "client-string:ExceptionalItem"],
 );
+assert.deepEqual(compilation.domain.magicAffixRule, {
+  ruleId: "magic-affix:zh-tw-preposed-suffix",
+  domain: "item-name.magic-affix",
+  source: "project-domain-policy",
+  locale: "zh-TW",
+  frameTypes: [1],
+  sourceOrder: ["prefix", "base", "suffix"],
+  targetOrder: ["prefix", "suffix", "base"],
+});
 assert.deepEqual(
   compilation.report.candidates
     .filter((candidate) => candidate.status === "review")
@@ -45,12 +54,16 @@ const dataset = {
     "Reaping Staff": "死神長杖",
     "Bombard Crossbow": "轟擊十字弓",
     "Composite Bow": "複合弓",
+    "Plated Vestments": "鎧甲法衣",
   },
   fixedNames: {},
   wordComponents: {},
   affixNames: {
     prefixes: { Frosted: "結霜的" },
-    suffixes: { "of the Fletcher": "製箭者之" },
+    suffixes: {
+      "of the Fletcher": "製箭者之",
+      "of Staunching": "止血之",
+    },
   },
 };
 
@@ -116,6 +129,27 @@ const magic = resolver.resolve(
   },
   dataset,
 );
-assert.equal(magic.typeLine.text, "結霜的複合弓製箭者之");
+assert.equal(magic.typeLine.text, "結霜的製箭者之複合弓");
+assert.equal(magic.typeLine.ruleId, "magic-affix:zh-tw-preposed-suffix");
+
+const suffixOnlyMagic = resolver.resolve(
+  {
+    frameType: 1,
+    baseType: "Plated Vestments",
+    typeLine: "Plated Vestments of Staunching",
+  },
+  dataset,
+);
+assert.equal(suffixOnlyMagic.typeLine.text, "止血之鎧甲法衣");
+
+const sameTextWrongDomain = resolver.resolve(
+  {
+    frameType: 2,
+    baseType: "Plated Vestments",
+    typeLine: "Plated Vestments of Staunching",
+  },
+  dataset,
+);
+assert.notEqual(sameTextWrongDomain.typeLine.text, "止血之鎧甲法衣");
 
 console.log("item-name-domain-test: ok");

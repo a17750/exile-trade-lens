@@ -14,7 +14,7 @@
 | 詞條特殊渲染 | `Always Poison on Hit with this Weapon` | `explicit.stat_3885634897` + 完整渲染文字 | 英服/台服 `/fetch` 同一物品字段 | 先按 ID 限域，再精確匹配該 ID 的已驗證變體 |
 | 基礎物品與固定名稱 | `Slim Mace`、暗金名稱 | GGPK 行 ID 或完整英文 | `Content.ggpk`（只讀） | 完整名稱匹配 |
 | 稀有名稱組件 | `Golem`、`Crack` | GGPK Words 行 ID/英文組件 | `Words.datc64` | 僅在稀有名稱域做組件拼接 |
-| 魔法裝備前後綴 | `Frosted`、`of the Fletcher` | `Mods.Id` + `Domain` + `GenerationType` | 英繁 `Mods.datc64` | 僅在魔法 `typeLine` 按前綴/底材/後綴組合 |
+| 魔法裝備前後綴 | `Frosted`、`of the Fletcher` | `Mods.Id` + `Domain` + `GenerationType` | 英繁 `Mods.datc64` | 僅在魔法 `typeLine` 解析，繁中按前綴/後綴/底材渲染 |
 | 普通品質展示模板 | `Superior {0}` | `ClientStrings.Id=QualityItem` | 英繁 `ClientStrings.datc64` | 僅在 `frameType=0` 的 `typeLine` 完整套用 |
 | 卓越底材展示模板 | `Exceptional {}` | `ClientStrings.Id=ExceptionalItem` | 英繁 `ClientStrings.datc64` | 僅在 `frameType=0` 的 `typeLine` 完整套用 |
 
@@ -177,7 +177,14 @@ GGPK CSD 還會明確聲明同一描述的正負數分支。提取器保留條�
 
 因此 `Slim Mace -> 纖細之錘` 不應影響 `Golem Crack -> 魔像 裂骨錘`。
 
-雙語模式的合法結果是「完整繁中（完整英文原文）」，例如 `結霜的反曲弓逆滲透之 (Frosted Recurve Bow of Osmosis)`。`Frosted 反曲弓 of Osmosis (...)` 這種中英文殘片混合屬於錯譯；在前綴、底材和後綴尚未全部可靠對齊時，應顯示完整英文。
+魔法裝備的英文結構仍按 `prefix + base + suffix` 解析，但繁中渲染順序由
+`domains.itemName.magicAffixRule` 限定為 `prefix + suffix + base`。例如
+`Plated Vestments of Staunching → 止血之鎧甲法衣`，
+`Frosted Recurve Bow of Osmosis → 結霜的逆滲透之反曲弓`。該語序只在
+`frameType=1` 生效，不改寫普通、稀有或傳奇名稱。
+
+雙語模式的合法結果是「完整繁中（完整英文原文）」。`Frosted 反曲弓 of Osmosis (...)`
+這種中英文殘片混合屬於錯譯；在前綴、底材和後綴尚未全部可靠對齊時，應顯示完整英文。
 
 ### 4.3 `/fetch` 數值詞條
 

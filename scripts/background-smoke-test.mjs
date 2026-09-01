@@ -131,6 +131,10 @@ assert.deepEqual(
   dataset.dataset.domains.itemName.normalDisplayRules.map((rule) => rule.ruleId),
   ["client-string:QualityItem", "client-string:ExceptionalItem"],
 );
+assert.deepEqual(
+  dataset.dataset.domains.itemName.magicAffixRule.targetOrder,
+  ["prefix", "suffix", "base"],
+);
 assert.equal(dataset.dataset.itemPropertyType109.qualifiers.Ezomyte.text, "艾茲麥");
 assert.equal(dataset.dataset.itemPropertyType109.classes.Staff.text, "長杖");
 

@@ -81,9 +81,11 @@
     return result?.texts?.length === 1 ? result.texts[0] : null;
   }
 
-  function composeMagicTypeLine(dataset, original, baseType) {
+  function composeMagicTypeLine(dataset, original, baseType, frameType) {
     const translatedBase = baseItemTranslation(dataset, baseType);
     if (!original || !baseType || !translatedBase) return null;
+    const rule = dataset?.domains?.itemName?.magicAffixRule;
+    if (!rule?.frameTypes?.includes(frameType)) return null;
     const baseOffset = original.indexOf(baseType);
     if (baseOffset < 0 || original.indexOf(baseType, baseOffset + baseType.length) >= 0) {
       return null;
@@ -93,7 +95,12 @@
     const translatedPrefix = prefix ? dataset?.affixNames?.prefixes?.[prefix] : "";
     const translatedSuffix = suffix ? dataset?.affixNames?.suffixes?.[suffix] : "";
     if ((prefix && !translatedPrefix) || (suffix && !translatedSuffix)) return null;
-    return `${translatedPrefix}${translatedBase}${translatedSuffix}`;
+    const translatedParts = {
+      prefix: translatedPrefix,
+      base: translatedBase,
+      suffix: translatedSuffix,
+    };
+    return rule.targetOrder.map((part) => translatedParts[part] ?? "").join("");
   }
 
   function composeNormalTypeLine(dataset, original, baseType, frameType) {
@@ -158,8 +165,14 @@
         composed = result?.text ?? null;
         ruleId = result?.ruleId ?? "normal-display:unresolved";
       } else if (!direct && frameType === 1) {
-        composed = composeMagicTypeLine(dataset, originalTypeLine, originalBaseType);
-        ruleId = "magic-affix:complete";
+        composed = composeMagicTypeLine(
+          dataset,
+          originalTypeLine,
+          originalBaseType,
+          frameType,
+        );
+        ruleId = dataset?.domains?.itemName?.magicAffixRule?.ruleId ??
+          "magic-affix:unresolved";
       } else if (!direct && frameType === 2) {
         composed = composeOfficialName(dataset, originalTypeLine, true);
         ruleId = "rare-name:components";

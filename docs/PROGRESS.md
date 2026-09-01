@@ -97,8 +97,8 @@
 ```text
 Slim Mace   -> 纖細之錘
 Golem Crack -> 魔像 裂骨錘
-Composite Bow of the Fletcher -> 合成弓製箭者之
-Frosted Recurve Bow of Osmosis -> 結霜的反曲弓逆滲透之
+Composite Bow of the Fletcher -> 製箭者之合成弓
+Frosted Recurve Bow of Osmosis -> 結霜的逆滲透之反曲弓
 Superior Bombard Crossbow -> 精良的 轟擊十字弓
 ```
 

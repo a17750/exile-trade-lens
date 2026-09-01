@@ -38,7 +38,7 @@ assert.match(bridgeSource, /knownRenderedTranslations\.has\(text\)/);
 assert.match(bridgeSource, /exactConflicts/);
 assert.match(bridgeSource, /missingPolicy\.createDomGuard/);
 assert.doesNotMatch(bridgeSource, /UI_FALLBACK_TRANSLATIONS/);
-assert.equal(extensionManifest.version, "0.5.28");
+assert.equal(extensionManifest.version, "0.5.29");
 const mainScript = extensionManifest.content_scripts.find((entry) => entry.world === "MAIN");
 const isolatedScript = extensionManifest.content_scripts.find((entry) => entry.world !== "MAIN");
 assert.ok(mainScript?.js.includes("page/trade-hook.js"), "MAIN 环境必须加载交易拦截器");
@@ -511,11 +511,11 @@ await officialAffixRequest.response(officialAffixResponse);
 const translatedOfficialAffixes = JSON.parse(officialAffixResponse.responseText).result;
 assert.equal(
   translatedOfficialAffixes[0].item.typeLine,
-  "合成弓製箭者之 (Composite Bow of the Fletcher)",
+  "製箭者之合成弓 (Composite Bow of the Fletcher)",
 );
 assert.equal(
   translatedOfficialAffixes[1].item.typeLine,
-  "結霜的反曲弓逆滲透之 (Frosted Recurve Bow of Osmosis)",
+  "結霜的逆滲透之反曲弓 (Frosted Recurve Bow of Osmosis)",
 );
 
 const superiorNormalRequest = {

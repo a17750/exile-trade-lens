@@ -3,6 +3,14 @@
   "locale": "zh-TW",
   "domains": {
     "itemName": {
+      "magicAffixRendering": {
+        "ruleId": "magic-affix:zh-tw-preposed-suffix",
+        "source": "project-domain-policy",
+        "locale": "zh-TW",
+        "frameTypes": [1],
+        "sourceOrder": ["prefix", "base", "suffix"],
+        "targetOrder": ["prefix", "suffix", "base"]
+      },
       "normalDisplayTemplates": [
         {
           "ruleId": "client-string:QualityItem",
