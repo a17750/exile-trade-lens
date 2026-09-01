@@ -31,6 +31,7 @@
 | `data/manual-overrides.json` | 人工覆盖 | 存放明确审查过、需要覆盖自动来源的少量例外；不能由快照自动重建。 |
 | `data/verified-labels.zh-TW.json` | 人工审查证据 | 只保留稳定游戏属性标签和证据，不再保存 UI 翻译。 |
 | `data/item-fields.zh-TW.json` | 物品字段审核例外 | `equipment_filters` 自动注册表之外的 `/fetch` 属性、DOM 标签与审核别名；不直接充当自由文本词库。 |
+| `data/domain-policies.json` | 领域策略 | 声明允许进入各翻译领域的官方稳定 ID、适用边界及审核断言；运行译文仍从官方来源读取，断言只用于发现上游漂移。当前首先管理 `itemName`。 |
 | `data/verified-stat-renderings.zh-TW.json` | 官方成对证据 | 保存同一 stable stat ID 的特殊渲染变体及英台 `/fetch` 证据。 |
 | `data/upstream-baseline.en.json` | 差异基线 | 保存上次人工接受的官方英文结构，用于发现版本漂移；它不是运行翻译。 |
 
@@ -49,6 +50,9 @@
 构建还会生成 `reports/item-property-resolution.json`，记录 `/fetch` 物品属性统一索引的候选、
 来源冲突和 `knownButUnrouted`。该报告是审计产物，不参与运行；已知但未接入的数量不为零时
 构建会直接失败。
+
+`reports/item-name-domain-report.json` 记录物品名称领域的已批准规则和自动发现候选。候选只进入
+审核，不会自动参与翻译；已批准的官方模板如果稳定 ID、占位符或原文发生变化，构建会失败。
 
 ## 历史词库策略
 

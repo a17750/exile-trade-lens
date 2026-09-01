@@ -77,7 +77,7 @@
 - `Words.datc64`：固定名称和随机名称组件。
 - `Mods.datc64`：按稳定 Mod ID 配对 `Domain=ITEM`、`PREFIX/SUFFIX` 的官方英繁名称，写入 `data/ggpk.json` 的 `affixes` 区域。怪物、区域等其他领域不混入装备词缀表。
 - `PassiveSkills.datc64`：同一行 ID 配对被动节点名称，写入 `passiveSkills`；完整节点名可生成 `Allocates <name>`，不做分词拼接。
-- `data/statdescriptions/stat_descriptions.csd` 与 `passive_skill_stat_descriptions.csd`：UTF-16 描述模板的英繁配对，写入 `statDescriptions`。只收录唯一且占位符数量一致的模板；冲突留在 GGPK 来源报告，不进入运行时映射。
+- `data/statdescriptions/stat_descriptions.csd` 与 `passive_skill_stat_descriptions.csd`：UTF-16 描述模板的英繁配对，写入 `statDescriptions`。唯一且占位符一致的完整模板进入 `byEnglish`；同一描述块中带 `negate 1` 的 `increased/reduced` 官方分支进入 `signedVariants`，构建时再绑定 Trade stable stat ID。冲突留在 GGPK 来源报告，不进入运行时映射。
 
 `Mods.Name` 可以直接解决 `Frosted`、`of Osmosis`、`of the Fletcher` 这类魔法物品标题组件。数值词条正文仍需要联合 `Stats` 与 stat descriptions；它与名称前后缀是两个独立领域。
 

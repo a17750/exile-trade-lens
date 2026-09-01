@@ -6,11 +6,13 @@
 `/api/trade2/fetch`；DPS 与防御摘要则由交易网页根据结果再次计算并写入 DOM。通用 DOM 文本
 匹配既无法稳定覆盖这些节点，也容易把筛选器、价格或卖家文字误当成物品字段。
 
-因此物品卡只按两个明确领域处理：
+因此物品卡按三个明确领域处理：
 
-1. `extension/page/item-property-rendering.js` 在页面渲染前翻译 `/fetch` 的结构化
+1. `extension/page/domains/granted-skill.js` 专门处理武器赋予技能，只接受已审核的
+   GGPK ClientStrings 模板和 GGPK 官方技能名。
+2. `extension/page/item-property-rendering.js` 在页面渲染前翻译 `/fetch` 的结构化
    `properties` 与 `requirements` 名称，数值仍由官网渲染。
-2. `extension/content/item-card-fields.js` 只处理结果卡内已登记的稳定 `data-field`。
+3. `extension/content/item-card-fields.js` 只处理结果卡内已登记的稳定 `data-field`。
 
 这不是第二套任意词库。两个模块分别消费构建产物中的 `itemPropertyIndex` 与
 `itemFields.dom`；旧的 `properties` 只保留审核覆盖与旧版远程词库兼容。
@@ -52,6 +54,33 @@
 运行时和后台漏译去重共用该索引，因此 `Staff`、`Elemental Damage` 这类已有官方证据的属性
 不会再出现“页面没翻译，同时又被当成未知上报”的分叉。
 
+## 赋予技能领域
+
+`Grants Skill` 不是普通 UI 标签，也不能拆词替换。构建期由
+`scripts/domains/granted-skill.mjs` 验证两条 GGPK ClientStrings：
+
+- `ItemDisplayGrantedSkill`：有技能等级；
+- `ItemDisplayGrantedSkillNoScaling`：无技能等级。
+
+运行时只完整匹配这两种官方句式，再使用 `ggpk.baseItems` 导出的 `baseItems` 对技能英文名做
+精确查询。例如 `Grants Skill: Spear Throw` 解析为 `賦予技能: 長矛投擲`。等级数字只作为
+结构化参数回填，不参与翻译。
+
+官网 `/fetch` 会把这类记录放在独立的 `item.grantedSkills` 数组，并拆成
+`name: "Grants Skill"` 与 `values[0]: "Level 20 Solar Orb"`，最终 DOM 标记为
+`data-field="stat.skill.solar_orb"`。它不会经过 `item.properties` 的普通属性循环。这不是
+另一套翻译规则：解析器会先用相同的英文模板验证组合值，再用相同的繁中模板拆回
+`name: "賦予技能"` 与 `values[0]: "20 級 日耀球"`。整行、占位符和拆分结构因此共享同一
+来源与失败策略。
+
+主路径在 `/fetch` 阶段单独遍历 `item.grantedSkills`。结果卡另有一个仅接受
+`[data-field^="stat.skill."]` 且能在稳定 stat 索引中验证为 `Grants Skill:` 的 DOM 适配器，作为
+官网移动字段或旧缓存造成结构偏差时的第二层保险；它不会扫描普通英文文本。
+
+模板命中但技能名称不存在时，整行保持英文并以 `item-skill.granted`、
+`missing-skill-name` 上报；模板形态变化则以 `template-shape-drift` 上报。两种情况都禁止输出
+中英混合的半成品。构建审计写入 `reports/granted-skill-domain-report.json`。
+
 构建器会验证来源英文必须等于目标英文。确实存在官网缩写的情况，例如 `DPS` 对应稳定字段
 `Damage per Second`，必须显式写入 `reviewedAlias: true`；未声明的跨词或相似词不会自动采用。
 
@@ -66,6 +95,7 @@
 - 不处理价格、卖家、上架时间和账号。
 - 未登记的 `data-field` 保持英文；仅当它位于物品卡附加属性区域时，才上报稳定 ID 和纯英文
   标签。数字、属性值、价格、卖家及输入内容不会进入报告。
-- `No Physical Damage`、`Grants Skill: ...` 等带稳定 stat ID 的内容仍走 stat 审核链路。
+- `No Physical Damage` 等具备稳定 stat ID 的词缀仍走 stat 审核链路；`Grants Skill: ...`
+  由赋予技能领域处理，因为无等级的武器固有技能并不保证具有 Trade API stat ID。
 - 新字段优先由下一次 Trade API 构建自动纳入；不在官方注册表中的字段，只有找到官方来源或
   完成明确人工审核后才能加入例外文件。

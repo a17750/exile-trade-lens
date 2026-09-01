@@ -50,6 +50,7 @@
 | 命名组件 | `Crack` | `裂骨錘` |
 | 命名组件 | `the Cracked` | `爆發之靈` |
 | 普通品质展示模板 `QualityItem` | `Superior {0}` | `精良的 {0}` |
+| 卓越底材展示模板 `ExceptionalItem` | `Exceptional {}` | `卓越 {}` |
 
 因此正确结论是：
 
@@ -62,9 +63,10 @@ Golem Crack -> 魔像 + 裂骨錘   （随机名称组件，最终空格和语�
 
 - `tools/ggpk/` 已提供正式只读提取器，并锁定源码依赖、哈希、补丁和许可证。
 - `data/ggpk.json` 已按独立区域保存 `BaseItemTypes`、`Words`、`Mods` 装备前后缀、`PassiveSkills`、stat description CSD 和 `ClientStrings` 的规范化官方英繁映射。
-- `scripts/build-data.mjs` 已把映射写入 `baseItems`、`fixedNames`、`wordComponents`、`affixNames` 和经过审核的 `itemDisplayTemplates` 等隔离域。
-- `/fetch` 运行时已经区分 `name`、`baseType`、`typeLine` 和结构化 `properties`；属性只通过领域隔离的 `itemPropertyIndex` 解析。普通品质展示必须完整匹配 `ClientStrings.QualityItem`，稀有名称必须被 `Words` 整段覆盖，魔法名称必须由 `ITEM` 前缀、底材、后缀完整覆盖。
-- `/fetch` 的 `Mods` 与 `Stats` 已按英文模板和稳定 ID 双重校验；不会再仅按数组位置套用翻译。具体的词组、占位符和回退规则见 [词组与词条翻译对照规范](PHRASE-TRANSLATION.md)。
+- `scripts/build-data.mjs` 已把映射写入 `baseItems`、`fixedNames`、`wordComponents`、`affixNames`，并通过 `data/domain-policies.json` 将审核过的官方模板编译至 `domains.itemName`。
+- `/fetch` 运行时已经区分 `name`、`baseType`、`typeLine` 和结构化 `properties`；属性只通过领域隔离的 `itemPropertyIndex` 解析。普通物品展示必须完整匹配已审核的 `ClientStrings.QualityItem` 或 `ClientStrings.ExceptionalItem`，稀有名称必须被 `Words` 整段覆盖，魔法名称必须由 `ITEM` 前缀、底材、后缀完整覆盖。
+- `/fetch` 的 `Mods` 与 `Stats` 已按英文模板和稳定 ID 双重校验。结构化 mod 对象自身的 `hash` 直接绑定当前 description，优先于 `extended.hashes`；后者的数字数组不视为 `*Mods` 数组位置。具体的词组、占位符和回退规则见 [词组与词条翻译对照规范](PHRASE-TRANSLATION.md)。
+- CSD 中同一描述块的 `increased/reduced` 分支已编译为 `domains.signedStatRendering`；负数必须具备英繁同块及 `negate 1` 证据，并且只挂载到英文目录模板完全相同的 Trade stat ID。
 - `Words` 的类别、组合顺序和所有语言规则尚未完全解析；当前采用保守的整段匹配。
 - GGPK 不负责交易站固定 UI、筛选器或服务端专有文本，这些仍以 Trade API 和项目 UI 词库为准。
 - 第三方 `poe-game-data` 不参与构建、运行或冲突审计，仅在数据清单中保留人工参考链接。
@@ -165,12 +167,31 @@ ui:clear_filter_group
 5. 无法确认组件或语序时保留原文，不回退到“只翻译底材”。
 6. 自检只记录可定位的稳定键或冲突；不记录玩家输入或大量完整随机物品名。
 
-普通物品的 `typeLine` 是另一独立领域。`frameType=0` 时，当前只接受两种情况：
+### 3.1 领域路由
+
+物品名称不再由 `trade-hook.js` 内的个例分支决定。构建期由
+`scripts/domains/item-name.mjs` 读取领域策略与 GGPK，生成规范化规则；运行时由
+`extension/page/domains/item-name.js` 负责 `baseType`、`typeLine` 和 `name`。领域解析返回
+`translated`、`unresolved` 或 `not-applicable`，并在失败时携带 `domain`、`reason` 和稳定规则 ID。
+
+构建器会自动发现形如单占位符物品包装器的 `ClientStrings`。未登记候选只写入
+`reports/item-name-domain-report.json`，不会自动启用；已登记规则发生结构变化则阻断构建。
+
+武器赋予技能属于相邻但独立的 `item-skill.granted` 领域。构建期
+`scripts/domains/granted-skill.mjs` 必须同时验证 `ItemDisplayGrantedSkill` 与
+`ItemDisplayGrantedSkillNoScaling` 的英文、繁中原始模板和占位符顺序；运行时
+`extension/page/domains/granted-skill.js` 只解析完整官方句式。技能 `{0}` 只能通过同版本
+`ggpk.baseItems` 的完整英文键精确取得，等级 `{1}` 原值回填。任一组件缺失时保留整行英文，
+不得借用 UI、词缀或分词词典拼接。
+
+普通物品的 `typeLine` 是另一独立领域。`frameType=0` 时，当前只接受三种情况：
 
 1. `typeLine` 与 `baseType` 完全相同，只显示官方基础类型译文。
 2. `typeLine` 完整匹配已审核的 `ClientStrings.QualityItem` 模板 `Superior {0}`，将 `{0}` 替换为官方基础类型译文。
+3. `typeLine` 完整匹配已审核的 `ClientStrings.ExceptionalItem` 模板 `Exceptional {}`，将 `{}` 替换为官方基础类型译文。
 
-例如 `Superior Bombard Crossbow` 输出 `精良的 轟擊十字弓`。不能从魔法前缀表借用同名
+例如 `Superior Bombard Crossbow` 输出 `精良的 轟擊十字弓`，`Exceptional Reaping Staff` 输出
+`卓越 死神長杖`。不能从魔法前缀表借用同名
 `Superior -> 優越的`，因为两者属于不同显示领域。若以后出现其他普通展示修饰词，整段保留英文并以
 `fetch:typeLine:normal-display-unresolved` 上报，避免再次发生“既不翻译也不收集”。
 
@@ -184,6 +205,8 @@ ui:clear_filter_group
 - Trade API：交易站实际暴露的统计项 ID 与文本。
 
 GGPK 用于补充和验证，Trade API ID 仍是交易筛选器运行时的主键。
+
+正负数也遵守该边界：GGPK 提供 `增加/減少` 的官方显示证据，Trade API 提供运行时 stable stat ID。两者在构建期以完整正数英文模板连接；浏览器不进行语法推导，也不把 `reduced` 当作全局词汇替换。
 
 ### 4.5 固定网页 UI
 

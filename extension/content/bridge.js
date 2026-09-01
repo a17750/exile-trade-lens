@@ -178,6 +178,13 @@
         mode: settings.mode,
         fields: dataset?.itemFields?.dom,
       });
+      globalThis.POE2ZHGrantedSkillFields?.configure({
+        enabled: settings.enabled,
+        mode: settings.mode,
+        domain: dataset?.domains?.grantedSkill,
+        skillNames: dataset?.baseItems,
+        stats: dataset?.stats?.entries,
+      });
       publishSharedConfig();
       translateDocument();
     } catch (error) {
@@ -353,6 +360,7 @@
 
   function translateRoot(root) {
     if (!root || root.nodeType !== Node.ELEMENT_NODE) return;
+    globalThis.POE2ZHGrantedSkillFields?.translateRoot(root);
     globalThis.POE2ZHItemCardFields?.translateRoot(root);
     translateAttributes(root);
     if (root.closest?.("script, style, textarea, input, [contenteditable='true']")) return;

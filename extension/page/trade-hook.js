@@ -48,7 +48,6 @@
 
   const clean = (text) => String(text ?? "").replace(/\[[^|\]]*\||[\][]/g, "");
   const reported = new Set();
-  let componentIndexes = { version: null, words: null, withBaseItems: null };
   let statIndexes = { version: null, englishById: null, renderer: null };
   let catalogAliases = {
     version: null,
@@ -175,106 +174,7 @@
     return config.dataset?.fixedNames?.[english] || config.dataset?.items?.[english];
   }
 
-  function componentIndex(includeBaseItems) {
-    const version = config.dataset?.datasetVersion;
-    if (componentIndexes.version !== version) {
-      componentIndexes = { version, words: null, withBaseItems: null };
-    }
-    const cacheKey = includeBaseItems ? "withBaseItems" : "words";
-    if (componentIndexes[cacheKey]) return componentIndexes[cacheKey];
-    const source = includeBaseItems
-      ? { ...(config.dataset?.baseItems ?? {}), ...(config.dataset?.wordComponents ?? {}) }
-      : config.dataset?.wordComponents ?? {};
-    const buckets = new Map();
-    for (const [english, translated] of Object.entries(source)) {
-      if (!english || !translated || english === translated) continue;
-      const first = english[0];
-      if (!buckets.has(first)) buckets.set(first, []);
-      buckets.get(first).push([english, translated]);
-    }
-    for (const entries of buckets.values()) {
-      entries.sort((a, b) => b[0].length - a[0].length || a[0].localeCompare(b[0]));
-    }
-    componentIndexes[cacheKey] = buckets;
-    return buckets;
-  }
-
-  function composeOfficialName(original, includeBaseItems = false) {
-    original = String(original ?? "");
-    if (!original) return null;
-    const exact = includeBaseItems
-      ? baseItemTranslation(original) || config.dataset?.fixedNames?.[original]
-      : config.dataset?.fixedNames?.[original];
-    if (exact) return exact;
-
-    const buckets = componentIndex(includeBaseItems);
-    const memo = new Map();
-    function solve(offset) {
-      if (offset === original.length) return { texts: [""], parts: 0 };
-      if (memo.has(offset)) return memo.get(offset);
-      let minimumParts = Number.POSITIVE_INFINITY;
-      const texts = new Set();
-      for (const [english, translated] of buckets.get(original[offset]) ?? []) {
-        if (!original.startsWith(english, offset)) continue;
-        const tail = solve(offset + english.length);
-        if (!tail) continue;
-        minimumParts = Math.min(minimumParts, tail.parts + 1);
-        for (const tailText of tail.texts) {
-          texts.add(translated + tailText);
-          if (texts.size > 1) break;
-        }
-        if (texts.size > 1) break;
-      }
-      const best = minimumParts < Number.POSITIVE_INFINITY
-        ? { texts: [...texts], parts: minimumParts }
-        : null;
-      memo.set(offset, best);
-      return best;
-    }
-    const result = solve(0);
-    return result?.texts?.length === 1 ? result.texts[0] : null;
-  }
-
-  function composeMagicTypeLine(original, baseType) {
-    original = String(original ?? "");
-    baseType = String(baseType ?? "");
-    const translatedBase = baseItemTranslation(baseType);
-    if (!original || !baseType || !translatedBase) return null;
-
-    const baseOffset = original.indexOf(baseType);
-    if (baseOffset < 0 || original.indexOf(baseType, baseOffset + baseType.length) >= 0) {
-      return null;
-    }
-
-    const prefix = original.slice(0, baseOffset).trim();
-    const suffix = original.slice(baseOffset + baseType.length).trim();
-    const translatedPrefix = prefix ? config.dataset?.affixNames?.prefixes?.[prefix] : "";
-    const translatedSuffix = suffix ? config.dataset?.affixNames?.suffixes?.[suffix] : "";
-    if ((prefix && !translatedPrefix) || (suffix && !translatedSuffix)) return null;
-
-    return `${translatedPrefix}${translatedBase}${translatedSuffix}`;
-  }
-
-  function composeNormalTypeLine(original, baseType) {
-    original = String(original ?? "");
-    baseType = String(baseType ?? "");
-    const translatedBase = baseItemTranslation(baseType);
-    if (!original || !baseType || !translatedBase) return null;
-    if (original === baseType) return translatedBase;
-
-    const quality = config.dataset?.itemDisplayTemplates?.quality;
-    if (
-      quality?.english !== "Superior {0}" ||
-      typeof quality.text !== "string" ||
-      !quality.text.includes("{0}")
-    ) {
-      return null;
-    }
-    if (original !== quality.english.replace("{0}", baseType)) return null;
-    return quality.text.replace("{0}", translatedBase);
-  }
-
-  function reportMissing(type, key, en, context = "") {
+  function reportMissing(type, key, en, context = "", metadata = {}) {
     key = String(key ?? "").trim();
     en = clean(en).trim();
     if (!key || !en || !/[A-Za-z]/.test(en)) return;
@@ -288,6 +188,8 @@
           key,
           en,
           context,
+          domain: String(metadata.domain ?? ""),
+          reason: String(metadata.reason ?? ""),
           source: API_SOURCE,
           datasetVersion: config.dataset?.datasetVersion,
         },
@@ -390,6 +292,12 @@
   }
 
   function translateProperty(property) {
+    const grantedSkill = translateGrantedSkill(property, {
+      type: "property",
+      key: null,
+      context: "item-skill",
+    });
+    if (grantedSkill?.handled) return;
     globalThis.POE2ZHItemPropertyRendering?.translate(property, {
       translations: config.dataset.itemPropertyIndex,
       fallbackTranslations: config.dataset.properties,
@@ -404,10 +312,32 @@
     });
   }
 
+  function translateGrantedSkill(property, report) {
+    return globalThis.POE2ZHGrantedSkillDomain?.translate(property, {
+      domain: config.dataset.domains?.grantedSkill,
+      skillNames: config.dataset.baseItems,
+      format,
+      onMissing: (english, detail) => reportMissing(
+        report.type,
+        report.key || detail?.skillEnglish || english,
+        english,
+        `${report.context}:${detail?.reason || "unresolved"}`,
+        { domain: detail?.domain, reason: detail?.reason },
+      ),
+    });
+  }
+
   function translateMods(item) {
-    const hashes = item.extended?.hashes;
-    if (!hashes) return;
-    for (const [kind, refs] of Object.entries(hashes)) {
+    const hashes = item.extended?.hashes ?? {};
+    const kinds = new Set(Object.keys(hashes));
+    for (const [field, mods] of Object.entries(item)) {
+      if (!field.endsWith("Mods") || !Array.isArray(mods)) continue;
+      if (mods.some((mod) => typeof mod === "object" && /^stat\.[^.]+\.stat_\d+$/.test(mod?.hash ?? ""))) {
+        kinds.add(field.slice(0, -"Mods".length));
+      }
+    }
+    for (const kind of kinds) {
+      const refs = hashes[kind] ?? [];
       const mods = item[`${kind}Mods`];
       if (!Array.isArray(mods) || !Array.isArray(refs)) continue;
       const byIndex = new Map();
@@ -434,7 +364,22 @@
       item[`${kind}Mods`] = mods.map((mod, index) => {
         const original = typeof mod === "object" ? mod.description : mod;
         if (!original) return mod;
-        const refsForIndex = byIndex.get(index) ?? [];
+        const inlineStatId = typeof mod === "object" && /^stat\.[^.]+\.stat_\d+$/.test(mod?.hash ?? "")
+          ? mod.hash.slice("stat.".length)
+          : null;
+        const inlineEntry = inlineStatId ? config.dataset.stats.entries[inlineStatId] : null;
+        if (inlineStatId && !inlineEntry?.text) {
+          reportMissing("stat", inlineStatId, original, `fetch:${kind}:inline-hash-unresolved`);
+          return mod;
+        }
+        // Modern /fetch mod objects carry their own stable hash. That hash is
+        // attached to this exact description and is authoritative. The numeric
+        // arrays under extended.hashes are not positions in *Mods (the official
+        // response can map explicitMods[2] to [4]), so only legacy string mods
+        // may use the older association fallback below.
+        const refsForIndex = inlineStatId
+          ? [{ statId: inlineStatId, translated: inlineEntry.text }]
+          : byIndex.get(index) ?? [];
         const renderingMatches = refsForIndex.flatMap(({ statId }) =>
           matchingStatRenderings(statId, original).map((rendering) => ({ statId, rendering })),
         );
@@ -465,58 +410,36 @@
   }
 
   function translateFetchItem(item) {
-    const originalBaseType = item.baseType;
-    const originalTypeLine = item.typeLine;
-    const translatedBaseType = baseItemTranslation(originalBaseType);
-
-    if (translatedBaseType) item.baseType = format(translatedBaseType, originalBaseType);
-    else if (originalBaseType) {
-      reportMissing("item", originalBaseType, originalBaseType, "fetch:baseType");
-    }
-
-    if (originalTypeLine) {
-      const directTypeLine =
-        config.dataset.baseItems?.[originalTypeLine] ||
-        config.dataset.fixedNames?.[originalTypeLine] ||
-        config.dataset.items?.[originalTypeLine];
-      const composedTypeLine =
-        item.frameType === 0
-          ? composeNormalTypeLine(originalTypeLine, originalBaseType)
-          : item.frameType === 1
-          ? composeMagicTypeLine(originalTypeLine, originalBaseType)
-          : item.frameType === 2
-            ? composeOfficialName(originalTypeLine, true)
-            : null;
-      if (directTypeLine) {
-        item.typeLine = format(directTypeLine, originalTypeLine);
-      } else if (composedTypeLine) {
-        item.typeLine = format(composedTypeLine, originalTypeLine);
-      } else if (item.frameType === 0) {
-        reportMissing(
-          "item",
-          originalTypeLine,
-          originalTypeLine,
-          "fetch:typeLine:normal-display-unresolved",
-        );
-      } else if (originalTypeLine === originalBaseType && !translatedBaseType) {
-        reportMissing("item", originalTypeLine, originalTypeLine, "fetch:typeLine");
+    const itemNameDomain = globalThis.POE2ZHItemNameDomain;
+    if (!itemNameDomain) throw new Error("流亡譯鏡：item-name 領域未載入");
+    const resolvedNames = itemNameDomain.resolve(item, config.dataset);
+    for (const field of ["baseType", "typeLine", "name"]) {
+      const result = resolvedNames[field];
+      if (result?.status === "translated") {
+        item[field] = format(result.text, result.original);
       }
     }
-
-    if (item.name) {
-      const translatedName =
-        item.frameType === 1 || item.frameType === 2
-          ? composeOfficialName(item.name)
-          : fixedNameTranslation(item.name);
-      if (translatedName) item.name = format(translatedName, item.name);
-      else if (item.frameType === 3) {
-        reportMissing("item", item.name, item.name, "fetch:name");
-      }
+    for (const report of resolvedNames.reports) {
+      reportMissing(
+        report.type,
+        report.key,
+        report.en,
+        report.context,
+        { domain: report.domain, reason: report.reason },
+      );
     }
     const properties = Array.isArray(item.properties) ? item.properties : [];
     const requirements = Array.isArray(item.requirements) ? item.requirements : [];
+    const grantedSkills = Array.isArray(item.grantedSkills) ? item.grantedSkills : [];
     for (const property of properties) translateProperty(property);
     for (const requirement of requirements) translateProperty(requirement);
+    for (const grantedSkill of grantedSkills) {
+      translateGrantedSkill(grantedSkill, {
+        type: "property",
+        key: grantedSkill?.type || null,
+        context: "item-granted-skill",
+      });
+    }
     translateMods(item);
     return item;
   }

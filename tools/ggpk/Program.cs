@@ -190,6 +190,10 @@ var statDescriptions = new {
     source = "local-content-ggpk-csd",
     files = new[] { StatDescriptions, PassiveStatDescriptions },
     byEnglish = statDescriptionResult.ByEnglish,
+    signedVariants = new {
+        byPositiveEnglish = statDescriptionResult.SignedVariants,
+        conflicts = statDescriptionResult.SignedConflicts,
+    },
     conflicts = statDescriptionResult.Conflicts,
     coverage = statDescriptionResult.Coverage,
 };
@@ -400,8 +404,40 @@ static StatDescriptionResult BuildStatDescriptions(byte[] mainBytes, byte[] pass
         if (translations.Length == 1) byEnglish[group.Key] = translations[0];
         else if (translations.Length > 1) conflicts.Add(new PairConflict(group.Key, translations));
     }
+    var signedVariants = new SortedDictionary<string, SignedStatVariant>(StringComparer.Ordinal);
+    var signedConflicts = new List<SignedStatConflict>();
+    foreach (var positiveGroup in all
+        .Where(pair => !pair.Negated && !pair.TranslatedNegated &&
+            Regex.IsMatch(pair.English, @"\bincreased\b", RegexOptions.IgnoreCase))
+        .GroupBy(pair => pair.English, StringComparer.Ordinal)) {
+        var candidates = new List<SignedStatVariant>();
+        foreach (var positive in positiveGroup) {
+            var expectedNegative = Regex.Replace(
+                positive.English, @"\bincreased\b", "reduced", RegexOptions.IgnoreCase);
+            var negative = all.FirstOrDefault(pair =>
+                pair.Source == positive.Source &&
+                pair.Block == positive.Block &&
+                pair.Negated &&
+                pair.TranslatedNegated &&
+                string.Equals(pair.English, expectedNegative, StringComparison.OrdinalIgnoreCase));
+            if (negative is null || CountPlaceholders(positive.English) != CountPlaceholders(negative.English)) continue;
+            candidates.Add(new SignedStatVariant(
+                positive.English,
+                positive.ZhTW,
+                negative.English,
+                negative.ZhTW,
+                positive.Source,
+                positive.Condition,
+                negative.Condition,
+                true));
+        }
+        var distinct = candidates.Distinct().OrderBy(candidate => candidate.NegativeEnglish, StringComparer.Ordinal)
+            .ThenBy(candidate => candidate.NegativeZhTW, StringComparer.Ordinal).ToArray();
+        if (distinct.Length == 1) signedVariants[positiveGroup.Key] = distinct[0];
+        else if (distinct.Length > 1) signedConflicts.Add(new SignedStatConflict(positiveGroup.Key, distinct));
+    }
     var uniqueEnglish = all.Select(pair => pair.English).Distinct(StringComparer.Ordinal).Count();
-    return new StatDescriptionResult(byEnglish, conflicts,
+    return new StatDescriptionResult(byEnglish, signedVariants, signedConflicts, conflicts,
         new Coverage(all.Count, uniqueEnglish, byEnglish.Count, conflicts.Count,
             Percent(byEnglish.Count, uniqueEnglish)));
 }
@@ -409,37 +445,53 @@ static StatDescriptionResult BuildStatDescriptions(byte[] mainBytes, byte[] pass
 static IEnumerable<StatDescriptionPair> ParseCsd(byte[] bytes, string source) {
     var text = Encoding.Unicode.GetString(bytes).TrimStart('\uFEFF');
     var lines = text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-    var english = new List<string>();
-    var translated = new List<string>();
+    var english = new List<CsdDescriptionVariant>();
+    var translated = new List<CsdDescriptionVariant>();
     var inDescription = false;
     var language = "English";
+    var block = -1;
     foreach (var raw in lines.Append("description")) {
         var line = raw.Trim();
         if (line.Equals("description", StringComparison.Ordinal)) {
-            foreach (var pair in PairDescriptionVariants(english, translated, source)) yield return pair;
-            english.Clear(); translated.Clear(); inDescription = true; language = "English"; continue;
+            foreach (var pair in PairDescriptionVariants(english, translated, source, block)) yield return pair;
+            english.Clear(); translated.Clear(); inDescription = true; language = "English"; block += 1; continue;
         }
         if (!inDescription) continue;
         if (line.StartsWith("lang \"", StringComparison.Ordinal)) {
             language = line.Contains("Traditional Chinese", StringComparison.Ordinal) ? "Traditional Chinese" : "Other";
             continue;
         }
-        var match = Regex.Match(line, "(?:^|\\|)#\\s+\\\"(?<text>(?:\\\\.|[^\\\"])*)\\\"");
+        var match = Regex.Match(
+            line,
+            "^(?<condition>\\S+)\\s+\\\"(?<text>(?:\\\\.|[^\\\"])*)\\\"(?<directives>.*)$");
         if (!match.Success) continue;
         var value = NormalizeCsdText(match.Groups["text"].Value);
         if (string.IsNullOrEmpty(value)) continue;
-        if (language == "English") english.Add(value);
-        else if (language == "Traditional Chinese") translated.Add(value);
+        var condition = match.Groups["condition"].Value;
+        var negated = Regex.IsMatch(match.Groups["directives"].Value, @"(?:^|\s)negate\s+1(?:\s|$)");
+        var variant = new CsdDescriptionVariant(value, condition, negated);
+        if (language == "English") english.Add(variant);
+        else if (language == "Traditional Chinese") translated.Add(variant);
     }
 }
 
 static IEnumerable<StatDescriptionPair> PairDescriptionVariants(
-    IReadOnlyList<string> english, IReadOnlyList<string> translated, string source) {
+    IReadOnlyList<CsdDescriptionVariant> english,
+    IReadOnlyList<CsdDescriptionVariant> translated,
+    string source,
+    int block) {
     if (english.Count == 0 || english.Count != translated.Count) yield break;
     for (var index = 0; index < english.Count; index += 1) {
         var en = english[index]; var zh = translated[index];
-        if (en == zh || CountPlaceholders(en) != CountPlaceholders(zh)) continue;
-        yield return new StatDescriptionPair(en, zh, source);
+        if (en.Text == zh.Text || CountPlaceholders(en.Text) != CountPlaceholders(zh.Text)) continue;
+        yield return new StatDescriptionPair(
+            en.Text,
+            zh.Text,
+            source,
+            block,
+            en.Condition,
+            en.Negated,
+            zh.Negated);
     }
 }
 
@@ -547,7 +599,25 @@ internal sealed record AffixRecord(
     string ZhTW);
 internal sealed record ClientStringRecord(string Id, int Row, string English, string ZhTW);
 internal sealed record PassiveSkillRecord(string Id, int Row, string English, string ZhTW);
-internal sealed record StatDescriptionPair(string English, string ZhTW, string Source);
+internal sealed record CsdDescriptionVariant(string Text, string Condition, bool Negated);
+internal sealed record StatDescriptionPair(
+    string English,
+    string ZhTW,
+    string Source,
+    int Block,
+    string Condition,
+    bool Negated,
+    bool TranslatedNegated);
+internal sealed record SignedStatVariant(
+    string PositiveEnglish,
+    string PositiveZhTW,
+    string NegativeEnglish,
+    string NegativeZhTW,
+    string Source,
+    string PositiveCondition,
+    string NegativeCondition,
+    bool Negate);
+internal sealed record SignedStatConflict(string PositiveEnglish, SignedStatVariant[] Variants);
 internal sealed record PairConflict(string English, string[] Translations);
 internal sealed record Coverage(
     int Records,
@@ -566,5 +636,7 @@ internal sealed record AffixResult(
     PairResult<AffixRecord> Suffixes);
 internal sealed record StatDescriptionResult(
     SortedDictionary<string, string> ByEnglish,
+    SortedDictionary<string, SignedStatVariant> SignedVariants,
+    List<SignedStatConflict> SignedConflicts,
     List<PairConflict> Conflicts,
     Coverage Coverage);

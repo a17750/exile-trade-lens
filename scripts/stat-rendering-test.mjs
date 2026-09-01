@@ -13,6 +13,7 @@ vm.runInContext(
 );
 
 const statId = "explicit.stat_1416292992";
+const signedStatId = "explicit.stat_3639275092";
 const dataset = {
   datasetVersion: "test",
   exact: { "Has # Charm Slot": "有#個護符欄位" },
@@ -24,6 +25,15 @@ const dataset = {
         renderings: [{
           english: "Has # Charm Slots",
           text: "有#個護符欄位",
+        }],
+      },
+      [signedStatId]: {
+        english: "#% increased Attribute Requirements",
+        text: "增加#%能力值需求",
+        renderings: [{
+          english: "#% reduced Attribute Requirements",
+          text: "減少#%能力值需求",
+          source: "ggpk-csd-signed-variant",
         }],
       },
     },
@@ -39,4 +49,11 @@ assert.deepEqual(renderer.matchingRenderings(statId, "Has 3 Charm Slots"), [{
   text: "有#個護符欄位",
 }]);
 assert.deepEqual(renderer.matchingRenderings(statId, "Has 3 Rune Slots"), []);
+assert.deepEqual(renderer.matchingRenderings(signedStatId, "40% reduced Attribute Requirements"), [{
+  english: "#% reduced Attribute Requirements",
+  text: "減少#%能力值需求",
+  source: "ggpk-csd-signed-variant",
+}]);
+assert.deepEqual(renderer.matchingRenderings(signedStatId, "40% increased Attribute Requirements"), []);
+assert.deepEqual(renderer.matchingRenderings(signedStatId, "40% diminished Attribute Requirements"), []);
 console.log("stat-rendering-test: ok");

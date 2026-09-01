@@ -38,14 +38,14 @@ assert.match(bridgeSource, /knownRenderedTranslations\.has\(text\)/);
 assert.match(bridgeSource, /exactConflicts/);
 assert.match(bridgeSource, /missingPolicy\.createDomGuard/);
 assert.doesNotMatch(bridgeSource, /UI_FALLBACK_TRANSLATIONS/);
-assert.equal(extensionManifest.version, "0.5.22");
+assert.equal(extensionManifest.version, "0.5.28");
 const mainScript = extensionManifest.content_scripts.find((entry) => entry.world === "MAIN");
 const isolatedScript = extensionManifest.content_scripts.find((entry) => entry.world !== "MAIN");
 assert.ok(mainScript?.js.includes("page/trade-hook.js"), "MAIN 环境必须加载交易拦截器");
 assert.deepEqual(
   mainScript?.js,
-  ["page/ajax-hooker.js", "page/hover-originals.js", "page/item-property-rendering.js", "page/stat-rendering.js", "page/trade-hook.js"],
-  "MAIN 环境必须先加载独立 stat 渲染模块，再加载交易拦截器",
+  ["page/ajax-hooker.js", "page/hover-originals.js", "page/domains/item-name.js", "page/domains/granted-skill.js", "page/item-property-rendering.js", "page/stat-rendering.js", "page/trade-hook.js"],
+  "MAIN 环境必须先加载 item-name、property 和 stat 领域模块，再加载交易拦截器",
 );
 assert.match(bridgeSource, /POE2ZHOriginalTooltip\?\.annotate/);
 assert.match(bridgeSource, /applyHoverOriginalsWithin/);
@@ -53,7 +53,7 @@ assert.ok(isolatedScript?.js.includes("shared/missing-report-policy.js"), "隔�
 assert.ok(isolatedScript?.js.includes("content/bridge.js"), "隔离环境必须加载 bridge");
 assert.deepEqual(
   isolatedScript?.js,
-  ["shared/missing-report-policy.js", "shared/result-label-policy.js", "content/original-tooltip.js", "content/item-card-fields.js", "content/bridge.js"],
+  ["shared/missing-report-policy.js", "shared/result-label-policy.js", "content/original-tooltip.js", "page/domains/granted-skill.js", "content/granted-skill-fields.js", "content/item-card-fields.js", "content/bridge.js"],
   "隔离环境必须先加载漏译与结果标签策略，再加载 bridge",
 );
 assert.deepEqual(isolatedScript?.css, ["content/original-tooltip.css"]);
@@ -67,6 +67,7 @@ assert.equal(
 );
 assert.equal(dataset.source, "project-owned translation pipeline");
 assert.ok(dataset.sources.includes("data/trade-api.json"));
+assert.ok(dataset.sources.includes("data/domain-policies.json"));
 assert.ok(dataset.sources.includes("data/item-fields.zh-TW.json"));
 assert.ok(dataset.sources.includes("data/item-property-type109.zh-TW.json"));
 assert.ok(!dataset.sources.includes("data/translations.zh-TW.json"));
@@ -159,11 +160,30 @@ assert.equal(dataset.wordComponents[" Crack"], " 裂骨錘");
 assert.equal(dataset.affixNames.prefixes.Frosted, "結霜的");
 assert.equal(dataset.affixNames.suffixes["of the Fletcher"], "製箭者之");
 assert.equal(dataset.affixNames.suffixes["of Osmosis"], "逆滲透之");
-assert.deepEqual(dataset.itemDisplayTemplates.quality, {
-  sourceId: "QualityItem",
-  english: "Superior {0}",
-  text: "精良的 {0}",
+assert.equal(dataset.domains.itemName.schemaVersion, 1);
+assert.deepEqual(
+  dataset.domains.itemName.normalDisplayRules.map((rule) => rule.ruleId),
+  ["client-string:QualityItem", "client-string:ExceptionalItem"],
+);
+assert.deepEqual(dataset.domains.itemName.normalDisplayRules[0].sourcePattern, {
+  placeholder: "{0}",
+  before: "Superior ",
+  after: "",
 });
+assert.deepEqual(dataset.domains.itemName.normalDisplayRules[1].targetPattern, {
+  placeholder: "{}",
+  before: "卓越 ",
+  after: "",
+});
+assert.equal(dataset.domains.grantedSkill.schemaVersion, 1);
+assert.equal(dataset.domains.grantedSkill.skillNameSource, "baseItems");
+assert.deepEqual(
+  dataset.domains.grantedSkill.rules.map((rule) => rule.ruleId),
+  [
+    "client-string:ItemDisplayGrantedSkill",
+    "client-string:ItemDisplayGrantedSkillNoScaling",
+  ],
+);
 assert.equal(dataset.stats.entries["explicit.stat_3146310524"].text, "擊中時造成目眩");
 assert.equal(
   dataset.stats.entries["explicit.stat_2162097452"].english,
@@ -180,6 +200,11 @@ assert.deepEqual(dataset.stats.entries["explicit.stat_3885634897"].renderings, [
   source: "official-trade-fetch-pair",
 }]);
 assert.equal(dataset.exact["Always Poison on Hit with this weapon"], undefined);
+assert.deepEqual(dataset.stats.entries["explicit.stat_3639275092"].renderings, [{
+  english: "#% reduced Attribute Requirements",
+  text: "減少#%能力值需求",
+  source: "ggpk-csd-signed-variant",
+}]);
 
 const listeners = {};
 const emitted = [];
@@ -240,6 +265,16 @@ vm.runInContext(
   fs.readFileSync(path.join(root, "extension/shared/missing-report-policy.js"), "utf8"),
   context,
   { filename: "missing-report-policy.js" },
+);
+vm.runInContext(
+  fs.readFileSync(path.join(root, "extension/page/domains/item-name.js"), "utf8"),
+  context,
+  { filename: "item-name.js" },
+);
+vm.runInContext(
+  fs.readFileSync(path.join(root, "extension/page/domains/granted-skill.js"), "utf8"),
+  context,
+  { filename: "granted-skill.js" },
 );
 vm.runInContext(
   fs.readFileSync(path.join(root, "extension/page/item-property-rendering.js"), "utf8"),
@@ -506,6 +541,30 @@ assert.equal(
   "精良的 轟擊十字弓 (Superior Bombard Crossbow)",
 );
 
+const exceptionalNormalRequest = {
+  url: "https://www.pathofexile.com/api/trade2/fetch/exceptional-normal-test",
+};
+hook(exceptionalNormalRequest);
+const exceptionalNormalResponse = {
+  responseText: JSON.stringify({
+    result: [{ item: {
+      frameType: 0,
+      baseType: "Reaping Staff",
+      typeLine: "Exceptional Reaping Staff",
+      properties: [],
+      requirements: [],
+    } }],
+  }),
+};
+await exceptionalNormalRequest.response(exceptionalNormalResponse);
+const translatedExceptionalNormal =
+  JSON.parse(exceptionalNormalResponse.responseText).result[0].item;
+assert.equal(translatedExceptionalNormal.baseType, "死神長杖 (Reaping Staff)");
+assert.equal(
+  translatedExceptionalNormal.typeLine,
+  "卓越 死神長杖 (Exceptional Reaping Staff)",
+);
+
 const knownPropertyRequest = {
   url: "https://www.pathofexile.com/api/trade2/fetch/known-property-routing-test",
 };
@@ -540,6 +599,76 @@ assert.equal(
   emittedBeforeKnownProperties,
   "官方属性索引已经解析的标签不得再触发漏译上报",
 );
+
+const grantedSkillRequest = {
+  url: "https://www.pathofexile.com/api/trade2/fetch/granted-skill-routing-test",
+};
+hook(grantedSkillRequest);
+const emittedBeforeGrantedSkill = emitted.length;
+const grantedSkillResponse = {
+  responseText: JSON.stringify({
+    result: [{ item: {
+      frameType: 3,
+      properties: [
+        { name: "Grants Skill: Spear Throw", values: [] },
+        { name: "Grants Skill: Level 8 Fireball", values: [] },
+      ],
+      grantedSkills: [
+        { name: "Grants Skill", values: [["Level 20 Solar Orb", 4]], type: "skill.solar_orb" },
+      ],
+      requirements: [],
+    } }],
+  }),
+};
+await grantedSkillRequest.response(grantedSkillResponse);
+const translatedGrantedSkills =
+  JSON.parse(grantedSkillResponse.responseText).result[0].item.properties;
+const translatedGrantedSkillEntries =
+  JSON.parse(grantedSkillResponse.responseText).result[0].item.grantedSkills;
+assert.equal(
+  translatedGrantedSkills[0].name,
+  "賦予技能: 長矛投擲 (Grants Skill: Spear Throw)",
+);
+assert.equal(
+  translatedGrantedSkills[1].name,
+  "賦予技能: 8 級 火球 (Grants Skill: Level 8 Fireball)",
+);
+assert.equal(translatedGrantedSkillEntries[0].name, "賦予技能");
+assert.equal(
+  translatedGrantedSkillEntries[0].values[0][0],
+  "20 級 日耀球 (Grants Skill: Level 20 Solar Orb)",
+  "官网拆分的 Grants Skill 名称和值必须通过同一官方模板重组",
+);
+assert.equal(
+  emitted.length,
+  emittedBeforeGrantedSkill,
+  "GGPK 官方模板和技能名称均命中时不得触发漏译上报",
+);
+
+const unknownGrantedSkillRequest = {
+  url: "https://www.pathofexile.com/api/trade2/fetch/unknown-granted-skill-test",
+};
+hook(unknownGrantedSkillRequest);
+const emittedBeforeUnknownGrantedSkill = emitted.length;
+const unknownGrantedSkillResponse = {
+  responseText: JSON.stringify({
+    result: [{ item: {
+      frameType: 3,
+      properties: [{ name: "Grants Skill: Unverified Skill", values: [] }],
+      requirements: [],
+    } }],
+  }),
+};
+await unknownGrantedSkillRequest.response(unknownGrantedSkillResponse);
+assert.equal(
+  JSON.parse(unknownGrantedSkillResponse.responseText).result[0].item.properties[0].name,
+  "Grants Skill: Unverified Skill",
+  "未知技能必须整行保留英文",
+);
+assert.equal(emitted.length, emittedBeforeUnknownGrantedSkill + 1);
+assert.equal(emitted.at(-1).detail.key, "Unverified Skill");
+assert.equal(emitted.at(-1).detail.domain, "item-skill.granted");
+assert.equal(emitted.at(-1).detail.reason, "missing-skill-name");
 
 const unknownType109Request = {
   url: "https://www.pathofexile.com/api/trade2/fetch/unknown-type109-test",
@@ -647,6 +776,54 @@ assert.equal(
   "用此武器擊中時會造成中毒 (Always [Poison] on [HitDamage|Hit] with this weapon)",
 );
 
+const inlineHashRequest = {
+  url: "https://www.pathofexile.com/api/trade2/fetch/inline-hash",
+};
+hook(inlineHashRequest);
+const inlineHashResponse = {
+  responseText: JSON.stringify({
+    result: [{ item: {
+      explicitMods: [{
+        description: "40% reduced [Attributes|Attribute] Requirements",
+        domain: "explicit",
+        hash: "stat.explicit.stat_3639275092",
+      }],
+      extended: {
+        hashes: { explicit: [["explicit.stat_3639275092", [4]]] },
+      },
+    } }],
+  }),
+};
+await inlineHashRequest.response(inlineHashResponse);
+assert.equal(
+  JSON.parse(inlineHashResponse.responseText).result[0].item.explicitMods[0].description,
+  "減少40%能力值需求 (40% reduced [Attributes|Attribute] Requirements)",
+  "mod 对象自身的稳定 hash 必须优先于 extended.hashes 中非数组位置的数字",
+);
+
+const conflictingInlineHashRequest = {
+  url: "https://www.pathofexile.com/api/trade2/fetch/conflicting-inline-hash",
+};
+hook(conflictingInlineHashRequest);
+const conflictingInlineHashResponse = {
+  responseText: JSON.stringify({
+    result: [{ item: {
+      explicitMods: [{
+        description: "40% reduced [Attributes|Attribute] Requirements",
+        domain: "explicit",
+        hash: "stat.explicit.stat_2923486259",
+      }],
+      extended: { hashes: { explicit: [] } },
+    } }],
+  }),
+};
+await conflictingInlineHashRequest.response(conflictingInlineHashResponse);
+assert.equal(
+  JSON.parse(conflictingInlineHashResponse.responseText).result[0].item.explicitMods[0].description,
+  "40% reduced [Attributes|Attribute] Requirements",
+  "inline hash 与句式不符时必须保留英文，不能借用其他 stat ID 的 signed rendering",
+);
+
 const wrongRenderingIdRequest = {
   url: "https://www.pathofexile.com/api/trade2/fetch/wrong-rendering-id",
 };
@@ -665,6 +842,43 @@ assert.equal(
   "Always Poison on Hit with this weapon",
   "alternate rendering must never escape its verified stable stat ID",
 );
+
+const signedRenderingRequest = {
+  url: "https://www.pathofexile.com/api/trade2/fetch/signed-rendering",
+};
+hook(signedRenderingRequest);
+const emittedBeforeSignedRendering = emitted.length;
+const signedRenderingResponse = {
+  responseText: JSON.stringify({
+    result: [{ item: {
+      explicitMods: [
+        "40% reduced Attribute Requirements",
+        "40% increased Attribute Requirements",
+        "40% diminished Attribute Requirements",
+      ],
+      extended: { hashes: { explicit: [["explicit.stat_3639275092", [0, 1, 2]]] } },
+    } }],
+  }),
+};
+await signedRenderingRequest.response(signedRenderingResponse);
+const signedMods = JSON.parse(signedRenderingResponse.responseText).result[0].item.explicitMods;
+assert.equal(
+  signedMods[0],
+  "減少40%能力值需求 (40% reduced Attribute Requirements)",
+  "同一 stat ID 的 reduced 变体必须采用 GGPK 同描述块官方译文",
+);
+assert.equal(
+  signedMods[1],
+  "增加40%能力值需求 (40% increased Attribute Requirements)",
+  "正数目录模板必须继续正常渲染",
+);
+assert.equal(
+  signedMods[2],
+  "40% diminished Attribute Requirements",
+  "没有官方声明的形态必须保留英文，不能猜测增减语义",
+);
+assert.equal(emitted.length, emittedBeforeSignedRendering + 1);
+assert.equal(emitted.at(-1).detail.context, "fetch:explicit:association-mismatch");
 
 const isolatedFailureRequest = {
   url: "https://www.pathofexile.com/api/trade2/fetch/isolated-failure",

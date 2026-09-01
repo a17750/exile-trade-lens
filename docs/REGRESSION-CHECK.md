@@ -27,13 +27,15 @@ powershell -ExecutionPolicy Bypass -File .agents/skills/poe2-trade-regression/sc
 powershell -ExecutionPolicy Bypass -File .agents/skills/poe2-trade-regression/scripts/run-regression.ps1 -SkipBuild
 ```
 
-执行顺序是：运行时语法检查 → 数据构建 → 质量门禁 → 数据管线 → 物品/筛选/属性 smoke test（包含中文目录别名与搜索请求英文还原）→ 中文物品搜索冷启动测试 → background test → page/background bridge test → `git diff --check`。任一命令失败都视为阻断，不得通过手工改生成文件掩盖失败。
+执行顺序是：运行时语法检查 → 数据构建 → 质量门禁 → 数据管线 → 物品/筛选/属性 smoke test（包含中文目录别名与搜索请求英文还原）→ item-name 领域测试 → 中文物品搜索冷启动测试 → background test → page/background bridge test → `git diff --check`。任一命令失败都视为阻断，不得通过手工改生成文件掩盖失败。
 
 ## 检查矩阵
 
 | 范围 | 必须确认的行为 | 主要检查 |
 | --- | --- | --- |
 | 物品 | 已知名称、底材、固定名和完整稀有名称仍可翻译；未知名称保留英文；不出现 `(undefined)` 或中英拼接 | `smoke-test.mjs`、`item-label-dom-smoke-test.mjs`、质量报告 |
+| 物品名称领域 | `baseType`、普通展示模板、魔法前后缀和稀有名称按 `frameType` 隔离；未知模板保留整段英文；新 ClientStrings 包装器只进入候选审核 | `item-name-domain-test.mjs`、`item-name-domain-report.json` |
+| 赋予技能领域 | 有等级和无等级模板必须来自已审核 ClientStrings；技能名只按 GGPK 完整键命中；未知技能或模板变化保留整行英文并上报 | `granted-skill-domain-test.mjs`、`smoke-test.mjs`、`granted-skill-domain-report.json` |
 | API 目录缓存 | 扩展冷启动时目录必须等词库就绪；目录结构升级时只失效 `items/stats/data/filters` 八个精确缓存键一次，避免展开与选中状态使用不同语言模型 | `search-cold-start-test.mjs`、`smoke-test.mjs` |
 | 中文下拉匹配 | 目录 `name/type` 使用可逆双语别名供官网原生过滤；还原索引必须能直接由正式词库建立，不能依赖本页曾拦截 `/data/items`；发出 `/search` 前必须精确还原官方英文，伪造或未知格式原样放行 | `smoke-test.mjs` |
 | 结果卡片摘要 | 结果区域继续默认跳过全局精确翻译；仅允许 `Item Level`、`Requires` 和五个固定防御摘要标签，翻译时必须保留冒号、数值与百分号，未知摘要保持英文 | `item-label-dom-smoke-test.mjs` |
@@ -63,6 +65,7 @@ powershell -ExecutionPolicy Bypass -File .agents/skills/poe2-trade-regression/sc
 - `reports/coverage-report.json`：覆盖率和缺失数量；
 - `reports/quality-report.json`：阻断质量问题必须为 0；
 - `reports/review-queue.json`：需要人工审核的候选，不等于已确认译文；
+- `reports/item-name-domain-report.json`：物品名称领域的批准规则和待审核官方模板候选；
 - `reports/official-tw-source-report.json`、`reports/ggpk-source-report.json`：来源版本和提取状态。
 
 “通过”只表示没有发现回归，不表示所有英文都已经翻译。低可信候选必须继续保留原文，不能为了提高覆盖率而猜测。

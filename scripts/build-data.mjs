@@ -26,12 +26,15 @@ import {
   createReviewQueue,
   diffSnapshots,
 } from "./lib/audit.mjs";
+import { compileItemNameDomain } from "./domains/item-name.mjs";
+import { compileGrantedSkillDomain } from "./domains/granted-skill.mjs";
 
 const uiSource = readJson(path.join(rootPath, "data", "ui.zh-TW.json"));
 const itemFieldSource = readJson(path.join(rootPath, "data", "item-fields.zh-TW.json"));
 const itemPropertyType109Source = readJson(
   path.join(rootPath, "data", "item-property-type109.zh-TW.json"),
 );
+const domainPolicies = readJson(path.join(rootPath, "data", "domain-policies.json"));
 const verifiedLabels = readJson(path.join(dataPath, "verified-labels.zh-TW.json"));
 const manualOverrides = readJson(path.join(dataPath, "manual-overrides.json"));
 const verifiedStatRenderings = readJson(
@@ -62,6 +65,9 @@ if (
   itemPropertyType109Source.template !== "{qualifier}{class}"
 ) {
   throw new Error("data/item-property-type109.zh-TW.json 格式不兼容");
+}
+if (domainPolicies.schemaVersion !== 1 || domainPolicies.locale !== "zh-TW") {
+  throw new Error("data/domain-policies.json 格式不兼容");
 }
 if (verifiedLabels.schemaVersion !== 1 || verifiedLabels.locale !== "zh-TW") {
   throw new Error("data/verified-labels.zh-TW.json 格式不兼容");
@@ -181,18 +187,23 @@ const affixNames = {
   prefixes: clone(ggpkAffixes.prefixes ?? {}),
   suffixes: clone(ggpkAffixes.suffixes ?? {}),
 };
-const qualityItemClientString = ggpkClientStrings.byId?.QualityItem;
-if (
-  qualityItemClientString?.english !== "Superior {0}" ||
-  !qualityItemClientString?.zhTW?.includes("{0}")
-) {
-  throw new Error("GGPK ClientStrings.QualityItem 格式已变化，请重新审查普通品质物品标题");
-}
-const itemDisplayTemplates = {
-  quality: {
-    sourceId: "QualityItem",
-    english: qualityItemClientString.english,
-    text: qualityItemClientString.zhTW,
+const itemNameCompilation = compileItemNameDomain(
+  domainPolicies.domains?.itemName,
+  ggpkClientStrings,
+);
+const grantedSkillCompilation = compileGrantedSkillDomain(
+  domainPolicies.domains?.grantedSkill,
+  ggpkClientStrings,
+  ggpkBaseItems,
+);
+const domains = {
+  itemName: itemNameCompilation.domain,
+  grantedSkill: grantedSkillCompilation.domain,
+  signedStatRendering: {
+    schemaVersion: 1,
+    source: "ggpk-csd-same-description-block",
+    binding: "official-trade-stat-id",
+    rules: [],
   },
 };
 const officialTwItemApplied = [];
@@ -656,6 +667,14 @@ const normalizeTradeDescription = (value) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const tradeStatIdsByEnglish = new Map();
+for (const [id, sourceEntry] of Object.entries(snapshot.sections.stats.entries ?? {})) {
+  const english = normalizeTradeDescription(sourceEntry?.english);
+  if (!english) continue;
+  if (!tradeStatIdsByEnglish.has(english)) tradeStatIdsByEnglish.set(english, []);
+  tradeStatIdsByEnglish.get(english).push(id);
+}
+
 // Passive node names are joined only as complete, official GGPK pairs. This
 // deliberately avoids word-level composition: an allocation is valid only
 // when the whole node name exists in the localized PassiveSkills table.
@@ -672,14 +691,85 @@ for (const [english, translated] of Object.entries(ggpkStatDescriptions.byEnglis
   const normalizedEnglish = normalizeTradeDescription(english);
   const normalizedTranslated = normalizeTradeDescription(translated);
   if (!normalizedEnglish || !normalizedTranslated || normalizedEnglish === normalizedTranslated) continue;
-  for (const [id, sourceEntry] of Object.entries(snapshot.sections.stats.entries ?? {})) {
-    if (normalizeTradeDescription(sourceEntry?.english) !== normalizedEnglish) continue;
+  for (const id of tradeStatIdsByEnglish.get(normalizedEnglish) ?? []) {
     const targetEntry = stats.entries[id] ?? {};
     if (!targetEntry.text) {
-      stats.entries[id] = { ...targetEntry, text: normalizedTranslated, source: "ggpk-stat-description" };
+      stats.entries[id] = {
+        ...targetEntry,
+        english: normalizedEnglish,
+        text: normalizedTranslated,
+        source: "ggpk-stat-description",
+      };
       ggpkStatDescriptionsApplied += 1;
     }
     addExact(normalizedEnglish, normalizedTranslated);
+  }
+}
+
+function addStatRendering(id, rendering) {
+  const english = normalizeTradeDescription(rendering?.english);
+  const text = normalizeTradeDescription(rendering?.text);
+  if (!english || !text || english === text) return false;
+  if (countPlaceholders(english) !== countPlaceholders(text)) {
+    throw new Error(`词缀渲染占位符数量不一致：stats:${id}:${english}`);
+  }
+  const entry = stats.entries[id] ?? {};
+  const renderings = Array.isArray(entry.renderings) ? [...entry.renderings] : [];
+  const previous = renderings.find(
+    (candidate) => normalizeTradeDescription(candidate.english).toLocaleLowerCase("en-US") ===
+      english.toLocaleLowerCase("en-US"),
+  );
+  if (previous) {
+    if (normalizeTradeDescription(previous.text) !== text) {
+      throw new Error(`词缀渲染存在冲突：stats:${id}:${english}`);
+    }
+    return false;
+  }
+  renderings.push({ english, text, source: rendering.source });
+  stats.entries[id] = { ...entry, renderings };
+  return true;
+}
+
+let ggpkSignedStatRenderingsApplied = 0;
+for (const [positiveEnglish, variant] of Object.entries(
+  ggpkStatDescriptions.signedVariants?.byPositiveEnglish ?? {},
+)) {
+  const positive = normalizeTradeDescription(positiveEnglish);
+  const positiveZhTW = normalizeTradeDescription(variant?.positiveZhTW);
+  const negative = normalizeTradeDescription(variant?.negativeEnglish);
+  const negativeZhTW = normalizeTradeDescription(variant?.negativeZhTW);
+  if (
+    variant?.negate !== true ||
+    (variant?.source !== "stat_descriptions.csd" &&
+      variant?.source !== "passive_skill_stat_descriptions.csd") ||
+    normalizeTradeDescription(variant?.positiveEnglish) !== positive ||
+    !positiveZhTW ||
+    !negative ||
+    !negativeZhTW ||
+    !/\bincreased\b/i.test(positive) ||
+    negative.toLocaleLowerCase("en-US") !==
+      positive.replace(/\bincreased\b/gi, "reduced").toLocaleLowerCase("en-US")
+  ) {
+    throw new Error(`GGPK 正负词缀证据无效：${positiveEnglish}`);
+  }
+  for (const id of tradeStatIdsByEnglish.get(positive) ?? []) {
+    if (!stats.entries[id]) continue;
+    if (addStatRendering(id, {
+      english: negative,
+      text: negativeZhTW,
+      source: "ggpk-csd-signed-variant",
+    })) {
+      ggpkSignedStatRenderingsApplied += 1;
+      domains.signedStatRendering.rules.push({
+        statId: id,
+        positiveEnglish: positive,
+        negativeEnglish: negative,
+        source: variant.source,
+        positiveCondition: variant.positiveCondition,
+        negativeCondition: variant.negativeCondition,
+        negate: true,
+      });
+    }
   }
 }
 
@@ -695,7 +785,6 @@ for (const [id, record] of Object.entries(verifiedStatRenderings.statsById ?? {}
     );
   }
   const seenEnglish = new Map();
-  const renderings = [];
   for (const variant of record.variants ?? []) {
     const english = String(variant?.english ?? "").trim();
     const text = String(variant?.text ?? "").trim();
@@ -726,10 +815,9 @@ for (const [id, record] of Object.entries(verifiedStatRenderings.statsById ?? {}
       throw new Error(`已验证的词缀渲染存在冲突：stats:${id}:${english}`);
     }
     seenEnglish.set(english.toLocaleLowerCase("en-US"), text);
-    renderings.push({ english, text, source: variant.source });
+    addStatRendering(id, { english, text, source: variant.source });
   }
-  if (!renderings.length) throw new Error(`已验证的词缀渲染为空：stats:${id}`);
-  stats.entries[id] = { ...stats.entries[id], renderings };
+  if (!record.variants?.length) throw new Error(`已验证的词缀渲染为空：stats:${id}`);
 }
 
 for (const [en, translated] of Object.entries(manualOverrides.exact ?? {})) {
@@ -745,6 +833,7 @@ const datasetContent = {
     "data/ui.zh-TW.json",
     "data/item-fields.zh-TW.json",
     "data/item-property-type109.zh-TW.json",
+    "data/domain-policies.json",
     "data/verified-labels.zh-TW.json",
     "data/manual-overrides.json",
     "data/verified-stat-renderings.zh-TW.json",
@@ -756,7 +845,7 @@ const datasetContent = {
   fixedNames,
   wordComponents,
   affixNames,
-  itemDisplayTemplates,
+  domains,
   itemFields,
   itemPropertyIndex,
   itemPropertyType109,
@@ -902,6 +991,16 @@ writeJson(path.join(reportsPath, "item-property-resolution.json"), {
   knownButUnrouted,
   conflicts: itemPropertyConflicts,
 });
+writeJson(path.join(reportsPath, "item-name-domain-report.json"), {
+  ...itemNameCompilation.report,
+  generatedAt: snapshot.fetchedAt,
+  datasetVersion: dataset.datasetVersion,
+});
+writeJson(path.join(reportsPath, "granted-skill-domain-report.json"), {
+  ...grantedSkillCompilation.report,
+  generatedAt: snapshot.fetchedAt,
+  datasetVersion: dataset.datasetVersion,
+});
 quality.sources = {
   officialEnglish: englishSourceStatus,
   officialTw: {
@@ -949,8 +1048,12 @@ writeJson(path.join(reportsPath, "ggpk-source-report.json"), {
     clientStrings: ggpkClientStrings.conflicts,
     passiveSkills: ggpkPassiveSkills.conflicts,
     statDescriptions: ggpkStatDescriptions.conflicts,
+    signedStatVariants: ggpkStatDescriptions.signedVariants?.conflicts ?? [],
   },
-  applied: { ggpkStatDescriptions: ggpkStatDescriptionsApplied },
+  applied: {
+    ggpkStatDescriptions: ggpkStatDescriptionsApplied,
+    ggpkSignedStatRenderings: ggpkSignedStatRenderingsApplied,
+  },
 });
 
 if (pendingTradeApiSnapshot && quality.blocking.count === 0) {

@@ -41,12 +41,37 @@ assert.equal(ggpkAffixes.suffixes["of the Fletcher"], "製箭者之");
 assert.equal(ggpkAffixes.suffixes["of Osmosis"], "逆滲透之");
 assert.equal(ggpkClientStrings.byId.QualityItem.english, "Superior {0}");
 assert.equal(ggpkClientStrings.byId.QualityItem.zhTW, "精良的 {0}");
+assert.equal(ggpkClientStrings.byId.ExceptionalItem.english, "Exceptional {}");
+assert.equal(ggpkClientStrings.byId.ExceptionalItem.zhTW, "卓越 {}");
+assert.equal(
+  ggpkClientStrings.byId.ItemDisplayGrantedSkill.english,
+  "Grants Skill: <underline>{{Level {1} {0}}}",
+);
+assert.equal(
+  ggpkClientStrings.byId.ItemDisplayGrantedSkillNoScaling.zhTW,
+  "賦予技能: <underline>{{{0}}}",
+);
+assert.equal(ggpkBaseItems.byEnglish["Spear Throw"], "長矛投擲");
 assert.equal(ggpkPassiveSkills.schema.nameOffset, 50);
 assert.equal(ggpkPassiveSkills.byEnglish["Overwhelming Strike"], "鎮壓打擊");
 assert.ok(Object.keys(ggpkStatDescriptions.byEnglish).length > 10000);
 assert.equal(
   ggpkStatDescriptions.byEnglish["# to Strength and Dexterity"],
   "#點力量與敏捷",
+);
+assert.ok(Object.keys(ggpkStatDescriptions.signedVariants.byPositiveEnglish).length > 1000);
+assert.deepEqual(
+  ggpkStatDescriptions.signedVariants.byPositiveEnglish["#% increased Attribute Requirements"],
+  {
+    positiveEnglish: "#% increased Attribute Requirements",
+    positiveZhTW: "增加#%能力值需求",
+    negativeEnglish: "#% reduced Attribute Requirements",
+    negativeZhTW: "減少#%能力值需求",
+    source: "stat_descriptions.csd",
+    positiveCondition: "1|#",
+    negativeCondition: "#|-1",
+    negate: true,
+  },
 );
 assert.ok(ggpkAffixes.records.every((record) => record.domain === "item"));
 const poisonRendering =

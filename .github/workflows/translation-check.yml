@@ -33,6 +33,7 @@ jobs:
         run: |
           node scripts/pipeline-test.mjs
           node scripts/smoke-test.mjs
+          node scripts/item-name-domain-test.mjs
           node scripts/hover-original-smoke-test.mjs
           node scripts/item-field-rendering-test.mjs
           node scripts/background-smoke-test.mjs

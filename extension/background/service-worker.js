@@ -5,6 +5,10 @@ const MAX_MISSING_RECORDS = 2_000;
 const EXTENSION_CODE_VERSION = chrome.runtime.getManifest().version;
 const MISSING_RECORDS_BUILD_KEY = "missingRecordsBuildVersion";
 const ALLOWED_MISSING_TYPES = new Set(["stat", "item", "static", "filter", "property", "ui"]);
+const ALLOWED_STAT_RENDERING_SOURCES = new Set([
+  "official-trade-fetch-pair",
+  "ggpk-csd-signed-variant",
+]);
 let buildStateReady = null;
 const DEFAULT_SETTINGS = {
   enabled: true,
@@ -36,9 +40,17 @@ function mergeDatasets(base, extra) {
     prefixes: { ...base.affixNames?.prefixes, ...extra.affixNames?.prefixes },
     suffixes: { ...base.affixNames?.suffixes, ...extra.affixNames?.suffixes },
   };
-  base.itemDisplayTemplates = {
-    ...base.itemDisplayTemplates,
-    ...extra.itemDisplayTemplates,
+  base.domains = {
+    ...base.domains,
+    ...extra.domains,
+    itemName: {
+      ...base.domains?.itemName,
+      ...extra.domains?.itemName,
+      normalDisplayRules:
+        extra.domains?.itemName?.normalDisplayRules ??
+        base.domains?.itemName?.normalDisplayRules ??
+        [],
+    },
   };
   base.properties = { ...base.properties, ...extra.properties };
   base.itemPropertyIndex = {
@@ -168,7 +180,7 @@ function validateDataset(dataset) {
               (rendering) =>
                 !rendering?.english ||
                 !rendering?.text ||
-                rendering?.source !== "official-trade-fetch-pair" ||
+                !ALLOWED_STAT_RENDERING_SOURCES.has(rendering?.source) ||
                 placeholderCount(rendering.english) !== placeholderCount(rendering.text),
             ))),
     )

@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "locale": "zh-TW",
+  "domains": {
+    "itemName": {
+      "normalDisplayTemplates": [
+        {
+          "ruleId": "client-string:QualityItem",
+          "source": "ggpk.clientStrings",
+          "sourceId": "QualityItem",
+          "expectedEnglish": "Superior {0}",
+          "expectedZhTW": "精良的 {0}",
+          "frameTypes": [0]
+        },
+        {
+          "ruleId": "client-string:ExceptionalItem",
+          "source": "ggpk.clientStrings",
+          "sourceId": "ExceptionalItem",
+          "expectedEnglish": "Exceptional {}",
+          "expectedZhTW": "卓越 {}",
+          "frameTypes": [0]
+        }
+      ],
+      "candidateDiscovery": {
+        "source": "ggpk.clientStrings",
+        "sourceIdSuffix": "Item",
+        "supportedPlaceholders": ["{0}", "{}"]
+      }
+    },
+    "grantedSkill": {
+      "templates": [
+        {
+          "ruleId": "client-string:ItemDisplayGrantedSkill",
+          "variant": "levelled",
+          "source": "ggpk.clientStrings",
+          "sourceId": "ItemDisplayGrantedSkill",
+          "expectedEnglish": "Grants Skill: <underline>{{Level {1} {0}}}",
+          "expectedZhTW": "賦予技能: <underline>{{{1} 級 {0}}}",
+          "normalizedEnglish": "Grants Skill: Level {1} {0}",
+          "normalizedZhTW": "賦予技能: {1} 級 {0}"
+        },
+        {
+          "ruleId": "client-string:ItemDisplayGrantedSkillNoScaling",
+          "variant": "unlevelled",
+          "source": "ggpk.clientStrings",
+          "sourceId": "ItemDisplayGrantedSkillNoScaling",
+          "expectedEnglish": "Grants Skill: <underline>{{{0}}}",
+          "expectedZhTW": "賦予技能: <underline>{{{0}}}",
+          "normalizedEnglish": "Grants Skill: {0}",
+          "normalizedZhTW": "賦予技能: {0}"
+        }
+      ],
+      "skillNames": {
+        "source": "ggpk.baseItems",
+        "requiredExamples": {
+          "Spear Throw": "長矛投擲"
+        }
+      }
+    }
+  }
+}

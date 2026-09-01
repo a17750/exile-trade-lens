@@ -10,11 +10,13 @@
 |---|---|---|---|---|
 | 交易站 UI、篩選器 | `Clear Filter Group`、`Weapon` | UI/篩選器 ID 或完整英文 | Trade API、專案 UI 詞庫 | 完整文字或穩定 ID |
 | 數值詞條模板 | `#% increased Spirit` | `explicit.stat_3984865854` | 英文/台服 Trade API | ID 與英文模板雙重校驗，再填入實際數值 |
+| 詞條正負渲染 | `#% increased/reduced Attribute Requirements` | Trade stat ID + CSD 同描述塊 | Trade API ID、英繁 GGPK CSD | 構建期綁定 ID；運行時匹配完整形狀 |
 | 詞條特殊渲染 | `Always Poison on Hit with this Weapon` | `explicit.stat_3885634897` + 完整渲染文字 | 英服/台服 `/fetch` 同一物品字段 | 先按 ID 限域，再精確匹配該 ID 的已驗證變體 |
 | 基礎物品與固定名稱 | `Slim Mace`、暗金名稱 | GGPK 行 ID 或完整英文 | `Content.ggpk`（只讀） | 完整名稱匹配 |
 | 稀有名稱組件 | `Golem`、`Crack` | GGPK Words 行 ID/英文組件 | `Words.datc64` | 僅在稀有名稱域做組件拼接 |
 | 魔法裝備前後綴 | `Frosted`、`of the Fletcher` | `Mods.Id` + `Domain` + `GenerationType` | 英繁 `Mods.datc64` | 僅在魔法 `typeLine` 按前綴/底材/後綴組合 |
 | 普通品質展示模板 | `Superior {0}` | `ClientStrings.Id=QualityItem` | 英繁 `ClientStrings.datc64` | 僅在 `frameType=0` 的 `typeLine` 完整套用 |
+| 卓越底材展示模板 | `Exceptional {}` | `ClientStrings.Id=ExceptionalItem` | 英繁 `ClientStrings.datc64` | 僅在 `frameType=0` 的 `typeLine` 完整套用 |
 
 `trade.js` 只作歷史參考，不是本專案的運行時資料來源或邏輯依賴。
 
@@ -63,6 +65,18 @@ query ID、item ID、原始 description 和相同 hash。構建後只把運行�
 
 `renderings` 不是全局 `exact`。即使另一個 stat ID 返回同一句英文，也不得借用這筆翻譯。
 
+GGPK CSD 還會明確聲明同一描述的正負數分支。提取器保留條件和 `negate 1`，構建器只把同一描述塊中的官方負數分支掛到與正數目錄模板完全一致的 Trade stat ID 下。例如：
+
+```json
+{
+  "english": "#% reduced Attribute Requirements",
+  "text": "減少#%能力值需求",
+  "source": "ggpk-csd-signed-variant"
+}
+```
+
+這不是從英文 `reduced` 猜出中文「減少」，而是使用 GGPK 內已有的英繁對照。CSD 不在同一塊、沒有 `negate 1`、占位符不一致或存在多個譯文時，規則不進入運行資料。
+
 ### 2.3 完整英文對照
 
 `exact` 用於 UI、物品和詞條模板的完整英文對照，例如：
@@ -103,20 +117,34 @@ query ID、item ID、原始 description 和相同 hash。構建後只把運行�
 }
 ```
 
-### 2.6 普通品質展示模板
+### 2.6 普通物品展示模板
 
-`itemDisplayTemplates.quality` 只保存經過穩定 ID 審核的 `ClientStrings.QualityItem`：
+`domains.itemName.normalDisplayRules` 只保存經過領域策略和穩定 ID 審核的官方
+`ClientStrings` 編譯規則。來源占位符會在構建期轉換成 `sourcePattern` 和 `targetPattern`，
+運行時不再硬編碼 `{0}` 或 `{}`：
 
 ```json
 {
-  "sourceId": "QualityItem",
-  "english": "Superior {0}",
-  "text": "精良的 {0}"
+  "ruleId": "client-string:ExceptionalItem",
+  "domain": "item-name.normal-display",
+  "source": {
+    "kind": "ggpk-client-string",
+    "id": "ExceptionalItem"
+  },
+  "frameTypes": [0],
+  "sourcePattern": {
+    "before": "Exceptional ",
+    "after": ""
+  },
+  "targetPattern": {
+    "before": "卓越 ",
+    "after": ""
+  }
 }
 ```
 
 它與 `Mods` 中名稱同為 `Superior` 的魔法詞綴不是同一領域，不能互相借用譯文。構建器會檢查
-英文模板和中譯都保留唯一 `{0}`；模板結構變化時直接中止構建，等待重新審核。
+每個模板的穩定 ID、完整英文、完整繁中和占位符格式；模板結構變化時直接中止構建，等待重新審核。
 
 ## 3. 資料來源優先級
 
@@ -144,7 +172,7 @@ query ID、item ID、原始 description 和相同 hash。構建後只把運行�
 - 固定暗金名稱：只查固定名稱表。
 - 稀有 `name`：先查完整名稱，再嘗試 GGPK `Words` 組件的唯一完整拼接。
 - 魔法 `typeLine`：以原始 `baseType` 精確切分前綴和後綴，分別查 `affixNames.prefixes/suffixes`；前綴、底材、後綴全部命中才組合。
-- 普通 `typeLine`：原文等於 `baseType` 時只翻譯底材；原文完整符合 `itemDisplayTemplates.quality` 時才套用官方品質模板。其他展示修飾不猜譯，保留英文並上報。
+- 普通 `typeLine`：原文等於 `baseType` 時只翻譯底材；原文完整符合 `domains.itemName.normalDisplayRules` 中與 `frameType` 相符的規則時才套用官方模板。其他展示修飾不猜譯，保留英文並以領域和失敗原因上報。
 - 任一部分缺失或存在多解時，整段保留英文。禁止在完整名稱失敗後只替換其中的基礎類型。
 
 因此 `Slim Mace -> 纖細之錘` 不應影響 `Golem Crack -> 魔像 裂骨錘`。
@@ -155,12 +183,15 @@ query ID、item ID、原始 description 和相同 hash。構建後只把運行�
 
 交易 API 同時返回具體詞條文字（如 `36% increased Spirit`）和 `extended.hashes`。目前採用以下安全順序：
 
-1. 在該 ID 自己的 `renderings` 中精確匹配已驗證的特殊渲染；唯一命中時直接採用對應繁中。
-2. 未命中特殊渲染時，讀取該 ID 對應的英文目錄模板，確認它能匹配當前完整英文詞條。
-3. 若 hash 的位置與英文模板不一致，使用完整英文模板反查，而不是相信陣列位置。
-4. 僅有一個候選模板時才填入繁中模板。
-5. 從當前英文詞條提取數值，再填入 `#`；不重用相鄰詞條的數值。
-6. 無法確認時保留英文並上報 `association-mismatch`，禁止猜翻。
+1. 若 mod 是物件且自身帶有 `hash: stat.<stable-id>`，它直接綁定當前 description，優先級最高。
+2. 在該 ID 自己的 `renderings` 中精確匹配已驗證的特殊渲染；唯一命中時直接採用對應繁中。
+3. 未命中特殊渲染時，讀取該 ID 對應的英文目錄模板，確認它能匹配當前完整英文詞條。
+4. `extended.hashes` 內的數字陣列不是 `explicitMods` 等陣列的位置；不得用它覆蓋 mod 物件自身的 hash。舊式字串 mod 沒有自身 hash 時，才保留完整英文模板反查兜底。
+5. 僅有一個候選模板時才填入繁中模板。
+6. 從當前英文詞條提取數值，再填入 `#`；不重用相鄰詞條的數值。
+7. 無法確認時保留英文並上報 `association-mismatch`，禁止猜翻。
+
+其中 `renderings` 同時可以包含英台 `/fetch` 人工證據和 GGPK CSD 正負分支證據；二者都只能在所綁定的 stable stat ID 內使用。
 
 例如：
 
@@ -195,6 +226,7 @@ query ID、item ID、原始 description 和相同 hash。構建後只把運行�
 - 英文/繁中佔位符數量一致。
 - stat ID 的英文模板未過期；人工覆蓋的 `expectedEnglish` 仍與官方快照一致。
 - 特殊渲染的 `expectedCatalogEnglish` 未漂移，英台證據 hash 均等於該 stable ID，且變體沒有重複衝突。
+- CSD 正負分支來自同一描述塊，負數帶 `negate 1`，正負英繁占位符一致，且只綁定完整正數目錄模板相同的 stat ID。
 - `/fetch` 測試包含故意打亂 `hashes` 順序的案例。
 - 未翻譯、來源衝突和 association mismatch 分別進入報告，不混成普通詞彙缺失。
 - 結果卡片、輸入框和篩選器使用不同翻譯域，禁止扁平字典跨域覆蓋。

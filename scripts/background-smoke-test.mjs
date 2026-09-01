@@ -76,6 +76,19 @@ vm.runInContext(
   { filename: "service-worker.js" },
 );
 
+assert.doesNotThrow(
+  () => context.validateDataset(JSON.parse(bundledRaw)),
+  "远程更新校验必须接受构建器生成的 GGPK signed rendering",
+);
+const invalidRenderingDataset = JSON.parse(bundledRaw);
+invalidRenderingDataset.stats.entries["explicit.stat_3639275092"].renderings[0].source =
+  "unverified-guess";
+assert.throws(
+  () => context.validateDataset(invalidRenderingDataset),
+  /渲染变体无效/,
+  "远程更新仍必须拒绝未经声明的 rendering 来源",
+);
+
 async function send(message) {
   return new Promise((resolve, reject) => {
     const keepAlive = onMessage(message, {}, resolve);
@@ -114,11 +127,10 @@ const dataset = await send({ type: "POE2ZH_GET_DATASET" });
 assert.equal(dataset.dataset.stats.entries[report.key].text, "增加 #% 测试伤害");
 assert.equal(dataset.dataset.affixNames.prefixes.Frosted, "結霜的");
 assert.equal(dataset.dataset.affixNames.suffixes["of the Fletcher"], "製箭者之");
-assert.deepEqual(dataset.dataset.itemDisplayTemplates.quality, {
-  sourceId: "QualityItem",
-  english: "Superior {0}",
-  text: "精良的 {0}",
-});
+assert.deepEqual(
+  dataset.dataset.domains.itemName.normalDisplayRules.map((rule) => rule.ruleId),
+  ["client-string:QualityItem", "client-string:ExceptionalItem"],
+);
 assert.equal(dataset.dataset.itemPropertyType109.qualifiers.Ezomyte.text, "艾茲麥");
 assert.equal(dataset.dataset.itemPropertyType109.classes.Staff.text, "長杖");
 
