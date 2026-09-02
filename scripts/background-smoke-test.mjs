@@ -88,6 +88,14 @@ assert.throws(
   /渲染变体无效/,
   "远程更新仍必须拒绝未经声明的 rendering 来源",
 );
+const forgedFamilyDataset = JSON.parse(bundledRaw);
+forgedFamilyDataset.stats.entries["explicit.stat_3639275092"].renderings[0].source =
+  "ggpk-csd-family:untrusted.csd:1";
+assert.throws(
+  () => context.validateDataset(forgedFamilyDataset),
+  /渲染变体无效/,
+  "远程更新必须拒绝伪造的 GGPK rendering family 来源",
+);
 
 async function send(message) {
   return new Promise((resolve, reject) => {

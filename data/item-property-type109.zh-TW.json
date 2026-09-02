@@ -3,7 +3,15 @@
   "locale": "zh-TW",
   "propertyType": 109,
   "template": "{qualifier}{class}",
-  "classOptionPrefixes": ["weapon.", "armour."],
+  "classOptionPrefixes": ["weapon.", "armour.", "accessory."],
+  "classAliases": {
+    "One Hand Sword": "One-Handed Sword",
+    "One Hand Axe": "One-Handed Axe",
+    "One Hand Mace": "One-Handed Mace",
+    "Two Hand Sword": "Two-Handed Sword",
+    "Two Hand Axe": "Two-Handed Axe",
+    "Two Hand Mace": "Two-Handed Mace"
+  },
   "qualifiers": {
     "Vaal": {
       "text": "瓦爾",

@@ -9,6 +9,15 @@ const ALLOWED_STAT_RENDERING_SOURCES = new Set([
   "official-trade-fetch-pair",
   "ggpk-csd-signed-variant",
 ]);
+const GGPK_CSD_FAMILY_SOURCE_PATTERN =
+  /^ggpk-csd-family:(?:stat_descriptions\.csd|passive_skill_stat_descriptions\.csd):\d+$/;
+
+function isAllowedStatRenderingSource(source) {
+  return (
+    ALLOWED_STAT_RENDERING_SOURCES.has(source) ||
+    GGPK_CSD_FAMILY_SOURCE_PATTERN.test(String(source ?? ""))
+  );
+}
 let buildStateReady = null;
 const DEFAULT_SETTINGS = {
   enabled: true,
@@ -180,7 +189,7 @@ function validateDataset(dataset) {
               (rendering) =>
                 !rendering?.english ||
                 !rendering?.text ||
-                !ALLOWED_STAT_RENDERING_SOURCES.has(rendering?.source) ||
+                !isAllowedStatRenderingSource(rendering?.source) ||
                 placeholderCount(rendering.english) !== placeholderCount(rendering.text),
             ))),
     )

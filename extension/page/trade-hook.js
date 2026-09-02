@@ -431,7 +431,22 @@
     const properties = Array.isArray(item.properties) ? item.properties : [];
     const requirements = Array.isArray(item.requirements) ? item.requirements : [];
     const grantedSkills = Array.isArray(item.grantedSkills) ? item.grantedSkills : [];
-    for (const property of properties) translateProperty(property);
+    const skillGemDomain = globalThis.POE2ZHSkillGemDomain;
+    if (!skillGemDomain) throw new Error("流亡譯鏡：skill-gem 領域未載入");
+    const skillGemResult = skillGemDomain.translateItem(item, {
+      domain: config.dataset.domains?.skillGem,
+      format,
+      onMissing: (english, detail) => reportMissing(
+        "property",
+        detail?.semanticId || detail?.resource || english,
+        english,
+        `item-skill-gem:${detail?.reason || "unresolved"}`,
+        { domain: "item-skill-gem", reason: detail?.reason },
+      ),
+    });
+    for (const property of properties) {
+      if (!skillGemResult.handled.has(property)) translateProperty(property);
+    }
     for (const requirement of requirements) translateProperty(requirement);
     for (const grantedSkill of grantedSkills) {
       translateGrantedSkill(grantedSkill, {

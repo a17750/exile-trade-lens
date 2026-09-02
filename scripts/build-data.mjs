@@ -28,6 +28,7 @@ import {
 } from "./lib/audit.mjs";
 import { compileItemNameDomain } from "./domains/item-name.mjs";
 import { compileGrantedSkillDomain } from "./domains/granted-skill.mjs";
+import { compileSkillGemDomain } from "./domains/skill-gem.mjs";
 
 const uiSource = readJson(path.join(rootPath, "data", "ui.zh-TW.json"));
 const itemFieldSource = readJson(path.join(rootPath, "data", "item-fields.zh-TW.json"));
@@ -35,6 +36,7 @@ const itemPropertyType109Source = readJson(
   path.join(rootPath, "data", "item-property-type109.zh-TW.json"),
 );
 const domainPolicies = readJson(path.join(rootPath, "data", "domain-policies.json"));
+const skillTagSource = readJson(path.join(rootPath, "data", "skill-tags.zh-TW.json"));
 const verifiedLabels = readJson(path.join(dataPath, "verified-labels.zh-TW.json"));
 const manualOverrides = readJson(path.join(dataPath, "manual-overrides.json"));
 const verifiedStatRenderings = readJson(
@@ -47,7 +49,9 @@ const ggpkWords = ggpkSource.words;
 const ggpkAffixes = ggpkSource.affixes;
 const ggpkClientStrings = ggpkSource.clientStrings;
 const ggpkPassiveSkills = ggpkSource.passiveSkills;
+const ggpkSkillGemTags = ggpkSource.skillGemTags;
 const ggpkStatDescriptions = ggpkSource.statDescriptions;
+const ggpkLinkedTerms = ggpkSource.linkedTerms;
 const tradeApiPath = path.join(rootPath, "data", "trade-api.json");
 const cachedTradeApi = readJson(tradeApiPath, null);
 const baseline = readJson(path.join(dataPath, "upstream-baseline.en.json"), null);
@@ -88,13 +92,17 @@ if (
   ggpkAffixes.schemaVersion !== 1 ||
   ggpkClientStrings.schemaVersion !== 1 ||
   ggpkPassiveSkills?.schemaVersion !== 1 ||
+  ggpkSkillGemTags?.schemaVersion !== 1 ||
   ggpkStatDescriptions?.schemaVersion !== 1 ||
+  ggpkLinkedTerms?.schemaVersion !== 1 ||
   ggpkBaseItems.domain !== "base-item" ||
   ggpkWords.domain !== "word-component" ||
   ggpkAffixes.domain !== "affix-name" ||
   ggpkClientStrings.domain !== "client-string"
   || ggpkPassiveSkills.domain !== "passive-skill"
+  || ggpkSkillGemTags.domain !== "skill-gem-tag"
   || ggpkStatDescriptions.domain !== "stat-description"
+  || ggpkLinkedTerms.domain !== "linked-term"
 ) {
   throw new Error("data/ggpk.json 格式不兼容，请重新运行 tools/ggpk/run.ps1");
 }
@@ -196,9 +204,22 @@ const grantedSkillCompilation = compileGrantedSkillDomain(
   ggpkClientStrings,
   ggpkBaseItems,
 );
+const skillGemCompilation = compileSkillGemDomain(
+  domainPolicies.domains?.skillGem,
+  ggpkClientStrings,
+  ggpkLinkedTerms,
+  ggpkSkillGemTags,
+  skillTagSource,
+);
 const domains = {
   itemName: itemNameCompilation.domain,
   grantedSkill: grantedSkillCompilation.domain,
+  skillGem: skillGemCompilation.domain,
+  statDescriptionExact: {
+    schemaVersion: 1,
+    source: "ggpk-csd-unambiguous-full-template",
+    entries: ggpkStatDescriptions.byEnglish ?? {},
+  },
   signedStatRendering: {
     schemaVersion: 1,
     source: "ggpk-csd-same-description-block",
@@ -558,6 +579,20 @@ for (const [optionId, english] of Object.entries(categoryEntry?.options ?? {})) 
 if (!itemPropertyType109.classes.Staff || !itemPropertyType109.classes.Helmet) {
   throw new Error("type 109 核心装备类别未从 Trade API 生成");
 }
+for (const [alias, target] of Object.entries(itemPropertyType109Source.classAliases ?? {})) {
+  const targetRecord = itemPropertyType109.classes[target];
+  if (!alias || !targetRecord) {
+    throw new Error(`type 109 装备类别别名目标不存在：${alias}:${target}`);
+  }
+  if (itemPropertyType109.classes[alias] &&
+      itemPropertyType109.classes[alias].text !== targetRecord.text) {
+    throw new Error(`type 109 装备类别别名冲突：${alias}:${target}`);
+  }
+  itemPropertyType109.classes[alias] = {
+    text: targetRecord.text,
+    source: { kind: "trade-filter-option-alias", key: targetRecord.source.key, target },
+  };
+}
 
 const addExact = (en, translated) => {
   en = String(en ?? "").trim();
@@ -668,11 +703,17 @@ const normalizeTradeDescription = (value) =>
     .trim();
 
 const tradeStatIdsByEnglish = new Map();
+const tradeStatIdsByRenderedEnglish = new Map();
 for (const [id, sourceEntry] of Object.entries(snapshot.sections.stats.entries ?? {})) {
   const english = normalizeTradeDescription(sourceEntry?.english);
   if (!english) continue;
   if (!tradeStatIdsByEnglish.has(english)) tradeStatIdsByEnglish.set(english, []);
   tradeStatIdsByEnglish.get(english).push(id);
+  const renderedEnglish = english.replace(/ \(Local\)$/, "");
+  if (!tradeStatIdsByRenderedEnglish.has(renderedEnglish)) {
+    tradeStatIdsByRenderedEnglish.set(renderedEnglish, []);
+  }
+  tradeStatIdsByRenderedEnglish.get(renderedEnglish).push(id);
 }
 
 // Passive node names are joined only as complete, official GGPK pairs. This
@@ -691,14 +732,19 @@ for (const [english, translated] of Object.entries(ggpkStatDescriptions.byEnglis
   const normalizedEnglish = normalizeTradeDescription(english);
   const normalizedTranslated = normalizeTradeDescription(translated);
   if (!normalizedEnglish || !normalizedTranslated || normalizedEnglish === normalizedTranslated) continue;
-  for (const id of tradeStatIdsByEnglish.get(normalizedEnglish) ?? []) {
+  for (const id of tradeStatIdsByRenderedEnglish.get(normalizedEnglish) ?? []) {
     const targetEntry = stats.entries[id] ?? {};
     if (!targetEntry.text) {
+      const catalogEnglish = normalizeTradeDescription(
+        snapshot.sections.stats.entries?.[id]?.english,
+      );
       stats.entries[id] = {
         ...targetEntry,
         english: normalizedEnglish,
         text: normalizedTranslated,
-        source: "ggpk-stat-description",
+        source: catalogEnglish === normalizedEnglish
+          ? "ggpk-stat-description"
+          : "ggpk-stat-description-local-catalog-alias",
       };
       ggpkStatDescriptionsApplied += 1;
     }
@@ -728,6 +774,43 @@ function addStatRendering(id, rendering) {
   renderings.push({ english, text, source: rendering.source });
   stats.entries[id] = { ...entry, renderings };
   return true;
+}
+
+let ggpkStatFamilyRenderingsApplied = 0;
+for (const family of ggpkStatDescriptions.renderingFamilies ?? []) {
+  if (
+    !["stat_descriptions.csd", "passive_skill_stat_descriptions.csd"].includes(family?.source) ||
+    !Number.isInteger(family?.block) ||
+    !Array.isArray(family?.variants) ||
+    family.variants.length < 2
+  ) {
+    throw new Error("GGPK 词缀渲染家族格式无效");
+  }
+  const familyIsUnambiguous = family.variants.every((variant) =>
+    normalizeTradeDescription(ggpkStatDescriptions.byEnglish?.[variant.english]) ===
+      normalizeTradeDescription(variant.zhTW));
+  if (!familyIsUnambiguous) continue;
+  const stableIds = new Set();
+  for (const variant of family.variants) {
+    const english = normalizeTradeDescription(variant?.english);
+    const text = normalizeTradeDescription(variant?.zhTW);
+    if (!english || !text || countPlaceholders(english) !== countPlaceholders(text)) {
+      throw new Error(`GGPK 词缀渲染家族占位符无效：${family.source}:${family.block}`);
+    }
+    for (const id of tradeStatIdsByRenderedEnglish.get(english) ?? []) stableIds.add(id);
+  }
+  if (!stableIds.size) continue;
+  for (const id of stableIds) {
+    for (const variant of family.variants) {
+      if (addStatRendering(id, {
+        english: variant.english,
+        text: variant.zhTW,
+        source: `ggpk-csd-family:${family.source}:${family.block}`,
+      })) {
+        ggpkStatFamilyRenderingsApplied += 1;
+      }
+    }
+  }
 }
 
 let ggpkSignedStatRenderingsApplied = 0;
@@ -834,6 +917,7 @@ const datasetContent = {
     "data/item-fields.zh-TW.json",
     "data/item-property-type109.zh-TW.json",
     "data/domain-policies.json",
+    "data/skill-tags.zh-TW.json",
     "data/verified-labels.zh-TW.json",
     "data/manual-overrides.json",
     "data/verified-stat-renderings.zh-TW.json",
@@ -1001,6 +1085,11 @@ writeJson(path.join(reportsPath, "granted-skill-domain-report.json"), {
   generatedAt: snapshot.fetchedAt,
   datasetVersion: dataset.datasetVersion,
 });
+writeJson(path.join(reportsPath, "skill-gem-domain-report.json"), {
+  ...skillGemCompilation.report,
+  generatedAt: snapshot.fetchedAt,
+  datasetVersion: dataset.datasetVersion,
+});
 quality.sources = {
   officialEnglish: englishSourceStatus,
   officialTw: {
@@ -1048,10 +1137,12 @@ writeJson(path.join(reportsPath, "ggpk-source-report.json"), {
     clientStrings: ggpkClientStrings.conflicts,
     passiveSkills: ggpkPassiveSkills.conflicts,
     statDescriptions: ggpkStatDescriptions.conflicts,
+    linkedTerms: ggpkLinkedTerms.conflicts,
     signedStatVariants: ggpkStatDescriptions.signedVariants?.conflicts ?? [],
   },
   applied: {
     ggpkStatDescriptions: ggpkStatDescriptionsApplied,
+    ggpkStatFamilyRenderings: ggpkStatFamilyRenderingsApplied,
     ggpkSignedStatRenderings: ggpkSignedStatRenderingsApplied,
   },
 });

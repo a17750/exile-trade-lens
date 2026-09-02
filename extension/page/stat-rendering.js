@@ -22,9 +22,16 @@
     );
   }
 
+  function bucketKey(value) {
+    return normalize(value)
+      .replace(/[+-]?(?:\d*\.\d+|\d+)|#/g, " ")
+      .match(/[A-Za-z]{2,}/)?.[0]
+      ?.toLocaleLowerCase("en-US") ?? "";
+  }
+
   function create(dataset, englishById = new Map()) {
     let version = null;
-    let templates = [];
+    let templatesByBucket = new Map();
 
     function refresh() {
       const nextVersion = dataset?.datasetVersion;
@@ -35,10 +42,26 @@
           .map((entry) => (typeof entry === "object" ? entry.text : entry))
           .filter(Boolean),
       );
-      templates = [];
+      templatesByBucket = new Map();
+      const seen = new Set();
+      const register = (english, translated) => {
+        const key = `${english}\u0000${translated}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        const bucket = bucketKey(english);
+        const candidates = templatesByBucket.get(bucket) ?? [];
+        candidates.push({ english, translated, pattern: templateRegex(english) });
+        templatesByBucket.set(bucket, candidates);
+      };
+      for (const [english, translated] of Object.entries(
+        dataset?.domains?.statDescriptionExact?.entries ?? {},
+      )) {
+        if (!english || !translated || english === translated) continue;
+        register(english, translated);
+      }
       for (const [english, translated] of Object.entries(dataset?.exact ?? {})) {
         if (!english.includes("#") || !statTexts.has(translated)) continue;
-        templates.push({ english, translated, pattern: templateRegex(english) });
+        register(english, translated);
       }
     }
 
@@ -52,7 +75,8 @@
 
     function matchingTemplates(original) {
       refresh();
-      return templates.filter((candidate) => candidate.pattern.test(normalize(original)));
+      return (templatesByBucket.get(bucketKey(original)) ?? [])
+        .filter((candidate) => candidate.pattern.test(normalize(original)));
     }
 
     function matchingRenderings(statId, original) {
@@ -64,7 +88,7 @@
       );
     }
 
-    return { english, sameShape, matchingTemplates, matchingRenderings };
+    return { english, sameShape, matchingTemplates, matchingRenderings, bucketKey };
   }
 
   window.POE2ZHStatRendering = { create, normalize, templateRegex };

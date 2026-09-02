@@ -64,6 +64,51 @@
           "Spear Throw": "長矛投擲"
         }
       }
+    },
+    "skillGem": {
+      "aggregate": {
+        "frameTypes": [4],
+        "frameTypeIds": ["Gem"]
+      },
+      "tags": {
+        "source": "ggpk.skillGemTags+data/skill-tags.zh-TW.json+ggpk.linkedTerms",
+        "requiredExamples": {
+          "Attack": "攻擊",
+          "AoESkill": "範圍效果",
+          "Projectile": "投射物",
+          "Lightning": "閃電",
+          "Trigger": "觸發",
+          "DurationSkill": "持續時間",
+          "Sustained": "持續性",
+          "Channelling": "引導",
+          "Travel": "快行"
+        }
+      },
+      "propertyLabels": [
+        { "sourceId": "ItemDisplaySkillGemManaReserved", "expectedEnglish": "Reservation", "expectedZhTW": "保留" },
+        { "sourceId": "ItemDisplaySkillGemManaCost", "expectedEnglish": "Cost", "expectedZhTW": "消耗" },
+        { "sourceId": "ItemDisplaySkillGemCastTime", "expectedEnglish": "Cast Time", "expectedZhTW": "施放時間" },
+        { "sourceId": "ItemDisplaySkillGemCooldownTime", "expectedEnglish": "Cooldown Time", "expectedZhTW": "冷卻時間" },
+        { "sourceId": "ItemDisplaySkillGemCriticalStrikeChance", "expectedEnglish": "[Critical|Critical Hit] Chance", "expectedZhTW": "[Critical|暴擊]率" },
+        { "sourceId": "ItemDisplaySkillGemAttackSpeedMultiplier", "expectedEnglish": "Attack Speed", "expectedZhTW": "攻擊速度" },
+        { "sourceId": "ItemDisplaySkillGemAttackTimeOverride", "expectedEnglish": "Attack Time", "expectedZhTW": "攻擊時間" },
+        { "sourceId": "ItemDisplaySkillGemUseTime", "expectedEnglish": "Use Time", "expectedZhTW": "使用時間" },
+        { "sourceId": "ItemDisplaySkillGemAttackDamageEffectiveness", "expectedEnglish": "Attack Damage", "expectedZhTW": "攻擊傷害" },
+        { "sourceId": "ItemDisplaySkillGemDamageEffectiveness", "expectedEnglish": "Effectiveness of Added Damage", "expectedZhTW": "附加傷害效用" }
+      ],
+      "resourceLabels": [
+        { "sourceId": "OrbManaValue", "expectedEnglish": "Mana", "expectedZhTW": "魔力" },
+        { "sourceId": "OrbRageValue", "expectedEnglish": "Rage", "expectedZhTW": "盛怒" },
+        { "sourceId": "ItemDisplayGemReservationSpirit", "expectedEnglish": "[Spirit]", "expectedZhTW": "[Spirit|精魂]" },
+        { "sourceId": "OrbWardValue", "expectedEnglish": "Ward", "expectedZhTW": "保護" }
+      ],
+      "valueTemplates": [
+        { "sourceId": "ItemDisplaySkillGemMaxLevel", "kind": "max-level", "expectedEnglish": "{0} (Max)", "expectedZhTW": "{0}（最高等級）" },
+        { "sourceId": "ItemDisplaySkillGemCastTimeValue", "kind": "seconds", "expectedEnglish": "{0}s", "expectedZhTW": "{0} 秒" },
+        { "sourceId": "PercentageOfBase", "kind": "percentage-of-base", "expectedEnglish": "{0}% of base", "expectedZhTW": "基礎的 {0}%" },
+        { "sourceId": "SkillPopupCostValueManaPerSecond", "kind": "cost-component", "expectedEnglish": "{0} Mana per second", "expectedZhTW": "每秒 {0} 魔力" },
+        { "sourceId": "SkillPopupCostValueRagePerSecond", "kind": "cost-component", "expectedEnglish": "{0} Rage per second", "expectedZhTW": "每秒{0}盛怒" }
+      ]
     }
   }
 }

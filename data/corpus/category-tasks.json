@@ -1,0 +1,590 @@
+{
+  "schemaVersion": 2,
+  "source": "data/trade-api.json#type_filters.category",
+  "realm": "poe2",
+  "pageSize": 10,
+  "summary": {
+    "total": 64,
+    "controls": 1,
+    "aggregates": 12,
+    "leaves": 51
+  },
+  "tasks": [
+    {
+      "order": 0,
+      "categoryId": "null",
+      "englishLabel": "Any",
+      "zhTWLabel": "任何",
+      "nodeType": "control",
+      "logicalParent": null,
+      "pageSize": 10
+    },
+    {
+      "order": 1,
+      "categoryId": "weapon",
+      "englishLabel": "Any Weapon",
+      "zhTWLabel": "武器",
+      "nodeType": "aggregate",
+      "logicalParent": null,
+      "pageSize": 10
+    },
+    {
+      "order": 2,
+      "categoryId": "weapon.onemelee",
+      "englishLabel": "Any One-Handed Melee Weapon",
+      "zhTWLabel": "任何單手近戰武器",
+      "nodeType": "aggregate",
+      "logicalParent": "weapon",
+      "pageSize": 10
+    },
+    {
+      "order": 3,
+      "categoryId": "weapon.unarmed",
+      "englishLabel": "Unarmed",
+      "zhTWLabel": "空手",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.onemelee",
+      "pageSize": 10
+    },
+    {
+      "order": 4,
+      "categoryId": "weapon.claw",
+      "englishLabel": "Claw",
+      "zhTWLabel": "爪",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.onemelee",
+      "pageSize": 10
+    },
+    {
+      "order": 5,
+      "categoryId": "weapon.dagger",
+      "englishLabel": "Dagger",
+      "zhTWLabel": "匕首",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.onemelee",
+      "pageSize": 10
+    },
+    {
+      "order": 6,
+      "categoryId": "weapon.onesword",
+      "englishLabel": "One-Handed Sword",
+      "zhTWLabel": "單手劍",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.onemelee",
+      "pageSize": 10
+    },
+    {
+      "order": 7,
+      "categoryId": "weapon.oneaxe",
+      "englishLabel": "One-Handed Axe",
+      "zhTWLabel": "單手斧",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.onemelee",
+      "pageSize": 10
+    },
+    {
+      "order": 8,
+      "categoryId": "weapon.onemace",
+      "englishLabel": "One-Handed Mace",
+      "zhTWLabel": "單手錘",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.onemelee",
+      "pageSize": 10
+    },
+    {
+      "order": 9,
+      "categoryId": "weapon.spear",
+      "englishLabel": "Spear",
+      "zhTWLabel": "長鋒",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.onemelee",
+      "pageSize": 10
+    },
+    {
+      "order": 10,
+      "categoryId": "weapon.flail",
+      "englishLabel": "Flail",
+      "zhTWLabel": "鏈錘",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.onemelee",
+      "pageSize": 10
+    },
+    {
+      "order": 11,
+      "categoryId": "weapon.twomelee",
+      "englishLabel": "Any Two-Handed Melee Weapon",
+      "zhTWLabel": "任何雙手近戰武器",
+      "nodeType": "aggregate",
+      "logicalParent": "weapon",
+      "pageSize": 10
+    },
+    {
+      "order": 12,
+      "categoryId": "weapon.twosword",
+      "englishLabel": "Two-Handed Sword",
+      "zhTWLabel": "雙手劍",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.twomelee",
+      "pageSize": 10
+    },
+    {
+      "order": 13,
+      "categoryId": "weapon.twoaxe",
+      "englishLabel": "Two-Handed Axe",
+      "zhTWLabel": "雙手斧",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.twomelee",
+      "pageSize": 10
+    },
+    {
+      "order": 14,
+      "categoryId": "weapon.twomace",
+      "englishLabel": "Two-Handed Mace",
+      "zhTWLabel": "雙手錘",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.twomelee",
+      "pageSize": 10
+    },
+    {
+      "order": 15,
+      "categoryId": "weapon.warstaff",
+      "englishLabel": "Quarterstaff",
+      "zhTWLabel": "細杖",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.twomelee",
+      "pageSize": 10
+    },
+    {
+      "order": 16,
+      "categoryId": "weapon.talisman",
+      "englishLabel": "Talisman",
+      "zhTWLabel": "魔符",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.twomelee",
+      "pageSize": 10
+    },
+    {
+      "order": 17,
+      "categoryId": "weapon.ranged",
+      "englishLabel": "Any Ranged Weapon",
+      "zhTWLabel": "任何遠程武器",
+      "nodeType": "aggregate",
+      "logicalParent": "weapon",
+      "pageSize": 10
+    },
+    {
+      "order": 18,
+      "categoryId": "weapon.bow",
+      "englishLabel": "Bow",
+      "zhTWLabel": "弓",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.ranged",
+      "pageSize": 10
+    },
+    {
+      "order": 19,
+      "categoryId": "weapon.crossbow",
+      "englishLabel": "Crossbow",
+      "zhTWLabel": "十字弓",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.ranged",
+      "pageSize": 10
+    },
+    {
+      "order": 20,
+      "categoryId": "weapon.caster",
+      "englishLabel": "Any Caster Weapon",
+      "zhTWLabel": "任何法術武器",
+      "nodeType": "aggregate",
+      "logicalParent": "weapon",
+      "pageSize": 10
+    },
+    {
+      "order": 21,
+      "categoryId": "weapon.wand",
+      "englishLabel": "Wand",
+      "zhTWLabel": "法杖",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.caster",
+      "pageSize": 10
+    },
+    {
+      "order": 22,
+      "categoryId": "weapon.sceptre",
+      "englishLabel": "Sceptre",
+      "zhTWLabel": "權杖",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.caster",
+      "pageSize": 10
+    },
+    {
+      "order": 23,
+      "categoryId": "weapon.staff",
+      "englishLabel": "Staff",
+      "zhTWLabel": "長杖",
+      "nodeType": "leaf",
+      "logicalParent": "weapon.caster",
+      "pageSize": 10
+    },
+    {
+      "order": 24,
+      "categoryId": "weapon.rod",
+      "englishLabel": "Fishing Rod",
+      "zhTWLabel": "釣竿",
+      "nodeType": "leaf",
+      "logicalParent": "weapon",
+      "pageSize": 10
+    },
+    {
+      "order": 25,
+      "categoryId": "armour",
+      "englishLabel": "Any Armour",
+      "zhTWLabel": "任意護甲",
+      "nodeType": "aggregate",
+      "logicalParent": null,
+      "pageSize": 10
+    },
+    {
+      "order": 26,
+      "categoryId": "armour.helmet",
+      "englishLabel": "Helmet",
+      "zhTWLabel": "頭盔",
+      "nodeType": "leaf",
+      "logicalParent": "armour",
+      "pageSize": 10
+    },
+    {
+      "order": 27,
+      "categoryId": "armour.chest",
+      "englishLabel": "Body Armour",
+      "zhTWLabel": "胸甲",
+      "nodeType": "leaf",
+      "logicalParent": "armour",
+      "pageSize": 10
+    },
+    {
+      "order": 28,
+      "categoryId": "armour.gloves",
+      "englishLabel": "Gloves",
+      "zhTWLabel": "手套",
+      "nodeType": "leaf",
+      "logicalParent": "armour",
+      "pageSize": 10
+    },
+    {
+      "order": 29,
+      "categoryId": "armour.boots",
+      "englishLabel": "Boots",
+      "zhTWLabel": "鞋子",
+      "nodeType": "leaf",
+      "logicalParent": "armour",
+      "pageSize": 10
+    },
+    {
+      "order": 30,
+      "categoryId": "armour.quiver",
+      "englishLabel": "Quiver",
+      "zhTWLabel": "箭袋",
+      "nodeType": "leaf",
+      "logicalParent": "armour",
+      "pageSize": 10
+    },
+    {
+      "order": 31,
+      "categoryId": "armour.shield",
+      "englishLabel": "Shield",
+      "zhTWLabel": "盾",
+      "nodeType": "leaf",
+      "logicalParent": "armour",
+      "pageSize": 10
+    },
+    {
+      "order": 32,
+      "categoryId": "armour.focus",
+      "englishLabel": "Focus",
+      "zhTWLabel": "法器",
+      "nodeType": "leaf",
+      "logicalParent": "armour",
+      "pageSize": 10
+    },
+    {
+      "order": 33,
+      "categoryId": "armour.buckler",
+      "englishLabel": "Buckler",
+      "zhTWLabel": "輕盾",
+      "nodeType": "leaf",
+      "logicalParent": "armour",
+      "pageSize": 10
+    },
+    {
+      "order": 34,
+      "categoryId": "accessory",
+      "englishLabel": "Any Accessory",
+      "zhTWLabel": "配件",
+      "nodeType": "aggregate",
+      "logicalParent": null,
+      "pageSize": 10
+    },
+    {
+      "order": 35,
+      "categoryId": "accessory.amulet",
+      "englishLabel": "Amulet",
+      "zhTWLabel": "項鍊",
+      "nodeType": "leaf",
+      "logicalParent": "accessory",
+      "pageSize": 10
+    },
+    {
+      "order": 36,
+      "categoryId": "accessory.belt",
+      "englishLabel": "Belt",
+      "zhTWLabel": "腰帶",
+      "nodeType": "leaf",
+      "logicalParent": "accessory",
+      "pageSize": 10
+    },
+    {
+      "order": 37,
+      "categoryId": "accessory.ring",
+      "englishLabel": "Ring",
+      "zhTWLabel": "戒指",
+      "nodeType": "leaf",
+      "logicalParent": "accessory",
+      "pageSize": 10
+    },
+    {
+      "order": 38,
+      "categoryId": "gem",
+      "englishLabel": "Any Gem",
+      "zhTWLabel": "任何寶石",
+      "nodeType": "aggregate",
+      "logicalParent": null,
+      "pageSize": 10
+    },
+    {
+      "order": 39,
+      "categoryId": "gem.activegem",
+      "englishLabel": "Skill Gem",
+      "zhTWLabel": "技能寶石",
+      "nodeType": "leaf",
+      "logicalParent": "gem",
+      "pageSize": 10
+    },
+    {
+      "order": 40,
+      "categoryId": "gem.supportgem",
+      "englishLabel": "Support Gem",
+      "zhTWLabel": "輔助寶石",
+      "nodeType": "leaf",
+      "logicalParent": "gem",
+      "pageSize": 10
+    },
+    {
+      "order": 41,
+      "categoryId": "gem.metagem",
+      "englishLabel": "Meta Gem",
+      "zhTWLabel": "主要寶石",
+      "nodeType": "leaf",
+      "logicalParent": "gem",
+      "pageSize": 10
+    },
+    {
+      "order": 42,
+      "categoryId": "jewel",
+      "englishLabel": "Any Jewel",
+      "zhTWLabel": "任何珠寶",
+      "nodeType": "leaf",
+      "logicalParent": null,
+      "pageSize": 10
+    },
+    {
+      "order": 43,
+      "categoryId": "flask",
+      "englishLabel": "Any Flask",
+      "zhTWLabel": "任何藥劑",
+      "nodeType": "aggregate",
+      "logicalParent": null,
+      "pageSize": 10
+    },
+    {
+      "order": 44,
+      "categoryId": "flask.life",
+      "englishLabel": "Life Flask",
+      "zhTWLabel": "生命藥劑",
+      "nodeType": "leaf",
+      "logicalParent": "flask",
+      "pageSize": 10
+    },
+    {
+      "order": 45,
+      "categoryId": "flask.mana",
+      "englishLabel": "Mana Flask",
+      "zhTWLabel": "魔力藥劑",
+      "nodeType": "leaf",
+      "logicalParent": "flask",
+      "pageSize": 10
+    },
+    {
+      "order": 46,
+      "categoryId": "flask.charm",
+      "englishLabel": "Charm",
+      "zhTWLabel": "護符",
+      "nodeType": "leaf",
+      "logicalParent": "flask",
+      "pageSize": 10
+    },
+    {
+      "order": 47,
+      "categoryId": "map",
+      "englishLabel": "Any Endgame Item",
+      "zhTWLabel": "任何終局物品",
+      "nodeType": "aggregate",
+      "logicalParent": null,
+      "pageSize": 10
+    },
+    {
+      "order": 48,
+      "categoryId": "map.waystone",
+      "englishLabel": "Waystone",
+      "zhTWLabel": "換界石",
+      "nodeType": "leaf",
+      "logicalParent": "map",
+      "pageSize": 10
+    },
+    {
+      "order": 49,
+      "categoryId": "map.fragment",
+      "englishLabel": "Map Fragment",
+      "zhTWLabel": "地圖碎片",
+      "nodeType": "leaf",
+      "logicalParent": "map",
+      "pageSize": 10
+    },
+    {
+      "order": 50,
+      "categoryId": "map.logbook",
+      "englishLabel": "Logbook",
+      "zhTWLabel": "日誌",
+      "nodeType": "leaf",
+      "logicalParent": "map",
+      "pageSize": 10
+    },
+    {
+      "order": 51,
+      "categoryId": "map.breachstone",
+      "englishLabel": "Breachstone",
+      "zhTWLabel": "裂痕石",
+      "nodeType": "leaf",
+      "logicalParent": "map",
+      "pageSize": 10
+    },
+    {
+      "order": 52,
+      "categoryId": "map.barya",
+      "englishLabel": "Barya",
+      "zhTWLabel": "巨靈之幣",
+      "nodeType": "leaf",
+      "logicalParent": "map",
+      "pageSize": 10
+    },
+    {
+      "order": 53,
+      "categoryId": "map.bosskey",
+      "englishLabel": "Pinnacle Key",
+      "zhTWLabel": "巔峰鑰匙",
+      "nodeType": "leaf",
+      "logicalParent": "map",
+      "pageSize": 10
+    },
+    {
+      "order": 54,
+      "categoryId": "map.ultimatum",
+      "englishLabel": "Ultimatum Key",
+      "zhTWLabel": "通牒鑰匙",
+      "nodeType": "leaf",
+      "logicalParent": "map",
+      "pageSize": 10
+    },
+    {
+      "order": 55,
+      "categoryId": "map.tablet",
+      "englishLabel": "Tablet",
+      "zhTWLabel": "碑牌",
+      "nodeType": "leaf",
+      "logicalParent": "map",
+      "pageSize": 10
+    },
+    {
+      "order": 56,
+      "categoryId": "card",
+      "englishLabel": "Divination Card",
+      "zhTWLabel": "命運卡",
+      "nodeType": "leaf",
+      "logicalParent": null,
+      "pageSize": 10
+    },
+    {
+      "order": 57,
+      "categoryId": "sanctum.relic",
+      "englishLabel": "Relic",
+      "zhTWLabel": "古典",
+      "nodeType": "leaf",
+      "logicalParent": "sanctum",
+      "pageSize": 10
+    },
+    {
+      "order": 58,
+      "categoryId": "currency",
+      "englishLabel": "Any Currency",
+      "zhTWLabel": "任何通貨",
+      "nodeType": "aggregate",
+      "logicalParent": null,
+      "pageSize": 10
+    },
+    {
+      "order": 59,
+      "categoryId": "currency.omen",
+      "englishLabel": "Omen",
+      "zhTWLabel": "預兆",
+      "nodeType": "leaf",
+      "logicalParent": "currency",
+      "pageSize": 10
+    },
+    {
+      "order": 60,
+      "categoryId": "currency.socketable",
+      "englishLabel": "Any Augment",
+      "zhTWLabel": "任何增幅",
+      "nodeType": "aggregate",
+      "logicalParent": "currency",
+      "pageSize": 10
+    },
+    {
+      "order": 61,
+      "categoryId": "currency.rune",
+      "englishLabel": "Rune",
+      "zhTWLabel": "符文",
+      "nodeType": "leaf",
+      "logicalParent": "currency.socketable",
+      "pageSize": 10
+    },
+    {
+      "order": 62,
+      "categoryId": "currency.soulcore",
+      "englishLabel": "Soul Core",
+      "zhTWLabel": "靈魂核心",
+      "nodeType": "leaf",
+      "logicalParent": "currency.socketable",
+      "pageSize": 10
+    },
+    {
+      "order": 63,
+      "categoryId": "currency.idol",
+      "englishLabel": "Idol",
+      "zhTWLabel": "魔偶",
+      "nodeType": "leaf",
+      "logicalParent": "currency.socketable",
+      "pageSize": 10
+    }
+  ]
+}

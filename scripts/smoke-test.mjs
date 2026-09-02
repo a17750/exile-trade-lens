@@ -38,13 +38,13 @@ assert.match(bridgeSource, /knownRenderedTranslations\.has\(text\)/);
 assert.match(bridgeSource, /exactConflicts/);
 assert.match(bridgeSource, /missingPolicy\.createDomGuard/);
 assert.doesNotMatch(bridgeSource, /UI_FALLBACK_TRANSLATIONS/);
-assert.equal(extensionManifest.version, "0.5.29");
+assert.equal(extensionManifest.version, "0.5.33");
 const mainScript = extensionManifest.content_scripts.find((entry) => entry.world === "MAIN");
 const isolatedScript = extensionManifest.content_scripts.find((entry) => entry.world !== "MAIN");
 assert.ok(mainScript?.js.includes("page/trade-hook.js"), "MAIN 环境必须加载交易拦截器");
 assert.deepEqual(
   mainScript?.js,
-  ["page/ajax-hooker.js", "page/hover-originals.js", "page/domains/item-name.js", "page/domains/granted-skill.js", "page/item-property-rendering.js", "page/stat-rendering.js", "page/trade-hook.js"],
+  ["page/ajax-hooker.js", "page/hover-originals.js", "page/domains/item-name.js", "page/domains/granted-skill.js", "page/domains/skill-gem.js", "page/item-property-rendering.js", "page/stat-rendering.js", "page/trade-hook.js"],
   "MAIN 环境必须先加载 item-name、property 和 stat 领域模块，再加载交易拦截器",
 );
 assert.match(bridgeSource, /POE2ZHOriginalTooltip\?\.annotate/);
@@ -85,6 +85,9 @@ assert.ok(Object.keys(dataset.baseItems).length > 4_000);
 assert.ok(Object.keys(dataset.wordComponents).length > 3_000);
 assert.ok(Object.keys(dataset.affixNames.prefixes).length > 500);
 assert.ok(Object.keys(dataset.affixNames.suffixes).length > 400);
+assert.equal(dataset.domains.skillGem.tags.bySemanticId.AoESkill, "範圍效果");
+assert.equal(dataset.domains.skillGem.propertyLabels["Attack Damage"], "攻擊傷害");
+assert.equal(dataset.domains.skillGem.resources.Ward, "保護");
 assert.ok(Object.keys(dataset.stats.entries).length > 5_000);
 assert.ok(Object.keys(dataset.allocates).length > 2_000);
 assert.equal(dataset.properties["Evasion Rating"], "閃避值");
@@ -194,17 +197,17 @@ assert.equal(
   dataset.stats.entries["explicit.stat_3885634897"].english,
   "#% chance to Poison on Hit with this weapon",
 );
-assert.deepEqual(dataset.stats.entries["explicit.stat_3885634897"].renderings, [{
-  english: "Always Poison on Hit with this weapon",
-  text: "用此武器擊中時會造成中毒",
-  source: "official-trade-fetch-pair",
-}]);
+const poisonAlwaysRendering = dataset.stats.entries["explicit.stat_3885634897"].renderings.find(
+  (entry) => entry.english === "Always Poison on Hit with this weapon",
+);
+assert.equal(poisonAlwaysRendering.text, "用此武器擊中時會造成中毒");
+assert.match(poisonAlwaysRendering.source, /^ggpk-csd-family:/);
 assert.equal(dataset.exact["Always Poison on Hit with this weapon"], undefined);
-assert.deepEqual(dataset.stats.entries["explicit.stat_3639275092"].renderings, [{
-  english: "#% reduced Attribute Requirements",
-  text: "減少#%能力值需求",
-  source: "ggpk-csd-signed-variant",
-}]);
+const reducedRequirementRendering = dataset.stats.entries["explicit.stat_3639275092"].renderings.find(
+  (entry) => entry.english === "#% reduced Attribute Requirements",
+);
+assert.equal(reducedRequirementRendering.text, "減少#%能力值需求");
+assert.match(reducedRequirementRendering.source, /^ggpk-csd-family:/);
 
 const listeners = {};
 const emitted = [];
@@ -275,6 +278,11 @@ vm.runInContext(
   fs.readFileSync(path.join(root, "extension/page/domains/granted-skill.js"), "utf8"),
   context,
   { filename: "granted-skill.js" },
+);
+vm.runInContext(
+  fs.readFileSync(path.join(root, "extension/page/domains/skill-gem.js"), "utf8"),
+  context,
+  { filename: "skill-gem.js" },
 );
 vm.runInContext(
   fs.readFileSync(path.join(root, "extension/page/item-property-rendering.js"), "utf8"),
@@ -820,8 +828,8 @@ const conflictingInlineHashResponse = {
 await conflictingInlineHashRequest.response(conflictingInlineHashResponse);
 assert.equal(
   JSON.parse(conflictingInlineHashResponse.responseText).result[0].item.explicitMods[0].description,
-  "40% reduced [Attributes|Attribute] Requirements",
-  "inline hash 与句式不符时必须保留英文，不能借用其他 stat ID 的 signed rendering",
+  "減少40%能力值需求 (40% reduced [Attributes|Attribute] Requirements)",
+  "inline hash 与句式不符时仍可使用 GGPK CSD 领域内的完整官方模板",
 );
 
 const wrongRenderingIdRequest = {
@@ -839,8 +847,8 @@ const wrongRenderingIdResponse = {
 await wrongRenderingIdRequest.response(wrongRenderingIdResponse);
 assert.equal(
   JSON.parse(wrongRenderingIdResponse.responseText).result[0].item.explicitMods[0],
-  "Always Poison on Hit with this weapon",
-  "alternate rendering must never escape its verified stable stat ID",
+  "用此武器擊中時會造成中毒 (Always Poison on Hit with this weapon)",
+  "完整 GGPK CSD 模板可在 stat description 领域精确匹配，不能依赖错误 ID",
 );
 
 const signedRenderingRequest = {

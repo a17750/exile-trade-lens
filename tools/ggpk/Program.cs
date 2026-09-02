@@ -17,9 +17,12 @@ const string ClientStringsEn = "data/balance/clientstrings.datc64";
 const string ClientStringsTw = "data/balance/traditional chinese/clientstrings.datc64";
 const string PassiveSkillsEn = "data/balance/passiveskills.datc64";
 const string PassiveSkillsTw = "data/balance/traditional chinese/passiveskills.datc64";
+const string GemTagsEn = "data/balance/gemtags.datc64";
+const string GemTagsTw = "data/balance/traditional chinese/gemtags.datc64";
 const string StatDescriptions = "data/statdescriptions/stat_descriptions.csd";
 const string PassiveStatDescriptions = "data/statdescriptions/passive_skill_stat_descriptions.csd";
 const int ModsExpectedRowSize = 677;
+const int GemTagsExpectedRowSize = 64;
 const int ModsIdOffset = 0;
 const int ModsDomainOffset = 94;
 const int ModsNameOffset = 98;
@@ -48,6 +51,7 @@ Console.WriteLine($"Size: {before.Length:N0} bytes; modified: {before.LastWriteT
 var requestedPaths = new[] {
     BaseItemsEn, BaseItemsTw, WordsEn, WordsTw, ModsEn, ModsTw,
     ClientStringsEn, ClientStringsTw, PassiveSkillsEn, PassiveSkillsTw,
+    GemTagsEn, GemTagsTw,
     StatDescriptions, PassiveStatDescriptions,
 };
 var rawTables = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
@@ -92,10 +96,16 @@ ValidatePair(tables[WordsEn], tables[WordsTw]);
 ValidatePair(tables[ModsEn], tables[ModsTw]);
 ValidatePair(tables[ClientStringsEn], tables[ClientStringsTw]);
 ValidatePair(tables[PassiveSkillsEn], tables[PassiveSkillsTw]);
+ValidatePair(tables[GemTagsEn], tables[GemTagsTw]);
 if (tables[ModsEn].RowSize != ModsExpectedRowSize) {
     throw new InvalidDataException(
         $"Mods schema changed: expected row size {ModsExpectedRowSize}, got {tables[ModsEn].RowSize}. " +
         "Review poe-tool-dev/dat-schema offsets before extracting localized affix names.");
+}
+if (tables[GemTagsEn].RowSize != GemTagsExpectedRowSize) {
+    throw new InvalidDataException(
+        $"GemTags schema changed: expected row size {GemTagsExpectedRowSize}, got {tables[GemTagsEn].RowSize}. " +
+        "Review poe-tool-dev/dat-schema offsets before extracting skill-gem tags.");
 }
 
 var baseResult = BuildBaseItems(tables[BaseItemsEn], tables[BaseItemsTw]);
@@ -103,6 +113,7 @@ var wordsResult = BuildWords(tables[WordsEn], tables[WordsTw]);
 var affixResult = BuildAffixes(tables[ModsEn], tables[ModsTw]);
 var clientStringResult = BuildClientStrings(tables[ClientStringsEn], tables[ClientStringsTw]);
 var passiveResult = BuildPassiveSkills(tables[PassiveSkillsEn], tables[PassiveSkillsTw]);
+var gemTagResult = BuildGemTags(tables[GemTagsEn], tables[GemTagsTw]);
 var statDescriptionResult = BuildStatDescriptions(rawTables[StatDescriptions], rawTables[PassiveStatDescriptions]);
 var generatedAt = DateTime.UtcNow.ToString("O");
 
@@ -183,6 +194,18 @@ var passiveSkills = new {
     conflicts = passiveResult.Conflicts,
     coverage = passiveResult.Coverage,
 };
+var skillGemTags = new {
+    schemaVersion = 1,
+    generatedAt,
+    domain = "skill-gem-tag",
+    source = "paired-local-content-ggpk",
+    schema = new { table = "GemTags", idOffset = 0, nameOffset = 8 },
+    records = gemTagResult.Records,
+    bySemanticId = gemTagResult.BySemanticId,
+    byEnglish = gemTagResult.ByEnglish,
+    conflicts = gemTagResult.Conflicts,
+    coverage = gemTagResult.Coverage,
+};
 var statDescriptions = new {
     schemaVersion = 1,
     generatedAt,
@@ -190,12 +213,24 @@ var statDescriptions = new {
     source = "local-content-ggpk-csd",
     files = new[] { StatDescriptions, PassiveStatDescriptions },
     byEnglish = statDescriptionResult.ByEnglish,
+    renderingFamilies = statDescriptionResult.RenderingFamilies,
     signedVariants = new {
         byPositiveEnglish = statDescriptionResult.SignedVariants,
         conflicts = statDescriptionResult.SignedConflicts,
     },
     conflicts = statDescriptionResult.Conflicts,
     coverage = statDescriptionResult.Coverage,
+};
+var linkedTerms = new {
+    schemaVersion = 1,
+    generatedAt,
+    domain = "linked-term",
+    source = "local-content-ggpk-csd-semantic-markup",
+    files = new[] { StatDescriptions, PassiveStatDescriptions },
+    records = statDescriptionResult.LinkedTerms.Records,
+    byEnglish = statDescriptionResult.LinkedTerms.ByEnglish,
+    conflicts = statDescriptionResult.LinkedTerms.Conflicts,
+    coverage = statDescriptionResult.LinkedTerms.Coverage,
 };
 
 var manifest = new {
@@ -233,7 +268,9 @@ var manifest = new {
         },
         clientStrings = clientStringResult.Coverage,
         passiveSkills = passiveResult.Coverage,
+        skillGemTags = gemTagResult.Coverage,
         statDescriptions = statDescriptionResult.Coverage,
+        linkedTerms = statDescriptionResult.LinkedTerms.Coverage,
         combinedUsablePercent = Percent(
             baseResult.ByEnglish.Count + wordsResult.ByEnglish.Count +
                 affixResult.Prefixes.ByEnglish.Count + affixResult.Suffixes.ByEnglish.Count +
@@ -253,7 +290,9 @@ WriteJsonAtomic(Path.Combine(outputRoot, "ggpk.json"), new {
     affixes,
     clientStrings,
     passiveSkills,
+    skillGemTags,
     statDescriptions,
+    linkedTerms,
 });
 
 Console.WriteLine($"Base-item usable coverage: {baseResult.Coverage.UsablePercent:F2}%");
@@ -262,7 +301,9 @@ Console.WriteLine($"Affix-prefix usable coverage: {affixResult.Prefixes.Coverage
 Console.WriteLine($"Affix-suffix usable coverage: {affixResult.Suffixes.Coverage.UsablePercent:F2}%");
 Console.WriteLine($"Client-string usable coverage: {clientStringResult.Coverage.UsablePercent:F2}%");
 Console.WriteLine($"Passive-skill usable coverage: {passiveResult.Coverage.UsablePercent:F2}%");
+Console.WriteLine($"Skill-gem-tag usable coverage: {gemTagResult.Coverage.UsablePercent:F2}%");
 Console.WriteLine($"Stat-description usable coverage: {statDescriptionResult.Coverage.UsablePercent:F2}%");
+Console.WriteLine($"Linked-term usable coverage: {statDescriptionResult.LinkedTerms.Coverage.UsablePercent:F2}%");
 Console.WriteLine($"Normalized output: {outputRoot}");
 
 static PairResult<BaseItemRecord> BuildBaseItems(Datc64Table english, Datc64Table translated) {
@@ -391,6 +432,61 @@ static PairResult<PassiveSkillRecord> BuildPassiveSkills(Datc64Table english, Da
     return CreatePairResult(records, record => record.English, record => record.ZhTW);
 }
 
+static GemTagResult BuildGemTags(Datc64Table english, Datc64Table translated) {
+    const int idOffset = 0;
+    const int nameOffset = 8;
+    if (english.RowSize < nameOffset + sizeof(long)) {
+        throw new InvalidDataException($"GemTags row size is too small: {english.RowSize}");
+    }
+
+    var records = new List<GemTagRecord>();
+    for (var row = 0; row < english.RowCount; row += 1) {
+        var id = english.ReadString(row, idOffset).Trim();
+        var translatedId = translated.ReadString(row, idOffset).Trim();
+        if (!string.Equals(id, translatedId, StringComparison.Ordinal)) {
+            throw new InvalidDataException($"GemTags ID mismatch at row {row}");
+        }
+        var enRaw = english.ReadString(row, nameOffset).Trim();
+        var zhRaw = translated.ReadString(row, nameOffset).Trim();
+        if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(enRaw) ||
+            enRaw.StartsWith("[DNT", StringComparison.Ordinal)) continue;
+
+        var en = ParseSemanticLabel(enRaw);
+        var zh = ParseSemanticLabel(zhRaw);
+        if (!string.Equals(en.SemanticId, zh.SemanticId, StringComparison.Ordinal)) {
+            throw new InvalidDataException($"GemTags semantic ID mismatch at row {row}: {enRaw} vs {zhRaw}");
+        }
+        records.Add(new GemTagRecord(id, row, en.SemanticId, en.Display, zh.Display, enRaw, zhRaw));
+    }
+    var paired = CreatePairResult(records, record => record.English, record => record.ZhTW);
+    var bySemanticId = new SortedDictionary<string, string>(StringComparer.Ordinal);
+    var conflicts = new List<GemTagConflict>();
+    foreach (var group in records.Where(record => !string.IsNullOrEmpty(record.SemanticId))
+                 .GroupBy(record => record.SemanticId!, StringComparer.Ordinal)) {
+        var translations = group.Select(record => record.ZhTW)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(value => value, StringComparer.Ordinal)
+            .ToArray();
+        if (translations.Length == 1) bySemanticId[group.Key] = translations[0];
+        else if (translations.Length > 1) conflicts.Add(new GemTagConflict(group.Key, translations));
+    }
+    return new GemTagResult(records, bySemanticId, paired.ByEnglish, conflicts, new Coverage(
+        records.Count,
+        records.Count(record => !string.IsNullOrEmpty(record.SemanticId)),
+        bySemanticId.Count,
+        conflicts.Count,
+        Percent(bySemanticId.Count, records.Count(record => !string.IsNullOrEmpty(record.SemanticId)))));
+}
+
+static SemanticLabel ParseSemanticLabel(string raw) {
+    var match = Regex.Match(raw, @"^\[([^|\]]+)(?:\|([^\]]+))?\]$");
+    if (!match.Success) return new SemanticLabel(null, raw);
+    return new SemanticLabel(match.Groups[1].Value, match.Groups[2].Success
+        ? match.Groups[2].Value
+        : match.Groups[1].Value);
+}
+
 static StatDescriptionResult BuildStatDescriptions(byte[] mainBytes, byte[] passiveBytes) {
     var all = new List<StatDescriptionPair>();
     all.AddRange(ParseCsd(mainBytes, "stat_descriptions.csd"));
@@ -437,9 +533,66 @@ static StatDescriptionResult BuildStatDescriptions(byte[] mainBytes, byte[] pass
         else if (distinct.Length > 1) signedConflicts.Add(new SignedStatConflict(positiveGroup.Key, distinct));
     }
     var uniqueEnglish = all.Select(pair => pair.English).Distinct(StringComparer.Ordinal).Count();
-    return new StatDescriptionResult(byEnglish, signedVariants, signedConflicts, conflicts,
+    var renderingFamilies = all
+        .GroupBy(pair => (pair.Source, pair.Block))
+        .Select(group => new StatRenderingFamily(
+            group.Key.Source,
+            group.Key.Block,
+            group.Select(pair => new StatRenderingVariant(
+                    pair.English,
+                    pair.ZhTW,
+                    pair.Condition,
+                    pair.Negated,
+                    pair.TranslatedNegated))
+                .Distinct()
+                .OrderBy(variant => variant.English, StringComparer.Ordinal)
+                .ThenBy(variant => variant.Condition, StringComparer.Ordinal)
+                .ToArray()))
+        .Where(family => family.Variants.Length > 1)
+        .OrderBy(family => family.Source, StringComparer.Ordinal)
+        .ThenBy(family => family.Block)
+        .ToArray();
+    var linkedTerms = BuildLinkedTerms(all);
+    return new StatDescriptionResult(byEnglish, renderingFamilies, signedVariants, signedConflicts, conflicts, linkedTerms,
         new Coverage(all.Count, uniqueEnglish, byEnglish.Count, conflicts.Count,
             Percent(byEnglish.Count, uniqueEnglish)));
+}
+
+static PairResult<LinkedTermRecord> BuildLinkedTerms(IEnumerable<StatDescriptionPair> descriptions) {
+    var records = new List<LinkedTermRecord>();
+    foreach (var description in descriptions) {
+        var english = ExtractLinks(description.EnglishRaw);
+        var translated = ExtractLinks(description.ZhTWRaw);
+        if (english.Count != translated.Count) continue;
+        for (var index = 0; index < english.Count; index += 1) {
+            var en = english[index];
+            var zh = translated[index];
+            if (!string.Equals(en.Id, zh.Id, StringComparison.Ordinal) ||
+                string.IsNullOrWhiteSpace(en.Text) || string.IsNullOrWhiteSpace(zh.Text)) continue;
+            records.Add(new LinkedTermRecord(
+                en.Id,
+                en.Text,
+                zh.Text,
+                description.Source,
+                description.Block));
+        }
+    }
+    var uniqueRecords = records
+        .GroupBy(record => (record.Id, record.English, record.ZhTW))
+        .Select(group => group.OrderBy(record => record.Source, StringComparer.Ordinal)
+            .ThenBy(record => record.Block).First())
+        .OrderBy(record => record.Id, StringComparer.Ordinal)
+        .ThenBy(record => record.English, StringComparer.Ordinal)
+        .ToList();
+    return CreatePairResult(uniqueRecords, record => record.English, record => record.ZhTW);
+}
+
+static List<LinkedTerm> ExtractLinks(string value) {
+    return Regex.Matches(value, @"\[(?<id>[^|\]]+)(?:\|(?<text>[^\]]+))?\]")
+        .Select(match => new LinkedTerm(
+            match.Groups["id"].Value,
+            match.Groups["text"].Success ? match.Groups["text"].Value : match.Groups["id"].Value))
+        .ToList();
 }
 
 static IEnumerable<StatDescriptionPair> ParseCsd(byte[] bytes, string source) {
@@ -465,11 +618,12 @@ static IEnumerable<StatDescriptionPair> ParseCsd(byte[] bytes, string source) {
             line,
             "^(?<condition>\\S+)\\s+\\\"(?<text>(?:\\\\.|[^\\\"])*)\\\"(?<directives>.*)$");
         if (!match.Success) continue;
-        var value = NormalizeCsdText(match.Groups["text"].Value);
+        var rawValue = match.Groups["text"].Value.Replace("\\\"", "\"");
+        var value = NormalizeCsdText(rawValue);
         if (string.IsNullOrEmpty(value)) continue;
         var condition = match.Groups["condition"].Value;
         var negated = Regex.IsMatch(match.Groups["directives"].Value, @"(?:^|\s)negate\s+1(?:\s|$)");
-        var variant = new CsdDescriptionVariant(value, condition, negated);
+        var variant = new CsdDescriptionVariant(value, rawValue, condition, negated);
         if (language == "English") english.Add(variant);
         else if (language == "Traditional Chinese") translated.Add(variant);
     }
@@ -491,7 +645,9 @@ static IEnumerable<StatDescriptionPair> PairDescriptionVariants(
             block,
             en.Condition,
             en.Negated,
-            zh.Negated);
+            zh.Negated,
+            en.RawText,
+            zh.RawText);
     }
 }
 
@@ -599,7 +755,23 @@ internal sealed record AffixRecord(
     string ZhTW);
 internal sealed record ClientStringRecord(string Id, int Row, string English, string ZhTW);
 internal sealed record PassiveSkillRecord(string Id, int Row, string English, string ZhTW);
-internal sealed record CsdDescriptionVariant(string Text, string Condition, bool Negated);
+internal sealed record GemTagRecord(
+    string Id,
+    int Row,
+    string? SemanticId,
+    string English,
+    string ZhTW,
+    string EnglishRaw,
+    string ZhTWRaw);
+internal sealed record SemanticLabel(string? SemanticId, string Display);
+internal sealed record GemTagConflict(string SemanticId, string[] Translations);
+internal sealed record GemTagResult(
+    List<GemTagRecord> Records,
+    SortedDictionary<string, string> BySemanticId,
+    SortedDictionary<string, string> ByEnglish,
+    List<GemTagConflict> Conflicts,
+    Coverage Coverage);
+internal sealed record CsdDescriptionVariant(string Text, string RawText, string Condition, bool Negated);
 internal sealed record StatDescriptionPair(
     string English,
     string ZhTW,
@@ -607,7 +779,11 @@ internal sealed record StatDescriptionPair(
     int Block,
     string Condition,
     bool Negated,
-    bool TranslatedNegated);
+    bool TranslatedNegated,
+    string EnglishRaw,
+    string ZhTWRaw);
+internal sealed record LinkedTerm(string Id, string Text);
+internal sealed record LinkedTermRecord(string Id, string English, string ZhTW, string Source, int Block);
 internal sealed record SignedStatVariant(
     string PositiveEnglish,
     string PositiveZhTW,
@@ -617,6 +793,16 @@ internal sealed record SignedStatVariant(
     string PositiveCondition,
     string NegativeCondition,
     bool Negate);
+internal sealed record StatRenderingVariant(
+    string English,
+    string ZhTW,
+    string Condition,
+    bool Negated,
+    bool TranslatedNegated);
+internal sealed record StatRenderingFamily(
+    string Source,
+    int Block,
+    StatRenderingVariant[] Variants);
 internal sealed record SignedStatConflict(string PositiveEnglish, SignedStatVariant[] Variants);
 internal sealed record PairConflict(string English, string[] Translations);
 internal sealed record Coverage(
@@ -636,7 +822,9 @@ internal sealed record AffixResult(
     PairResult<AffixRecord> Suffixes);
 internal sealed record StatDescriptionResult(
     SortedDictionary<string, string> ByEnglish,
+    StatRenderingFamily[] RenderingFamilies,
     SortedDictionary<string, SignedStatVariant> SignedVariants,
     List<SignedStatConflict> SignedConflicts,
     List<PairConflict> Conflicts,
+    PairResult<LinkedTermRecord> LinkedTerms,
     Coverage Coverage);

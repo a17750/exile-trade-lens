@@ -82,6 +82,9 @@ for (const [english, expected] of Object.entries({
   "Ezomyte Staff": "艾茲麥長杖",
   "Vaal Helmet": "瓦爾頭盔",
   "Ezomyte Body Armour": "艾茲麥胸甲",
+  "One Hand Sword": "單手劍",
+  "Two Hand Axe": "雙手斧",
+  "Ezomyte One Hand Sword": "艾茲麥單手劍",
 })) {
   const property = { name: english, values: [], type: 109 };
   let reported = null;

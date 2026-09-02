@@ -16,7 +16,7 @@
 
 | 文件 | 来源与职责 | 当前规模 |
 | --- | --- | ---: |
-| `data/ggpk.json` | 本机 `Content.ggpk` 只读提取的官方游戏文本 | 基础物品、词元、装备词缀、2,967 个被动节点和 10,355 条唯一 stat description 模板 |
+| `data/ggpk.json` | 本机 `Content.ggpk` 只读提取的官方游戏文本 | 基础物品、词元、装备词缀、被动节点、唯一 stat description 模板及同描述块渲染家族 |
 | `data/trade-api.json` | 国际服与台服官方 Trade API 的成对快照、稳定 ID 对照和质量报告 | 6,608 个通过校验的分组/条目对照；物品因接口缺少稳定键，目前不自动对齐 |
 | `data/ui.zh-TW.json` | 项目维护的网页界面短文本 | 73 条 |
 
@@ -32,8 +32,17 @@
 | `data/verified-labels.zh-TW.json` | 人工审查证据 | 只保留稳定游戏属性标签和证据，不再保存 UI 翻译。 |
 | `data/item-fields.zh-TW.json` | 物品字段审核例外 | `equipment_filters` 自动注册表之外的 `/fetch` 属性、DOM 标签与审核别名；不直接充当自由文本词库。 |
 | `data/domain-policies.json` | 领域策略 | 声明允许进入各翻译领域的官方稳定 ID、适用边界及审核断言；运行译文仍从官方来源读取，断言只用于发现上游漂移。当前首先管理 `itemName`。 |
+| `data/skill-tags.zh-TW.json` | 技能宝石语义标签校验与补位 | 保存台服 `/fetch` 的第二梯队证据；同 ID 用于校验 GGPK，只在 `ggpk.skillGemTags` 缺失时补位，不进入全局词典。 |
 | `data/verified-stat-renderings.zh-TW.json` | 官方成对证据 | 保存同一 stable stat ID 的特殊渲染变体及英台 `/fetch` 证据。 |
 | `data/upstream-baseline.en.json` | 差异基线 | 保存上次人工接受的官方英文结构，用于发现版本漂移；它不是运行翻译。 |
+
+`data/corpus/` 保存按道具分类采集的脱敏 `/fetch` 首屏语料，是回归输入而非运行翻译源。
+采集、隐私边界和禁止自动配对的原因见
+[道具分类语料与整体验证](CATEGORY-CORPUS-REGRESSION.md)。
+
+当前 GGPK 已提取范围、按 Item Category 划分的缺口及后续接入顺序见
+[GGPK 分类覆盖与提取路线图](GGPK-CATEGORY-COVERAGE.md)。后续应先补稳定表及表间关系，再处理
+零散漏译个例。
 
 社区项目 [seominugi/poe-game-data](https://github.com/seominugi/poe-game-data/blob/master/poe2/names/tw.json) 仅作为人工查阅入口，不下载到仓库、不参与构建、不进入审核队列，也不具有翻译优先级。
 
@@ -57,3 +66,7 @@
 ## 历史词库策略
 
 项目不再保留或读取 `data/translations.zh-TW.json`。官方、GGPK、验证数据和人工覆盖均未命中的文本必须保留英文并进入审核记录；不得为提高覆盖率重新引入无逐条证据的历史兜底。
+
+`data/ggpk.json` 的 `skillGemTags` 保存 `GemTags.datc64` 中按稳定语义 ID 配对的官方英繁标签，
+是技能宝石标签主源。`linkedTerms` 保存 CSD 中 `[SemanticId|DisplayText]` 的同版本官方英繁配对，
+只作为精确后备；两者都不会展开成通用英文词典。

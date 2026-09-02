@@ -2,6 +2,8 @@
 
 最后更新：2026-08-29
 
+> 项目级来源规则：游戏内容译文以同版本 GGPK 为第一梯队，台服 Trade API 为第二梯队校验与补缺。详见 [翻译来源优先级](SOURCE-PRIORITY.md)。下文保留的旧 Trade-first 描述只代表历史背景，不再代表目标架构。
+
 ## 1. 这次为什么需要重新设计
 
 项目原先主要面对交易站数据，因此核心思路是：
@@ -66,7 +68,13 @@ Golem Crack -> 魔像 + 裂骨錘   （随机名称组件，最终空格和语�
 - `scripts/build-data.mjs` 已把映射写入 `baseItems`、`fixedNames`、`wordComponents`、`affixNames`，并通过 `data/domain-policies.json` 将审核过的官方模板编译至 `domains.itemName`。
 - `/fetch` 运行时已经区分 `name`、`baseType`、`typeLine` 和结构化 `properties`；属性只通过领域隔离的 `itemPropertyIndex` 解析。普通物品展示必须完整匹配已审核的 `ClientStrings.QualityItem` 或 `ClientStrings.ExceptionalItem`，稀有名称必须被 `Words` 整段覆盖，魔法名称必须由 `ITEM` 前缀、底材、后缀完整覆盖。
 - `/fetch` 的 `Mods` 与 `Stats` 已按英文模板和稳定 ID 双重校验。结构化 mod 对象自身的 `hash` 直接绑定当前 description，优先于 `extended.hashes`；后者的数字数组不视为 `*Mods` 数组位置。具体的词组、占位符和回退规则见 [词组与词条翻译对照规范](PHRASE-TRANSLATION.md)。
+- 技能宝石以 `SkillGemItem` 聚合独立处理：标签主源消费 GGPK `GemTags` 的稳定语义 ID，属性与数值模板消费 `ClientStrings.Id`，CSD 语义标记只作精确后备；详见 [技能宝石领域](SKILL-GEM-DOMAIN.md)。
+- `/fetch` 的 type 109 装备类别属性由 Trade API category option 生成；CSD 展示名与筛选名的
+  `One Hand`/`One-Handed`、`Two Hand`/`Two-Handed` 差异通过受控类别别名统一，不进入通用词典。
 - CSD 中同一描述块的 `increased/reduced` 分支已编译为 `domains.signedStatRendering`；负数必须具备英繁同块及 `negate 1` 证据，并且只挂载到英文目录模板完全相同的 Trade stat ID。
+- Trade stats 目录中的 `(Local)` 是筛选范围标记，不会出现在 `/fetch` 正文；构建期仅允许剥离这一完整后缀，再用剥离后的英文与 GGPK CSD 完整模板连接。禁止对其他括号内容做泛化删除。
+- GGPK CSD 中无冲突的完整英繁模板另编译为 `statDescriptionExact` 领域，只允许在物品
+  `*Mods` 正文内做整句和占位符匹配；它不进入 UI、物品名或全局 exact 词典。
 - `Words` 的类别、组合顺序和所有语言规则尚未完全解析；当前采用保守的整段匹配。
 - GGPK 不负责交易站固定 UI、筛选器或服务端专有文本，这些仍以 Trade API 和项目 UI 词库为准。
 - 第三方 `poe-game-data` 不参与构建、运行或冲突审计，仅在数据清单中保留人工参考链接。
@@ -135,22 +143,20 @@ ui:clear_filter_group
 ### 4.1 交易站数据
 
 ```text
-带 expectedEnglish 的人工覆盖
+同版本 GGPK 中可连接到 Trade stable ID 的官方译文
   > 台服 Trade API 相同稳定 ID
-  > 项目已审核正式译文
+  > 带 expectedEnglish 与来源记录的项目审核项
   > 英文回退
 ```
 
-适用于 `stats`、`static`、`filters` 及选项。继续保留现有占位符数量校验、选项 ID
-校验和英文改义门禁。
+Trade stable ID 仍负责官网请求和运行时定位，但不等于 Trade 译文优先于 GGPK。对于 GGPK 没有对应资源的 Trade 专属 `static`、`filters` 和 UI，才直接采用台服 Trade 相同 ID，并继续执行占位符、选项 ID 和英文改义门禁。
 
 ### 4.2 基础物品
 
 ```text
-带 GGPK 稳定 ID 与源指纹的人工例外
-  > 同版本英文/繁中 BaseItemTypes 按 Id 配对
+同版本英文/繁中 BaseItemTypes 按 Id 配对
   > 台服 Trade API 中具备相同稳定键的条目
-  > 项目已审核名称
+  > 带 GGPK 稳定 ID、源指纹和 expectedEnglish 的人工例外
   > 英文回退
 ```
 
@@ -357,6 +363,8 @@ GGG 数据使用政策；在此之前可以只将其作为本地构建输入和�
 - Trade API 的稳定 ID、选项和英文是否变化。
 - 同一领域是否出现一对多冲突。
 - 人工覆盖的预期英文和源指纹是否过期。
+- 以完整道具分类为锚点的首屏 `/fetch` 语料是否达到结构覆盖门禁；详见
+  [道具分类语料与整体验证](CATEGORY-CORPUS-REGRESSION.md)。
 
 结构漂移必须阻断自动发布；普通新增缺失进入审核队列。
 

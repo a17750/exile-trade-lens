@@ -16,11 +16,13 @@
 ## 当前已实现的数据层级
 
 ```text
-人工审核覆盖（稳定 ID + expectedEnglish）
-  > 台服官方交易接口（相同稳定 ID）
-  > 同版本 GGPK 英繁稳定配对（名称领域）
+同版本 GGPK 英繁稳定配对
+  > 台服官方交易接口（相同稳定 ID 或语义 ID）
+  > 人工审核覆盖（稳定 ID + expectedEnglish + 来源）
   > 无翻译，保留英文并进入审核队列
 ```
+
+完整约束见 [翻译来源优先级](SOURCE-PRIORITY.md)。Trade stable ID 可以作为运行时身份连接 GGPK 文本，但台服 Trade 译文不得覆盖已存在的同版本 GGPK 译文。
 
 “层级”决定来源能否使用。可靠来源未命中时保留英文并进入审核队列，不自动生成候选。
 
@@ -33,19 +35,18 @@
 ### Trade API 领域
 
 ```text
-人工覆盖（稳定 Trade ID + expectedEnglish）
+可由 Trade ID 连接的同版本 GGPK 官方译文
   > 台服 Trade API 相同稳定 ID
-  > 项目已审核译文
+  > 项目审核项（稳定 Trade ID + expectedEnglish + 来源）
   > 英文
 ```
 
 ### GGPK 游戏名称领域
 
 ```text
-人工例外（GGPK 稳定键 + 源指纹）
-  > 同版本英文/繁中 GGPK 按稳定键配对
+同版本英文/繁中 GGPK 按稳定键配对
   > 具备安全稳定键的台服 Trade 数据
-  > 项目已审核译文
+  > 人工例外（GGPK 稳定键 + 源指纹 + expectedEnglish）
   > 英文
 ```
 

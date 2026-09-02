@@ -27,7 +27,7 @@ powershell -ExecutionPolicy Bypass -File .agents/skills/poe2-trade-regression/sc
 powershell -ExecutionPolicy Bypass -File .agents/skills/poe2-trade-regression/scripts/run-regression.ps1 -SkipBuild
 ```
 
-执行顺序是：运行时语法检查 → 数据构建 → 质量门禁 → 数据管线 → 物品/筛选/属性 smoke test（包含中文目录别名与搜索请求英文还原）→ item-name 领域测试 → 中文物品搜索冷启动测试 → background test → page/background bridge test → `git diff --check`。任一命令失败都视为阻断，不得通过手工改生成文件掩盖失败。
+执行顺序是：运行时语法检查 → 数据构建 → 质量门禁 → 数据管线 → 物品/筛选/属性 smoke test（包含中文目录别名与搜索请求英文还原）→ 各领域测试 → 分类语料覆盖门禁 → 英台候选差异报告 → background test → page/background bridge test → `git diff --check`。任一命令失败都视为阻断，不得通过手工改生成文件掩盖失败。
 
 ## 检查矩阵
 
@@ -36,12 +36,14 @@ powershell -ExecutionPolicy Bypass -File .agents/skills/poe2-trade-regression/sc
 | 物品 | 已知名称、底材、固定名和完整稀有名称仍可翻译；未知名称保留英文；不出现 `(undefined)` 或中英拼接 | `smoke-test.mjs`、`item-label-dom-smoke-test.mjs`、质量报告 |
 | 物品名称领域 | `baseType`、普通展示模板、魔法前后缀和稀有名称按 `frameType` 隔离；未知模板保留整段英文；新 ClientStrings 包装器只进入候选审核 | `item-name-domain-test.mjs`、`item-name-domain-report.json` |
 | 赋予技能领域 | 有等级和无等级模板必须来自已审核 ClientStrings；技能名只按 GGPK 完整键命中；未知技能或模板变化保留整行英文并上报 | `granted-skill-domain-test.mjs`、`smoke-test.mjs`、`granted-skill-domain-report.json` |
+| 技能宝石领域 | 标签按独立语义 ID 匹配，全部命中后整体渲染；单标签、复合资源消耗与首屏真实样本都必须通过，未知标签逐 ID 上报 | `skill-gem-domain-test.mjs`、`audit-skill-gem-corpus.mjs`、`skill-gem-corpus-report.json` |
 | API 目录缓存 | 扩展冷启动时目录必须等词库就绪；目录结构升级时只失效 `items/stats/data/filters` 八个精确缓存键一次，避免展开与选中状态使用不同语言模型 | `search-cold-start-test.mjs`、`smoke-test.mjs` |
 | 中文下拉匹配 | 目录 `name/type` 使用可逆双语别名供官网原生过滤；还原索引必须能直接由正式词库建立，不能依赖本页曾拦截 `/data/items`；发出 `/search` 前必须精确还原官方英文，伪造或未知格式原样放行 | `smoke-test.mjs` |
 | 结果卡片摘要 | 结果区域继续默认跳过全局精确翻译；仅允许 `Item Level`、`Requires` 和五个固定防御摘要标签，翻译时必须保留冒号、数值与百分号，未知摘要保持英文 | `item-label-dom-smoke-test.mjs` |
 | 物品字段领域 | `equipment_filters` 自动登记稳定 `data-field`；`/fetch` 属性通过统一 `itemPropertyIndex` 解析；`knownButUnrouted` 必须为 0；未知字段只上报稳定 ID 与纯英文标签，数值、价格和卖家保持原样 | `item-field-rendering-test.mjs`、`smoke-test.mjs`、`missing-report-policy-test.mjs`、`item-field-coverage.json`、`item-property-resolution.json` |
 | 筛选项 | 分组、选项和动态下拉值都是字符串；缺失映射不会把 `undefined` 写进 DOM | `smoke-test.mjs`、DOM 采集规则 |
-| 属性/词缀 | 按稳定 stat id 绑定；数值和占位符保留；替代英文渲染只对声明的 id 生效；单复数等变体必须有独立官方证据；未知 id 回退原文 | `smoke-test.mjs`、`stat-rendering-test.mjs`、`pipeline-test.mjs` |
+| 属性/词缀 | 按稳定 stat id 绑定；数值和占位符保留；条件、正负与单复数变体只能来自同一 GGPK CSD 描述块；无冲突完整 CSD 模板仅在 `*Mods` 领域精确匹配；未知项回退原文 | `smoke-test.mjs`、`stat-rendering-test.mjs`、`pipeline-test.mjs` |
+| 分类语料 | `Item Category` 全部任务都有首批样本或合法空结果；结构观测覆盖率不低于 80%；英台独立市场样本只生成候选，不自动晋升译文 | `audit-category-corpus.mjs --strict`、`category-corpus-coverage.en.json`、`category-corpus-alignment.json` |
 | 原文悬停 | 仅繁中模式保持中文可见，并由全局唯一 Tooltip 显示本次翻译的实际英文原文；双语模式不标记；冲突映射停用，不创建逐元素实例 | `hover-original-smoke-test.mjs`、浏览器人工检查 |
 | `/fetch` | 单个坏条目不会取消同批其他条目的翻译；可选字段异常时保留源对象 | `trade-hook.js`、`smoke-test.mjs` |
 | bridge | 页面环境和 service worker 的消息可达；上下文失效时不产生未处理 Promise 错误 | `background-smoke-test.mjs`、`bridge-context-smoke-test.mjs` |
@@ -66,6 +68,8 @@ powershell -ExecutionPolicy Bypass -File .agents/skills/poe2-trade-regression/sc
 - `reports/quality-report.json`：阻断质量问题必须为 0；
 - `reports/review-queue.json`：需要人工审核的候选，不等于已确认译文；
 - `reports/item-name-domain-report.json`：物品名称领域的批准规则和待审核官方模板候选；
+- `reports/category-corpus-coverage.en.json`：完整分类首屏语料的字段/词缀覆盖；
+- `reports/category-corpus-alignment.json`：独立英台样本的诊断候选，不是正式翻译源；
 - `reports/official-tw-source-report.json`、`reports/ggpk-source-report.json`：来源版本和提取状态。
 
 “通过”只表示没有发现回归，不表示所有英文都已经翻译。低可信候选必须继续保留原文，不能为了提高覆盖率而猜测。
